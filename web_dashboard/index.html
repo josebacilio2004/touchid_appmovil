@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Dashboard premium de control para el sistema TouchID de resolución de cuestionarios.">
+  <title>TouchID Dashboard - Resolutor Inteligente</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./index.css">
+</head>
+<body>
+  <div class="app-layout">
+    
+    <!-- Sidebar Navegación -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo"></div>
+        <span class="brand-name">TouchID</span>
+      </div>
+      <nav class="nav-menu">
+        <a href="#overview" class="nav-item active" id="nav-overview">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M10 20H5a1 1 0 0 1-1-1v-6.586a1 1 0 0 1 .293-.707l6-6a1 1 0 0 1 1.414 0l6 6a1 1 0 0 1 .293.707V19a1 1 0 0 1-1 1h-5v-6h-2v6zm-7-7.586l6-6a3 3 0 0 1 4.243 0l6 6V19a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-6.586z"/></svg>
+          Panel General
+        </a>
+        <a href="#history" class="nav-item" id="nav-history">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 1 1 7 7 7.07 7.07 0 0 1-6-3H4.26a8.99 8.99 0 1 0 8.74-16zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+          Historial
+        </a>
+        <a href="#config" class="nav-item" id="nav-config">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm0-2a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm9.03-2l1.97-1.53-2-3.46-2.43.98a8.2 8.2 0 0 0-1.72-1l-.38-2.59h-4l-.38 2.59a8.2 8.2 0 0 0-1.72 1L8.3 4.5l-2 3.46L8.27 9.5a8.2 8.2 0 0 0-1 1.72l-2.59.38v4l2.59.38c.24.6.58 1.18 1 1.72l-.98 2.43 2 3.46 2.43-.98c.52.4 1.1.74 1.72 1l.38 2.59h4l.38-2.59c.6-.24 1.18-.58 1.72-1l2.43.98 2-3.46-1.97-1.53c.4-.52.74-1.1 1-1.72l2.59-.38v-4l-2.59-.38a8.2 8.2 0 0 0-1-1.72zM12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12z"/></svg>
+          Configuración
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="connection-status offline" id="db-status-badge">
+          <span class="status-dot"></span>
+          <span id="db-status-text">Desconectado</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Container -->
+    <main class="main-container">
+      
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <h1 class="page-title" id="current-tab-title">Panel General</h1>
+        <div class="user-profile">
+          <div class="api-status active" id="api-status-badge">API Gemini Activa</div>
+        </div>
+      </header>
+
+      <!-- Panel Content -->
+      <div class="content-wrapper">
+        
+        <!-- SECCIÓN 1: PANEL GENERAL -->
+        <section id="tab-overview" class="tab-content active">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-label">Total Preguntas</span>
+              <span class="stat-value" id="stat-total">0</span>
+              <span class="stat-trend positive">+100% hoy</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Materias Detectadas</span>
+              <span class="stat-value" id="stat-subjects">0</span>
+              <span class="stat-trend neutral">Activas en la nube</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Última Actividad</span>
+              <span class="stat-value" id="stat-last-time">--:--</span>
+              <span class="stat-trend info" id="stat-last-source">Sin datos</span>
+            </div>
+          </div>
+
+          <div class="dashboard-main-section">
+            <div class="card live-feed-card">
+              <div class="card-header">
+                <h2>Actividad en Tiempo Real (Firestore Stream)</h2>
+                <span class="pulse-indicator">En Vivo</span>
+              </div>
+              <div class="feed-list" id="live-question-feed">
+                <!-- Preguntas dinámicas aquí -->
+                <div class="feed-placeholder">
+                  <p>Esperando interacciones del botón circular (Chrome / Móvil)...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECCIÓN 2: HISTORIAL COMPLETO -->
+        <section id="tab-history" class="tab-content">
+          <div class="card table-card">
+            <div class="card-header search-header">
+              <h2>Historial de Preguntas Guardadas</h2>
+              <div class="search-box">
+                <input type="text" id="history-search" placeholder="Buscar pregunta o materia...">
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Materia</th>
+                    <th>Pregunta</th>
+                    <th>Respuesta Sugerida</th>
+                    <th>Origen</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-body">
+                  <tr>
+                    <td colspan="5" class="table-placeholder">No hay preguntas resueltas aún.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECCIÓN 3: CONFIGURACIÓN -->
+        <section id="tab-config" class="tab-content">
+          <div class="config-grid">
+            <div class="card config-card">
+              <h2>Configuración del Entorno de Red</h2>
+              <p class="card-subtitle">Establece las claves de la API de Gemini y las credenciales del proyecto de Firebase para habilitar la sincronización en tiempo real.</p>
+              
+              <form id="config-form" class="dashboard-form">
+                <div class="form-group">
+                  <label for="cfg-gemini-key">Gemini API Key</label>
+                  <input type="password" id="cfg-gemini-key" required placeholder="AIzaSy...">
+                </div>
+                
+                <div class="form-group">
+                  <label for="cfg-firebase-project">Firebase Project ID</label>
+                  <input type="text" id="cfg-firebase-project" required value="jbac-examen-parcial-2026">
+                </div>
+
+                <div class="form-group">
+                  <label>Configuración Firebase SDK (JSON)</label>
+                  <textarea id="cfg-firebase-sdk" rows="6" placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "...", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}'></textarea>
+                  <span class="field-help">Si dejas el JSON vacío, el dashboard intentará inicializar Firebase usando el Project ID predeterminado, pero es recomendable insertar las credenciales completas del SDK web de Firebase para mayor estabilidad.</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="save-config-btn">Guardar Cambios</button>
+              </form>
+            </div>
+
+            <div class="card info-card">
+              <h2>Guía de Configuración Rápida</h2>
+              <div class="steps-list">
+                <div class="step-item">
+                  <div class="step-num">1</div>
+                  <div class="step-desc">
+                    <h3>Configurar Firestore</h3>
+                    <p>En tu consola de Firebase en `jbac-examen-parcial-2026`, crea una base de datos de Firestore en modo de prueba.</p>
+                  </div>
+                </div>
+                <div class="step-item">
+                  <div class="step-num">2</div>
+                  <div class="step-desc">
+                    <h3>Registrar Extensión y Web</h3>
+                    <p>Usa las mismas credenciales de Firebase en la extensión de Chrome y en este panel web.</p>
+                  </div>
+                </div>
+                <div class="step-item">
+                  <div class="step-num">3</div>
+                  <div class="step-desc">
+                    <h3>Modo Compañero Activado</h3>
+                    <p>Abre la app de Flutter en tu celular. Al estar conectada a la misma base de datos Firestore, mostrará instantáneamente las respuestas de las preguntas que raspes en tu PC.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

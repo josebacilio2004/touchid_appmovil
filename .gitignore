@@ -1,0 +1,26 @@
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Thumbs.db
+
+# Logs and databases
+*.log
+*.sqlite
+
+# Flutter/Dart build files (in case they are generated outside mobile_app)
+.dart_tool/
+build/
+
+# Node modules and build files
+node_modules/
+dist/

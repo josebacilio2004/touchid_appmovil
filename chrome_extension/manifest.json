@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "TouchID Questionnaire Solver",
+  "version": "1.0",
+  "description": "Botón circular semi-invisible para resolver cuestionarios en Chrome usando IA y Firestore.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://firestore.googleapis.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}

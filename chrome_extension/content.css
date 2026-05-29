@@ -1,0 +1,238 @@
+/* Estilos para el Touch Circular e Interfaz de Respuestas */
+
+.touchid-float-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  z-index: 2147483647;
+  opacity: 0.12;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+              background-color 0.3s,
+              box-shadow 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  touch-action: none;
+}
+
+.touchid-float-btn:hover {
+  opacity: 0.85;
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25), 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.touchid-float-btn:active {
+  transform: scale(0.92);
+}
+
+/* Icono dentro del botón circular */
+.touchid-float-btn::after {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  transition: background-color 0.3s;
+}
+
+.touchid-float-btn.loading::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #3b82f6;
+  background: transparent;
+  box-shadow: none;
+  animation: touchid-spin 0.8s linear infinite;
+}
+
+@keyframes touchid-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Resaltado de la opción correcta */
+.touchid-highlight-option {
+  outline: 3px solid #10B981 !important;
+  outline-offset: 3px !important;
+  border-radius: 6px !important;
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.35) !important;
+  transition: all 0.4s ease !important;
+  animation: touchid-pulse 2s infinite alternate !important;
+}
+
+@keyframes touchid-pulse {
+  0% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 18px rgba(16, 185, 129, 0.45);
+  }
+}
+
+/* Contenedor de respuesta premium */
+.touchid-response-card {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  color: #f1f5f9;
+  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  z-index: 2147483647;
+  font-size: 14px;
+  line-height: 1.5;
+  transform: translateY(15px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              opacity 0.3s ease;
+}
+
+.touchid-response-card.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.touchid-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.touchid-card-title {
+  font-weight: 700;
+  color: #60a5fa;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.touchid-card-subject {
+  font-size: 10px;
+  background: rgba(96, 165, 250, 0.15);
+  color: #93c5fd;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+}
+
+.touchid-card-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.touchid-card-close:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.touchid-card-question {
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #ffffff;
+  font-size: 13.5px;
+}
+
+.touchid-card-answer-box {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.touchid-card-answer-label {
+  font-size: 11px;
+  color: #34d399;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+
+.touchid-card-answer-val {
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.touchid-card-explanation-label {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+
+.touchid-card-explanation-val {
+  color: #cbd5e1;
+  font-size: 12.5px;
+  margin-bottom: 12px;
+}
+
+.touchid-card-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #64748b;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 8px;
+}
+
+.touchid-sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #34d399;
+}
+
+.touchid-sync-indicator.syncing {
+  color: #fbbf24;
+}
+
+.touchid-sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
