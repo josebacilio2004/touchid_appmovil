@@ -28,16 +28,34 @@ workflows:
       - name: Build iOS (Unsigned IPA)
         script: |
           cd mobile_app
-          # Compilar el binario puro de iOS sin firma
+          # 1. Compilar binario de iOS sin firma
           flutter build ios --release --no-codesign
           
-          # Crear la estructura manual de IPA (Payload) para instalación por Sideloading (Sideloadly / AltStore)
+          # 2. Diagnóstico: Listar contenido de build/ios/iphoneos para verificar el compilado
+          echo "=== Contenido de build/ios/iphoneos ==="
+          ls -la build/ios/iphoneos || true
+          
+          # 3. Crear estructura Payload
           mkdir -p build/ios/ipa/Payload
+          
+          # 4. Copiar Runner.app resolviendo enlaces simbólicos (-L)
+          echo "=== Copiando Runner.app ==="
           cp -RL build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
           
-          # Comprimir a formato .ipa
+          # 5. Diagnóstico: Verificar si se copió correctamente
+          echo "=== Contenido de Payload ==="
+          ls -la build/ios/ipa/Payload || true
+          echo "=== Contenido de Payload/Runner.app ==="
+          ls -la build/ios/ipa/Payload/Runner.app || true
+          
+          # 6. Entrar a la carpeta y comprimir de forma detallada (sin -q para ver qué se agrega)
+          echo "=== Comprimiendo a IPA ==="
           cd build/ios/ipa
-          zip -qr TouchIdChrome.ipa Payload
+          zip -r TouchIdChrome.ipa Payload
+          
+          # 7. Diagnóstico: Verificar tamaño y detalles del archivo IPA generado
+          echo "=== IPA Generado ==="
+          ls -lh TouchIdChrome.ipa || true
     artifacts:
       - mobile_app/build/app/outputs/flutter-apk/*.apk
       - mobile_app/build/ios/ipa/TouchIdChrome.ipa
