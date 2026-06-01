@@ -7,6 +7,32 @@ import '../models/app_config.dart';
 import 'dashboard_screen.dart';
 import 'settings_screen.dart';
 
+class BrowserTab {
+  final String id;
+  String title;
+  String url;
+  final WebViewController controller;
+
+  BrowserTab({
+    required this.id,
+    required this.title,
+    required this.url,
+    required this.controller,
+  });
+}
+
+class HistoryItem {
+  final String title;
+  final String url;
+  final DateTime timestamp;
+
+  HistoryItem({
+    required this.title,
+    required this.url,
+    required this.timestamp,
+  });
+}
+
 class BrowserScreen extends StatefulWidget {
   final AppConfig config;
   final bool isFirebaseInitialized;
@@ -24,7 +50,10 @@ class BrowserScreen extends StatefulWidget {
 }
 
 class _BrowserScreenState extends State<BrowserScreen> {
-  late WebViewController _controller;
+  final List<BrowserTab> _tabs = [];
+  int _currentTabIndex = 0;
+  final List<HistoryItem> _browsingHistory = [];
+  
   final TextEditingController _urlController = TextEditingController(text: 'https://google.com');
   bool _isLoading = false;
   
@@ -35,23 +64,100 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
+    _addNewTab('https://google.com');
+  }
+
+  void _addNewTab([String url = 'https://google.com']) {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final WebViewController controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setGestureNavigationEnabled(true)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (String url) {
+          onPageStarted: (String pageUrl) {
             setState(() {
-              _urlController.text = url;
+              final index = _tabs.indexWhere((t) => t.id == id);
+              if (index != -1) {
+                _tabs[index].url = pageUrl;
+                if (index == _currentTabIndex) {
+                  _urlController.text = pageUrl;
+                }
+              }
             });
           },
-          onPageFinished: (String url) {
+          onPageFinished: (String pageUrl) async {
+            String? title;
+            try {
+              title = await controller.getTitle();
+            } catch (_) {}
+            
+            final cleanTitle = (title == null || title.trim().isEmpty) ? pageUrl : title;
+            
+            // Track browsing history
+            if (_browsingHistory.isEmpty || _browsingHistory.first.url != pageUrl) {
+              _browsingHistory.insert(0, HistoryItem(
+                title: cleanTitle,
+                url: pageUrl,
+                timestamp: DateTime.now(),
+              ));
+            }
+
             setState(() {
-              _urlController.text = url;
+              final index = _tabs.indexWhere((t) => t.id == id);
+              if (index != -1) {
+                _tabs[index].url = pageUrl;
+                _tabs[index].title = cleanTitle;
+                if (index == _currentTabIndex) {
+                  _urlController.text = pageUrl;
+                }
+              }
             });
           },
         ),
-      )
-      ..loadRequest(Uri.parse('https://google.com'));
+      );
+      
+    controller.loadRequest(Uri.parse(url));
+
+    setState(() {
+      _tabs.add(BrowserTab(
+        id: id,
+        title: 'Nueva pestaña',
+        url: url,
+        controller: controller,
+      ));
+      _currentTabIndex = _tabs.length - 1;
+      _urlController.text = url;
+    });
+  }
+
+  void _closeTab(int index) {
+    setState(() {
+      if (_tabs.length == 1) {
+        _tabs[0].controller.loadRequest(Uri.parse('https://google.com'));
+        _tabs[0].title = 'Google';
+        _tabs[0].url = 'https://google.com';
+        _urlController.text = 'https://google.com';
+        return;
+      }
+      
+      _tabs.removeAt(index);
+      
+      if (_currentTabIndex >= _tabs.length) {
+        _currentTabIndex = _tabs.length - 1;
+      } else if (_currentTabIndex == index) {
+        if (_currentTabIndex > 0) {
+          _currentTabIndex--;
+        }
+      }
+      _urlController.text = _tabs[_currentTabIndex].url;
+    });
+  }
+
+  void _selectTab(int index) {
+    setState(() {
+      _currentTabIndex = index;
+      _urlController.text = _tabs[index].url;
+    });
   }
 
   void _loadUrl() {
@@ -60,7 +166,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'https://$url';
       }
-      _controller.loadRequest(Uri.parse(url));
+      _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
       FocusScope.of(context).unfocus();
     }
   }
@@ -188,7 +294,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         })()
       ''';
 
-      final result = await _controller.runJavaScriptReturningResult(jsScript);
+      final result = await _tabs[_currentTabIndex].controller.runJavaScriptReturningResult(jsScript);
       
       // Decodificar el resultado de JS (en Android a veces viene entre comillas extras)
       String cleanResult = result.toString();
@@ -433,257 +539,495 @@ Responde estrictamente en formato JSON:
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                // Barra de navegación estilo Google Chrome
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1F1F1F), // Color gris oscuro de la barra de Chrome en modo oscuro
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Color(0xFF2F2F2F),
-                        width: 1.0,
-                      ),
-                    ),
-                  ),
-                  child: Row(
+  void _showTabSwitcher() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      const Text(
+                        'Pestañas',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       IconButton(
-                        icon: const Icon(Icons.home_outlined, color: Colors.white, size: 24),
+                        icon: const Icon(Icons.add, color: Colors.blueAccent, size: 28),
                         onPressed: () {
-                          _controller.loadRequest(Uri.parse('https://google.com'));
+                          _addNewTab('https://google.com');
+                          Navigator.pop(context);
                         },
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2D2D2D), // Fondo de barra de dirección en Chrome
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.only(left: 12, right: 6),
-                                child: Icon(Icons.lock_outline, color: Colors.grey, size: 14),
-                              ),
-                              Expanded(
-                                child: TextField(
-                                  controller: _urlController,
-                                  style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Busca o escribe una dirección web',
-                                    hintStyle: TextStyle(color: Colors.grey, fontSize: 13.5),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 10),
-                                  ),
-                                  onSubmitted: (_) => _loadUrl(),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.refresh, color: Colors.white70, size: 18),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                onPressed: () => _controller.reload(),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      // Icono del número de pestañas de Chrome
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white, width: 2),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '1',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      // Menú de tres puntos de Chrome
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert, color: Colors.white),
-                        color: const Color(0xFF2D2D2D),
-                        onSelected: (value) {
-                          if (value == 'historial') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DashboardScreen(
-                                  config: widget.config,
-                                  isFirebaseInitialized: widget.isFirebaseInitialized,
-                                ),
-                              ),
-                            );
-                          } else if (value == 'configuracion') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SettingsScreen(
-                                  config: widget.config,
-                                  onConfigSaved: widget.onConfigSaved,
-                                ),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Función "$value" no disponible en este momento.'),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          }
-                        },
-                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                          const PopupMenuItem<String>(
-                            value: 'pestana',
-                            child: Row(
-                              children: [
-                                Icon(Icons.tab, color: Colors.white70),
-                                SizedBox(width: 10),
-                                Text('Nueva pestaña', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'historial',
-                            child: Row(
-                              children: [
-                                Icon(Icons.history, color: Colors.white70),
-                                SizedBox(width: 10),
-                                Text('Historial', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'descargas',
-                            child: Row(
-                              children: [
-                                Icon(Icons.download_done, color: Colors.white70),
-                                SizedBox(width: 10),
-                                Text('Descargas', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuDivider(height: 1),
-                          const PopupMenuItem<String>(
-                            value: 'configuracion',
-                            child: Row(
-                              children: [
-                                Icon(Icons.settings, color: Colors.white70),
-                                SizedBox(width: 10),
-                                Text('Configuración', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'ayuda',
-                            child: Row(
-                              children: [
-                                Icon(Icons.help_outline, color: Colors.white70),
-                                SizedBox(width: 10),
-                                Text('Ayuda y comentarios', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
-                ),
-                
-                // El navegador WebView
-                Expanded(
-                  child: WebViewWidget(controller: _controller),
-                ),
-              ],
-            ),
-            
-            // Botón circular semi-invisible draggable (Ultra stealthy)
-            Positioned(
-              right: _btnRight,
-              bottom: _btnBottom,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    _btnRight -= details.delta.dx;
-                    _btnBottom -= details.delta.dy;
-                    
-                    // Limitar bordes de pantalla
-                    final media = MediaQuery.of(context);
-                    _btnRight = _btnRight.clamp(10.0, media.size.width - 50.0).toDouble();
-                    _btnBottom = _btnBottom.clamp(10.0, media.size.height - 110.0).toDouble();
-                  });
-                },
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Opacity(
-                    opacity: widget.config.touchOpacity, // Opacidad dinámica configurada
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white, // Color de fondo sólido para que responda directo al control de opacidad
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.black.withOpacity(0.15),
+                  const SizedBox(height: 15),
+                  Expanded(
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.85,
+                      ),
+                      itemCount: _tabs.length,
+                      itemBuilder: (context, index) {
+                        final tab = _tabs[index];
+                        final isActive = index == _currentTabIndex;
+                        return GestureDetector(
+                          onTap: () {
+                            _selectTab(index);
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F172A),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isActive ? Colors.blue : Colors.white.withOpacity(0.08),
+                                width: isActive ? 2.5 : 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        tab.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: isActive ? Colors.blue : Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () {
+                                        _closeTab(index);
+                                        setModalState(() {});
+                                        setState(() {});
+                                      },
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Colors.grey,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E293B),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    padding: const EdgeInsets.all(8),
+                                    child: Center(
+                                      child: Text(
+                                        tab.url,
+                                        maxLines: 4,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showBrowsingHistory() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Historial del Navegador',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setModalState(() {
+                            _browsingHistory.clear();
+                          });
+                          setState(() {});
+                        },
+                        child: const Text('Borrar todo', style: TextStyle(color: Colors.redAccent)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: _browsingHistory.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No hay historial de navegación',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _browsingHistory.length,
+                            itemBuilder: (context, index) {
+                              final item = _browsingHistory[index];
+                              return ListTile(
+                                leading: const Icon(Icons.history, color: Colors.grey),
+                                title: Text(
+                                  item.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                ),
+                                subtitle: Text(
+                                  item.url,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                                ),
+                                onTap: () {
+                                  _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(item.url));
+                                  Navigator.pop(context);
+                                },
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      _browsingHistory.removeAt(index);
+                                    });
+                                    setState(() {});
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final controller = _tabs[_currentTabIndex].controller;
+        if (await controller.canGoBack()) {
+          await controller.goBack();
+        } else {
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0F172A),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  // Barra de navegación estilo Google Chrome
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1F1F1F), // Color gris oscuro de la barra de Chrome en modo oscuro
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Color(0xFF2F2F2F),
                           width: 1.0,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 5,
-                            spreadRadius: 1,
-                          )
-                        ],
                       ),
-                      child: Center(
-                        child: _isLoading
-                            ? SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  color: Colors.black.withOpacity(0.6),
-                                  strokeWidth: 1.5,
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.home_outlined, color: Colors.white, size: 24),
+                          onPressed: () {
+                            _tabs[_currentTabIndex].controller.loadRequest(Uri.parse('https://google.com'));
+                          },
+                        ),
+                        Expanded(
+                          child: Container(
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2D2D2D), // Fondo de barra de dirección en Chrome
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 12, right: 6),
+                                  child: Icon(Icons.lock_outline, color: Colors.grey, size: 14),
                                 ),
-                              )
-                            : Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.55),
-                                  shape: BoxShape.circle,
+                                Expanded(
+                                  child: TextField(
+                                    controller: _urlController,
+                                    style: const TextStyle(color: Colors.white, fontSize: 13.5),
+                                    decoration: const InputDecoration(
+                                      hintText: 'Busca o escribe una dirección web',
+                                      hintStyle: TextStyle(color: Colors.grey, fontSize: 13.5),
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                                    ),
+                                    onSubmitted: (_) => _loadUrl(),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.refresh, color: Colors.white70, size: 18),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () => _tabs[_currentTabIndex].controller.reload(),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Icono del número de pestañas de Chrome (Interactivo)
+                        GestureDetector(
+                          onTap: _showTabSwitcher,
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white, width: 2),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${_tabs.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Menú de tres puntos de Chrome
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, color: Colors.white),
+                          color: const Color(0xFF2D2D2D),
+                          onSelected: (value) {
+                            if (value == 'historial') {
+                              _showBrowsingHistory();
+                            } else if (value == 'configuracion') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SettingsScreen(
+                                    config: widget.config,
+                                    onConfigSaved: widget.onConfigSaved,
+                                  ),
+                                ),
+                              );
+                            } else if (value == 'pestana') {
+                              _addNewTab('https://google.com');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Función "$value" no disponible en este momento.'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          },
+                          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
+                              value: 'pestana',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.tab, color: Colors.white70),
+                                  SizedBox(width: 10),
+                                  Text('Nueva pestaña', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'historial',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.history, color: Colors.white70),
+                                  SizedBox(width: 10),
+                                  Text('Historial', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'descargas',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.download_done, color: Colors.white70),
+                                  SizedBox(width: 10),
+                                  Text('Descargas', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(height: 1),
+                            const PopupMenuItem<String>(
+                              value: 'configuracion',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.settings, color: Colors.white70),
+                                  SizedBox(width: 10),
+                                  Text('Configuración', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'ayuda',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.help_outline, color: Colors.white70),
+                                  SizedBox(width: 10),
+                                  Text('Ayuda y comentarios', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // El navegador WebView con IndexedStack para preservar el estado
+                  Expanded(
+                    child: IndexedStack(
+                      index: _currentTabIndex,
+                      children: _tabs.map((tab) => WebViewWidget(controller: tab.controller)).toList(),
+                    ),
+                  ),
+                ],
+              ),
+              
+              // Botón circular semi-invisible draggable (Ultra stealthy)
+              Positioned(
+                right: _btnRight,
+                bottom: _btnBottom,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _btnRight -= details.delta.dx;
+                      _btnBottom -= details.delta.dy;
+                      
+                      // Limitar bordes de pantalla
+                      final media = MediaQuery.of(context);
+                      _btnRight = _btnRight.clamp(10.0, media.size.width - 50.0).toDouble();
+                      _btnBottom = _btnBottom.clamp(10.0, media.size.height - 110.0).toDouble();
+                    });
+                  },
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Opacity(
+                      opacity: widget.config.touchOpacity, // Opacidad dinámica configurada
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white, // Color de fondo sólido para que responda directo al control de opacidad
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.black.withOpacity(0.15),
+                            width: 1.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 5,
+                              spreadRadius: 1,
+                            )
+                          ],
+                        ),
+                        child: Center(
+                          child: _isLoading
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.black.withOpacity(0.6),
+                                    strokeWidth: 1.5,
+                                  ),
+                                )
+                              : Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.55),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                        ),
                       ),
                     ),
                   ),
+                  onTap: _solveQuestionnaire,
                 ),
-                onTap: _solveQuestionnaire,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
