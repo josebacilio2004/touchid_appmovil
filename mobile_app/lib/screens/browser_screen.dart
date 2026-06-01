@@ -115,12 +115,69 @@ class _BrowserScreenState extends State<BrowserScreen> {
               }
             });
             
-            questionText = questionText.trim().replace(/^[A-Za-z0-9]+\.\\s+/, '').replace(/\\s+/g, ' ');
+            questionText = questionText.trim().replace(/^[A-Za-z0-9]+\\.\\s+/, '').replace(/\\s+/g, ' ');
+          }
+          
+          if (options.length === 0) {
+            var allElements = document.querySelectorAll('div, button, span, li, p, label');
+            var matchesByLetter = {A: [], B: [], C: [], D: [], E: [], F: []};
+            var letterPatterns = [
+              /^\\s*A[\\.\\)]\\s+/i,
+              /^\\s*B[\\.\\)]\\s+/i,
+              /^\\s*C[\\.\\)]\\s+/i,
+              /^\\s*D[\\.\\)]\\s+/i,
+              /^\\s*E[\\.\\)]\\s+/i,
+              /^\\s*F[\\.\\)]\\s+/i
+            ];
+            
+            allElements.forEach(function(el) {
+              if (el.children.length > 2) return;
+              var text = (el.innerText || el.textContent || '').trim();
+              if (!text) return;
+              
+              if (letterPatterns[0].test(text)) matchesByLetter.A.push({el: el, text: text});
+              else if (letterPatterns[1].test(text)) matchesByLetter.B.push({el: el, text: text});
+              else if (letterPatterns[2].test(text)) matchesByLetter.C.push({el: el, text: text});
+              else if (letterPatterns[3].test(text)) matchesByLetter.D.push({el: el, text: text});
+              else if (letterPatterns[4].test(text)) matchesByLetter.E.push({el: el, text: text});
+              else if (letterPatterns[5].test(text)) matchesByLetter.F.push({el: el, text: text});
+            });
+            
+            if (matchesByLetter.A.length > 0 && matchesByLetter.B.length > 0) {
+              var candidateA = matchesByLetter.A[0];
+              var candidateB = matchesByLetter.B[0];
+              var candidateC = matchesByLetter.C.length > 0 ? matchesByLetter.C[0] : null;
+              var candidateD = matchesByLetter.D.length > 0 ? matchesByLetter.D[0] : null;
+              var candidateE = matchesByLetter.E.length > 0 ? matchesByLetter.E[0] : null;
+              var candidateF = matchesByLetter.F.length > 0 ? matchesByLetter.F[0] : null;
+              
+              options.push(candidateA.text);
+              options.push(candidateB.text);
+              if (candidateC) options.push(candidateC.text);
+              if (candidateD) options.push(candidateD.text);
+              if (candidateE) options.push(candidateE.text);
+              if (candidateF) options.push(candidateF.text);
+              
+              var parent = candidateA.el.parentElement;
+              while (parent && parent !== document.body) {
+                if (parent.contains(candidateB.el)) {
+                  break;
+                }
+                parent = parent.parentElement;
+              }
+              
+              if (parent) {
+                var parentText = parent.innerText || parent.textContent || '';
+                options.forEach(function(opt) {
+                  parentText = parentText.replace(opt, '');
+                });
+                questionText = parentText.trim().replace(/\\s+/g, ' ');
+              }
+            }
           }
           
           if (questionText.length < 5) {
             questionText = document.body.innerText || '';
-            // Limpiar saltos de línea repetidos
             questionText = questionText.trim().substring(0, 1000);
           }
           

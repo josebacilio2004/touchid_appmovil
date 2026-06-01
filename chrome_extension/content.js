@@ -294,11 +294,87 @@
       }
     });
 
-    // Enfoque 2: Si no hay inputs de opción múltiple detectados por radio button, buscar elementos de lista o divs con letras (A, B, C...)
+    // Enfoque 2: Si no hay inputs de opción múltiple, buscar elementos tipo A), B), C), D) en la página y sus contenedores
     if (questions.length === 0) {
-      // Buscar elementos tipo "A)", "B)", "C)" en la página y sus contenedores
-      const pageText = document.body.innerText || '';
-      // Si no hay estructura, intentaremos usar todo el texto visible del viewport
+      const allElements = document.querySelectorAll('div, button, span, li, p, label');
+      const letterPatterns = [
+        /^\s*A[\.\)]\s+/i,
+        /^\s*B[\.\)]\s+/i,
+        /^\s*C[\.\)]\s+/i,
+        /^\s*D[\.\)]\s+/i,
+        /^\s*E[\.\)]\s+/i,
+        /^\s*F[\.\)]\s+/i
+      ];
+      
+      const matchesByLetter = {A: [], B: [], C: [], D: [], E: [], F: []};
+      
+      allElements.forEach(el => {
+        if (el.children.length > 2) return;
+        const text = (el.innerText || el.textContent || '').trim();
+        if (!text) return;
+        
+        if (letterPatterns[0].test(text)) matchesByLetter.A.push({el: el, text: text});
+        else if (letterPatterns[1].test(text)) matchesByLetter.B.push({el: el, text: text});
+        else if (letterPatterns[2].test(text)) matchesByLetter.C.push({el: el, text: text});
+        else if (letterPatterns[3].test(text)) matchesByLetter.D.push({el: el, text: text});
+        else if (letterPatterns[4].test(text)) matchesByLetter.E.push({el: el, text: text});
+        else if (letterPatterns[5].test(text)) matchesByLetter.F.push({el: el, text: text});
+      });
+      
+      if (matchesByLetter.A.length > 0 && matchesByLetter.B.length > 0) {
+        const candidateA = matchesByLetter.A[0];
+        const candidateB = matchesByLetter.B[0];
+        const candidateC = matchesByLetter.C.length > 0 ? matchesByLetter.C[0] : null;
+        const candidateD = matchesByLetter.D.length > 0 ? matchesByLetter.D[0] : null;
+        const candidateE = matchesByLetter.E.length > 0 ? matchesByLetter.E[0] : null;
+        const candidateF = matchesByLetter.F.length > 0 ? matchesByLetter.F[0] : null;
+        
+        const options = [candidateA.text, candidateB.text];
+        const optionElements = [candidateA.el, candidateB.el];
+        
+        if (candidateC) { options.push(candidateC.text); optionElements.push(candidateC.el); }
+        if (candidateD) { options.push(candidateD.text); optionElements.push(candidateD.el); }
+        if (candidateE) { options.push(candidateE.text); optionElements.push(candidateE.el); }
+        if (candidateF) { options.push(candidateF.text); optionElements.push(candidateF.el); }
+        
+        // Encontrar el contenedor común para extraer la pregunta
+        let parent = candidateA.el.parentElement;
+        while (parent && parent !== document.body) {
+          if (parent.contains(candidateB.el)) {
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        
+        if (parent) {
+          let parentText = parent.innerText || parent.textContent || '';
+          options.forEach(opt => {
+            parentText = parentText.replace(opt, '');
+          });
+          
+          let questionText = parentText.trim().replace(/\s+/g, ' ');
+          
+          const containerId = 'q_' + Math.random().toString(36).substring(2, 9);
+          parent.setAttribute('data-touch-qid', containerId);
+          
+          optionElements.forEach((el, index) => {
+            const optId = `${containerId}_o_${index}`;
+            el.setAttribute('data-touch-oid', optId);
+          });
+          
+          questions.push({
+            id: containerId,
+            question: questionText,
+            options: options,
+            optionElements: optionElements,
+            viewportCenterDistance: getViewportDistance(parent)
+          });
+        }
+      }
+    }
+
+    // Enfoque 3: Si todo lo anterior falla, usar el texto visible del viewport como pregunta libre
+    if (questions.length === 0) {
       const visibleText = getVisibleTextFromViewport();
       if (visibleText && visibleText.length > 20) {
         questions.push({
