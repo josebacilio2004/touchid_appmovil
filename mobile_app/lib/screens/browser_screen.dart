@@ -176,8 +176,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
   // Petición HTTP directa a la API de Gemini
   Future<Map<String, dynamic>> _queryGemini(String question, List<String> options) async {
     final apiKey = widget.config.geminiApiKey;
-    final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey');
+    final models = [
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-flash-latest',
+    ];
 
     String prompt = '';
     if (options.isNotEmpty) {
@@ -233,24 +237,39 @@ Responde estrictamente en formato JSON:
       }
     };
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(requestBody),
-    );
+    http.Response? lastResponse;
+    String? lastError;
 
-    if (response.statusCode != 200) {
-      throw Exception('API Gemini falló: ${response.statusCode}');
+    for (final model in models) {
+      final url = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey');
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(requestBody),
+        ).timeout(const Duration(seconds: 10));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          final String resultText = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+          if (resultText.isNotEmpty) {
+            return jsonDecode(resultText.trim());
+          }
+        } else {
+          lastResponse = response;
+          lastError = 'HTTP ${response.statusCode}: ${response.body}';
+        }
+      } catch (e) {
+        lastError = e.toString();
+      }
     }
 
-    final data = jsonDecode(utf8.decode(response.bodyBytes));
-    final String resultText = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
-    
-    if (resultText.isEmpty) {
-      throw Exception('Respuesta vacía de la API.');
+    if (lastResponse != null) {
+      throw Exception('API Gemini falló (código ${lastResponse.statusCode}).');
+    } else {
+      throw Exception('Error al conectar con la API de Gemini: $lastError');
     }
-
-    return jsonDecode(resultText.trim());
   }
 
   // Guardar en Firestore
