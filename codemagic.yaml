@@ -17,8 +17,9 @@ workflows:
         - pattern: 'develop'
           include: true
     scripts:
-      - name: Get Flutter packages
+      - name: Configure Flutter and Get packages
         script: |
+          flutter config --no-enable-swift-package-manager
           cd mobile_app
           flutter pub get
       - name: Build Android APK
