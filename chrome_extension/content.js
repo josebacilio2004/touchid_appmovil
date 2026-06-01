@@ -543,6 +543,9 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
     const models = [
       'gemini-2.5-flash',
       'gemini-2.0-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash-lite',
+      'gemini-flash-lite-latest',
       'gemini-2.0-flash-lite',
       'gemini-flash-latest'
     ];
