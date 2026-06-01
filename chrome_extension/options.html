@@ -159,7 +159,20 @@
     <h1>TouchID Questionnaire</h1>
     
     <div class="form-group">
-      <label for="apiKey">Gemini API Key</label>
+      <label for="userId">ID de Cliente (Client ID)</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="userId" readonly style="font-family: monospace; background: rgba(15, 23, 42, 0.8); cursor: pointer;" title="Haz clic para copiar">
+        <button type="button" id="copyUserIdBtn" style="padding: 0 12px; background: var(--primary-color); border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 13px; white-space: nowrap; transition: background 0.2s;">Copiar</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="backendUrl">URL del Servidor Backend (Opción B)</label>
+      <input type="text" id="backendUrl" placeholder="https://touchid-backend.onrender.com">
+    </div>
+
+    <div class="form-group">
+      <label for="apiKey">Gemini API Key Local (Opcional)</label>
       <input type="password" id="apiKey" placeholder="AIzaSy...">
     </div>
     

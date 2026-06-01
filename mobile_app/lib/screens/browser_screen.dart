@@ -344,9 +344,59 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  // Petición HTTP directa a la API de Gemini
+  // Petición a la API (Backend Gateway o Gemini directo)
   Future<Map<String, dynamic>> _queryGemini(String question, List<String> options) async {
+    final backendUrl = widget.config.backendUrl.trim();
+    final userId = widget.config.userId.trim();
+
+    if (backendUrl.isNotEmpty) {
+      String urlStr = backendUrl;
+      if (!urlStr.endsWith('/solve')) {
+        urlStr = urlStr.endsWith('/') ? '${urlStr}solve' : '$urlStr/solve';
+      }
+      
+      final systemPrompt = widget.config.systemPrompt.trim().isNotEmpty
+          ? widget.config.systemPrompt.trim()
+          : 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
+
+      try {
+        final response = await http.post(
+          Uri.parse(urlStr),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'userId': userId,
+            'question': question,
+            'options': options,
+            'systemPrompt': systemPrompt,
+          }),
+        ).timeout(const Duration(seconds: 15));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          return data;
+        } else {
+          String errorMsg = 'Error en el servidor backend';
+          try {
+            final errBody = jsonDecode(utf8.decode(response.bodyBytes));
+            errorMsg = errBody['error'] ?? errorMsg;
+          } catch (_) {}
+          throw Exception('$errorMsg (Código ${response.statusCode})');
+        }
+      } catch (e) {
+        if (widget.config.geminiApiKey.isEmpty) {
+          rethrow;
+        }
+        // Si falla el backend pero tenemos API key local, podemos intentar localmente
+        print('Error en backend, reintentando localmente: $e');
+      }
+    }
+
+    // Código original de Gemini directo
     final apiKey = widget.config.geminiApiKey;
+    if (apiKey.isEmpty) {
+      throw Exception('Por favor configura la API Key de Gemini o el Servidor Backend.');
+    }
+
     final models = [
       'gemini-2.5-flash',
       'gemini-2.0-flash',

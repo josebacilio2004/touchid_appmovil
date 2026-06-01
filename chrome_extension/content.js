@@ -9,14 +9,24 @@
   let GEMINI_API_KEY = '';
   let FIREBASE_PROJECT_ID = 'touchid-forms-jose-2026'; // Valor por defecto
   let SYSTEM_PROMPT = 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
+  let BACKEND_URL = '';
+  let USER_ID = '';
 
   // Cargar configuración desde el almacenamiento de Chrome
   function loadConfig() {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['geminiApiKey', 'firebaseProjectId', 'systemPrompt'], function (items) {
-        if (items.geminiApiKey) GEMINI_API_KEY = items.geminiApiKey;
-        if (items.firebaseProjectId) FIREBASE_PROJECT_ID = items.firebaseProjectId;
-        if (items.systemPrompt) SYSTEM_PROMPT = items.systemPrompt;
+      chrome.storage.local.get([
+        'geminiApiKey', 
+        'firebaseProjectId', 
+        'systemPrompt', 
+        'backendUrl', 
+        'userId'
+      ], function (items) {
+        if (items.geminiApiKey !== undefined) GEMINI_API_KEY = items.geminiApiKey;
+        if (items.firebaseProjectId !== undefined) FIREBASE_PROJECT_ID = items.firebaseProjectId;
+        if (items.systemPrompt !== undefined) SYSTEM_PROMPT = items.systemPrompt;
+        if (items.backendUrl !== undefined) BACKEND_URL = items.backendUrl;
+        if (items.userId !== undefined) USER_ID = items.userId;
       });
     }
   }
@@ -487,8 +497,58 @@
     }
   }
 
-  // Consultar la API de Gemini
+  // Consultar la API (Backend Gateway o Gemini directo)
   async function queryGemini(qData) {
+    const backendUrl = (BACKEND_URL || '').trim();
+    const userId = (USER_ID || '').trim();
+
+    if (backendUrl) {
+      let urlStr = backendUrl;
+      if (!urlStr.endsWith('/solve')) {
+        urlStr = urlStr.endsWith('/') ? `${urlStr}solve` : `${urlStr}/solve`;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const response = await fetch(urlStr, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: userId,
+            question: qData.question || qData.rawText,
+            options: qData.options || [],
+            systemPrompt: SYSTEM_PROMPT
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          return await response.json();
+        } else {
+          let errorMsg = 'Error en el servidor backend';
+          try {
+            const errBody = await response.json();
+            errorMsg = errBody.error || errorMsg;
+          } catch (_) {}
+          throw new Error(`${errorMsg} (Código ${response.status})`);
+        }
+      } catch (e) {
+        clearTimeout(timeoutId);
+        if (!GEMINI_API_KEY) {
+          throw e;
+        }
+        console.warn('Error en backend, reintentando con Gemini directo:', e);
+      }
+    }
+
+    if (!GEMINI_API_KEY) {
+      throw new Error('Por favor configura la API Key de Gemini local o el Servidor Backend.');
+    }
+
     let prompt = '';
     if (qData.options && qData.options.length > 0) {
       prompt = `
