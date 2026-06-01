@@ -17,6 +17,11 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isFirebaseInitialized) {
       return Scaffold(
+        appBar: AppBar(
+          title: const Text('Historial'),
+          backgroundColor: const Color(0xFF0F172A),
+          elevation: 0,
+        ),
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -74,6 +79,11 @@ class DashboardScreen extends StatelessWidget {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Historial'),
+        backgroundColor: const Color(0xFF0F172A),
+        elevation: 0,
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

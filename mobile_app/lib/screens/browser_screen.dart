@@ -4,15 +4,19 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/app_config.dart';
+import 'dashboard_screen.dart';
+import 'settings_screen.dart';
 
 class BrowserScreen extends StatefulWidget {
   final AppConfig config;
   final bool isFirebaseInitialized;
+  final Function(AppConfig) onConfigSaved;
 
   const BrowserScreen({
     Key? key,
     required this.config,
     required this.isFirebaseInitialized,
+    required this.onConfigSaved,
   }) : super(key: key);
 
   @override
@@ -350,56 +354,172 @@ Responde estrictamente en formato JSON:
           children: [
             Column(
               children: [
-                // Barra de navegación web superior
+                // Barra de navegación estilo Google Chrome
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1F1F1F), // Color gris oscuro de la barra de Chrome en modo oscuro
                     border: Border(
                       bottom: BorderSide(
-                        color: Colors.white.withOpacity(0.06),
+                        color: Color(0xFF2F2F2F),
+                        width: 1.0,
                       ),
                     ),
                   ),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () async {
-                          if (await _controller.canGoBack()) {
-                            _controller.goBack();
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.refresh, color: Colors.white),
+                        icon: const Icon(Icons.home_outlined, color: Colors.white, size: 24),
                         onPressed: () {
-                          _controller.reload();
+                          _controller.loadRequest(Uri.parse('https://google.com'));
                         },
                       ),
                       Expanded(
                         child: Container(
-                          height: 40,
+                          height: 38,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0F172A),
-                            borderRadius: BorderRadius.circular(8),
+                            color: const Color(0xFF2D2D2D), // Fondo de barra de dirección en Chrome
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          child: TextField(
-                            controller: _urlController,
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            decoration: const InputDecoration(
-                              hintText: 'Buscar o ingresar dirección web...',
-                              hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              border: InputBorder.none,
-                            ),
-                            onSubmitted: (_) => _loadUrl(),
+                          child: Row(
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(left: 12, right: 6),
+                                child: Icon(Icons.lock_outline, color: Colors.grey, size: 14),
+                              ),
+                              Expanded(
+                                child: TextField(
+                                  controller: _urlController,
+                                  style: const TextStyle(color: Colors.white, fontSize: 13.5),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Busca o escribe una dirección web',
+                                    hintStyle: TextStyle(color: Colors.grey, fontSize: 13.5),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  onSubmitted: (_) => _loadUrl(),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh, color: Colors.white70, size: 18),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () => _controller.reload(),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
                           ),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_forward, color: Colors.blue),
-                        onPressed: _loadUrl,
+                      const SizedBox(width: 4),
+                      // Icono del número de pestañas de Chrome
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white, width: 2),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '1',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Menú de tres puntos de Chrome
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert, color: Colors.white),
+                        color: const Color(0xFF2D2D2D),
+                        onSelected: (value) {
+                          if (value == 'historial') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DashboardScreen(
+                                  config: widget.config,
+                                  isFirebaseInitialized: widget.isFirebaseInitialized,
+                                ),
+                              ),
+                            );
+                          } else if (value == 'configuracion') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SettingsScreen(
+                                  config: widget.config,
+                                  onConfigSaved: widget.onConfigSaved,
+                                ),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Función "$value" no disponible en este momento.'),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'pestana',
+                            child: Row(
+                              children: [
+                                Icon(Icons.tab, color: Colors.white70),
+                                SizedBox(width: 10),
+                                Text('Nueva pestaña', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'historial',
+                            child: Row(
+                              children: [
+                                Icon(Icons.history, color: Colors.white70),
+                                SizedBox(width: 10),
+                                Text('Historial', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'descargas',
+                            child: Row(
+                              children: [
+                                Icon(Icons.download_done, color: Colors.white70),
+                                SizedBox(width: 10),
+                                Text('Descargas', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(height: 1),
+                          const PopupMenuItem<String>(
+                            value: 'configuracion',
+                            child: Row(
+                              children: [
+                                Icon(Icons.settings, color: Colors.white70),
+                                SizedBox(width: 10),
+                                Text('Configuración', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'ayuda',
+                            child: Row(
+                              children: [
+                                Icon(Icons.help_outline, color: Colors.white70),
+                                SizedBox(width: 10),
+                                Text('Ayuda y comentarios', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
