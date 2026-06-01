@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import '../models/app_config.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -25,10 +27,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _senderIdController;
   late TextEditingController _systemPromptController;
   late TextEditingController _backendUrlController;
+  late TextEditingController _settingsPinController;
+  late TextEditingController _licenseKeyController;
   bool _obscureGeminiKey = true;
   double _touchOpacity = 0.08;
   bool _showApiSection = false;
   int _clickCount = 0;
+  
+  int _credits = 0;
+  bool _isCheckingCredits = false;
+  bool _isActivatingLicense = false;
 
   @override
   void initState() {
@@ -40,7 +48,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _senderIdController = TextEditingController(text: widget.config.firebaseMessagingSenderId);
     _systemPromptController = TextEditingController(text: widget.config.systemPrompt);
     _backendUrlController = TextEditingController(text: widget.config.backendUrl);
+    _settingsPinController = TextEditingController(text: widget.config.settingsPin);
+    _licenseKeyController = TextEditingController();
     _touchOpacity = widget.config.touchOpacity;
+    
+    _loadCreditsFromServer();
   }
 
   @override
@@ -52,7 +64,101 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _senderIdController.dispose();
     _systemPromptController.dispose();
     _backendUrlController.dispose();
+    _settingsPinController.dispose();
+    _licenseKeyController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCreditsFromServer() async {
+    final backendUrl = _backendUrlController.text.trim();
+    final userId = widget.config.userId;
+    if (backendUrl.isEmpty || userId.isEmpty) return;
+
+    setState(() {
+      _isCheckingCredits = true;
+    });
+
+    try {
+      final url = '$backendUrl/credits/$userId';
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _credits = data['credits'] ?? 0;
+        });
+      }
+    } catch (e) {
+      print('Error al cargar créditos: $e');
+    } finally {
+      setState(() {
+        _isCheckingCredits = false;
+      });
+    }
+  }
+
+  Future<void> _activateLicense() async {
+    final backendUrl = _backendUrlController.text.trim();
+    final userId = widget.config.userId;
+    final licenseKey = _licenseKeyController.text.trim();
+
+    if (licenseKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor ingresa un código de licencia'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isActivatingLicense = true;
+    });
+
+    try {
+      final url = '$backendUrl/activate';
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+          'licenseKey': licenseKey,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final newCredits = data['credits'] ?? 0;
+        setState(() {
+          _credits = newCredits;
+          _licenseKeyController.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('¡Licencia canjeada con éxito! Nuevos créditos: $newCredits'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        String errorMsg = 'Error al canjear la licencia';
+        try {
+          final errBody = jsonDecode(response.body);
+          errorMsg = errBody['error'] ?? errorMsg;
+        } catch (_) {}
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Fallo: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isActivatingLicense = false;
+      });
+    }
   }
 
   void _saveConfig() async {
@@ -67,6 +173,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         systemPrompt: _systemPromptController.text.trim(),
         userId: widget.config.userId,
         backendUrl: _backendUrlController.text.trim(),
+        settingsPin: _settingsPinController.text.trim(),
       );
 
       await updatedConfig.save();
@@ -162,6 +269,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 16),
                         
+                        // Mostrar saldo de créditos actual del servidor
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.08),
+                            border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Créditos Disponibles:',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              _isCheckingCredits
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
+                                    )
+                                  : Text(
+                                      '$_credits',
+                                      style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 18),
+                                    ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Formulario de canje de licencia
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _licenseKeyController,
+                                style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+                                decoration: InputDecoration(
+                                  labelText: 'Código de Licencia (Token)',
+                                  labelStyle: TextStyle(color: Colors.grey[400]),
+                                  hintText: 'LIC-50-XXXXXX',
+                                  hintStyle: TextStyle(color: Colors.grey[600]),
+                                  filled: true,
+                                  fillColor: const Color(0xFF0F172A).withOpacity(0.6),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              height: 52,
+                              child: ElevatedButton(
+                                onPressed: _isActivatingLicense ? null : _activateLicense,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: _isActivatingLicense
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Text('Activar'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        const Divider(color: Colors.white10),
+                        const SizedBox(height: 20),
+
                         // ID de Cliente (Read-only con botón de copiar)
                         TextFormField(
                           initialValue: widget.config.userId.isNotEmpty ? widget.config.userId : 'No generado',
@@ -220,6 +406,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             // Validar que comience con http/https
                             if (!value.startsWith('http://') && !value.startsWith('https://')) {
                               return 'La URL debe comenzar con http:// o https://';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // PIN de Seguridad de Ajustes
+                        TextFormField(
+                          controller: _settingsPinController,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          keyboardType: TextInputType.number,
+                          maxLength: 8,
+                          decoration: InputDecoration(
+                            counterText: '',
+                            labelText: 'PIN de Acceso a Configuración',
+                            labelStyle: TextStyle(color: Colors.grey[400]),
+                            hintText: '1234',
+                            hintStyle: TextStyle(color: Colors.grey[600]),
+                            filled: true,
+                            fillColor: const Color(0xFF0F172A).withOpacity(0.6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Por favor ingresa un PIN de seguridad';
+                            }
+                            if (value.trim().length < 4) {
+                              return 'El PIN debe tener al menos 4 dígitos';
                             }
                             return null;
                           },
