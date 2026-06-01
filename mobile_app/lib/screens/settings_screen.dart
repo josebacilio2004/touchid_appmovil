@@ -22,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _apiKeyController;
   late TextEditingController _appIdController;
   late TextEditingController _senderIdController;
+  late TextEditingController _systemPromptController;
   bool _obscureGeminiKey = true;
   double _touchOpacity = 0.08;
   bool _showApiSection = false;
@@ -35,6 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _apiKeyController = TextEditingController(text: widget.config.firebaseApiKey);
     _appIdController = TextEditingController(text: widget.config.firebaseAppId);
     _senderIdController = TextEditingController(text: widget.config.firebaseMessagingSenderId);
+    _systemPromptController = TextEditingController(text: widget.config.systemPrompt);
     _touchOpacity = widget.config.touchOpacity;
   }
 
@@ -45,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _apiKeyController.dispose();
     _appIdController.dispose();
     _senderIdController.dispose();
+    _systemPromptController.dispose();
     super.dispose();
   }
 
@@ -57,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         firebaseAppId: _appIdController.text.trim(),
         firebaseMessagingSenderId: _senderIdController.text.trim(),
         touchOpacity: _touchOpacity,
+        systemPrompt: _systemPromptController.text.trim(),
       );
 
       await updatedConfig.save();
@@ -319,6 +323,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         
+                        const SizedBox(height: 20),
+                        
+                        const Text(
+                          'COMPORTAMIENTO DE IA (PROMPT DE ROL)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _systemPromptController,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            labelText: 'Instrucción del Sistema (System Prompt)',
+                            labelStyle: TextStyle(color: Colors.grey[400]),
+                            hintText: 'Ej: Actúa como médico especialista en cardiología y resuelve...',
+                            hintStyle: TextStyle(color: Colors.grey[600]),
+                            filled: true,
+                            fillColor: const Color(0xFF0F172A).withOpacity(0.6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                            ),
+                          ),
+                        ),
+
                         const SizedBox(height: 24),
                         
                         SizedBox(

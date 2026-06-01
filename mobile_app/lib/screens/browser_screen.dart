@@ -274,6 +274,10 @@ Responde estrictamente en formato JSON:
 ''';
     }
 
+    final systemPrompt = widget.config.systemPrompt.trim().isNotEmpty
+        ? widget.config.systemPrompt.trim()
+        : 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
+
     final requestBody = {
       'contents': [
         {
@@ -282,6 +286,11 @@ Responde estrictamente en formato JSON:
           ]
         }
       ],
+      'systemInstruction': {
+        'parts': [
+          {'text': systemPrompt}
+        ]
+      },
       'generationConfig': {
         'responseMimeType': 'application/json',
         'responseSchema': {
