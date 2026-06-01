@@ -24,3 +24,9 @@ build/
 # Node modules and build files
 node_modules/
 dist/
+
+# Credentials and Local Environment
+.env
+*.env
+touchid-backend/*.json
+!touchid-backend/package.json
