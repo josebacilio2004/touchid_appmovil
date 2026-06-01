@@ -177,7 +177,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   Future<Map<String, dynamic>> _queryGemini(String question, List<String> options) async {
     final apiKey = widget.config.geminiApiKey;
     final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey');
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey');
 
     String prompt = '';
     if (options.isNotEmpty) {

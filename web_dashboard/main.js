@@ -59,7 +59,7 @@ navItems.forEach(item => {
 
 // --- 2. Cargar y Guardar Configuración ---
 function loadLocalConfig() {
-  const geminiKey = localStorage.getItem('touchid_gemini_key') || 'AIzaSyD65ld_fUcoSIVAM6rU2aItHAITZa0lPdM';
+  const geminiKey = localStorage.getItem('touchid_gemini_key') || '';
   const firebaseProject = localStorage.getItem('touchid_firebase_project') || 'touchid-forms-jose-2026';
   const firebaseSdkRaw = localStorage.getItem('touchid_firebase_sdk') || '';
 
