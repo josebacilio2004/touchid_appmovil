@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/app_config.dart';
@@ -69,52 +70,59 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   void _addNewTab([String url = 'https://google.com']) {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final WebViewController controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setGestureNavigationEnabled(true)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (String pageUrl) {
-            setState(() {
-              final index = _tabs.indexWhere((t) => t.id == id);
-              if (index != -1) {
-                _tabs[index].url = pageUrl;
-                if (index == _currentTabIndex) {
-                  _urlController.text = pageUrl;
-                }
-              }
-            });
-          },
-          onPageFinished: (String pageUrl) async {
-            String? title;
-            try {
-              title = await controller.getTitle();
-            } catch (_) {}
-            
-            final cleanTitle = (title == null || title.trim().isEmpty) ? pageUrl : title;
-            
-            // Track browsing history
-            if (_browsingHistory.isEmpty || _browsingHistory.first.url != pageUrl) {
-              _browsingHistory.insert(0, HistoryItem(
-                title: cleanTitle,
-                url: pageUrl,
-                timestamp: DateTime.now(),
-              ));
-            }
+    final WebViewController controller = WebViewController();
+    
+    controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+    
+    // Habilitar gestos de navegación atrás/adelante en iOS
+    if (controller.platform is WebKitWebViewController) {
+      (controller.platform as WebKitWebViewController)
+          .setAllowsBackForwardNavigationGestures(true);
+    }
 
-            setState(() {
-              final index = _tabs.indexWhere((t) => t.id == id);
-              if (index != -1) {
-                _tabs[index].url = pageUrl;
-                _tabs[index].title = cleanTitle;
-                if (index == _currentTabIndex) {
-                  _urlController.text = pageUrl;
-                }
+    controller.setNavigationDelegate(
+      NavigationDelegate(
+        onPageStarted: (String pageUrl) {
+          setState(() {
+            final index = _tabs.indexWhere((t) => t.id == id);
+            if (index != -1) {
+              _tabs[index].url = pageUrl;
+              if (index == _currentTabIndex) {
+                _urlController.text = pageUrl;
               }
-            });
-          },
-        ),
-      );
+            }
+          });
+        },
+        onPageFinished: (String pageUrl) async {
+          String? title;
+          try {
+            title = await controller.getTitle();
+          } catch (_) {}
+          
+          final cleanTitle = (title == null || title.trim().isEmpty) ? pageUrl : title;
+          
+          // Track browsing history
+          if (_browsingHistory.isEmpty || _browsingHistory.first.url != pageUrl) {
+            _browsingHistory.insert(0, HistoryItem(
+              title: cleanTitle,
+              url: pageUrl,
+              timestamp: DateTime.now(),
+            ));
+          }
+
+          setState(() {
+            final index = _tabs.indexWhere((t) => t.id == id);
+            if (index != -1) {
+              _tabs[index].url = pageUrl;
+              _tabs[index].title = cleanTitle;
+              if (index == _currentTabIndex) {
+                _urlController.text = pageUrl;
+              }
+            }
+          });
+        },
+      ),
+    );
       
     controller.loadRequest(Uri.parse(url));
 
