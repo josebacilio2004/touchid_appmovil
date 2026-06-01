@@ -10,7 +10,7 @@ class AppConfig {
   double touchOpacity;
 
   AppConfig({
-    this.geminiApiKey = 'AIzaSyD65ld_fUcoSIVAM6rU2aItHAITZa0lPdM',
+    this.geminiApiKey = '',
     this.firebaseProjectId = 'touchid-forms-jose-2026',
     this.firebaseApiKey = '',
     this.firebaseAppId = '',

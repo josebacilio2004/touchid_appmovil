@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (items.geminiApiKey) {
       apiKeyInput.value = items.geminiApiKey;
     } else {
-      apiKeyInput.value = 'AIzaSyD65ld_fUcoSIVAM6rU2aItHAITZa0lPdM';
+      apiKeyInput.value = '';
     }
     if (items.firebaseProjectId) {
       projectIdInput.value = items.firebaseProjectId;

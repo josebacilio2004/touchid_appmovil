@@ -6,7 +6,7 @@
   window.__touchIdLoaded = true;
 
   // Variables globales de configuración
-  let GEMINI_API_KEY = 'AIzaSyD65ld_fUcoSIVAM6rU2aItHAITZa0lPdM';
+  let GEMINI_API_KEY = '';
   let FIREBASE_PROJECT_ID = 'touchid-forms-jose-2026'; // Valor por defecto
 
   // Cargar configuración desde el almacenamiento de Chrome
@@ -447,7 +447,7 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
 `;
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
