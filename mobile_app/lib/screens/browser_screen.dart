@@ -941,15 +941,7 @@ Responde estrictamente en formato JSON:
                             if (value == 'historial') {
                               _showBrowsingHistory();
                             } else if (value == 'configuracion') {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SettingsScreen(
-                                    config: widget.config,
-                                    onConfigSaved: widget.onConfigSaved,
-                                  ),
-                                ),
-                              );
+                              _showPinDialog();
                             } else if (value == 'pestana') {
                               _addNewTab('https://google.com');
                             } else {
@@ -1096,6 +1088,92 @@ Responde estrictamente en formato JSON:
           ),
         ),
       ),
+    );
+  }
+
+  void _showPinDialog() {
+    final TextEditingController pinController = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.white.withOpacity(0.08)),
+          ),
+          title: const Text(
+            'Acceso de Seguridad',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Introduce el PIN de configuración para ingresar.',
+                style: TextStyle(color: Colors.grey[400], fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: pinController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 8,
+                style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 8),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  counterText: '',
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A).withOpacity(0.6),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                final enteredPin = pinController.text.trim();
+                final actualPin = widget.config.settingsPin.isNotEmpty ? widget.config.settingsPin : '1234';
+                
+                if (enteredPin == actualPin) {
+                  Navigator.pop(context); // Cerrar diálogo
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SettingsScreen(
+                        config: widget.config,
+                        onConfigSaved: widget.onConfigSaved,
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PIN incorrecto. Acceso denegado.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Entrar'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

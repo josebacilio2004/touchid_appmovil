@@ -12,6 +12,7 @@ class AppConfig {
   String systemPrompt;
   String userId;
   String backendUrl;
+  String settingsPin;
 
   AppConfig({
     this.geminiApiKey = '',
@@ -23,6 +24,7 @@ class AppConfig {
     this.systemPrompt = 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.',
     this.userId = '',
     this.backendUrl = 'https://touchid-backend.onrender.com',
+    this.settingsPin = '1234',
   });
 
   // Generar un ID hexadecimal aleatorio sencillo
@@ -56,6 +58,7 @@ class AppConfig {
           systemPrompt: map['systemPrompt'] ?? 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.',
           userId: userId,
           backendUrl: map['backendUrl'] ?? 'https://touchid-backend.onrender.com',
+          settingsPin: map['settingsPin'] ?? '1234',
         );
         
         // Guardar el ID recién generado si no existía
@@ -89,6 +92,7 @@ class AppConfig {
       'systemPrompt': systemPrompt,
       'userId': userId,
       'backendUrl': backendUrl,
+      'settingsPin': settingsPin,
     };
     await prefs.setString('touchid_config', jsonEncode(map));
   }

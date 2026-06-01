@@ -101,6 +101,29 @@ app.post('/solve', async (req, res) => {
   }
 });
 
+// Endpoint para obtener créditos de un usuario por su Client ID
+app.get('/credits/:userId', async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) {
+    return res.status(400).json({ error: 'Falta especificar el ID de cliente.' });
+  }
+
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    
+    let credits = 0;
+    if (userDoc.exists) {
+      credits = userDoc.data().credits || 0;
+    }
+    
+    res.json({ userId, credits });
+  } catch (e) {
+    console.error('Error al obtener créditos:', e);
+    res.status(500).json({ error: e.message || 'Error al obtener créditos.' });
+  }
+});
+
 // 3. Endpoint para canjear licencia prepago
 app.post('/activate', async (req, res) => {
   const { userId, licenseKey } = req.body;
