@@ -447,8 +447,6 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
 `;
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-    
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
@@ -466,23 +464,46 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
       }
     };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+    const models = [
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-flash-latest'
+    ];
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API de Gemini falló con código ${response.status}: ${errorText}`);
+    let lastError = null;
+
+    for (const model of models) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (resultText) {
+            return JSON.parse(resultText.trim());
+          }
+        } else {
+          const errorText = await response.text();
+          lastError = `API Gemini (${model}) falló con código ${response.status}: ${errorText}`;
+        }
+      } catch (e) {
+        lastError = `Error con modelo ${model}: ${e.message || e}`;
+      }
     }
 
-    const data = await response.json();
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    if (!resultText) throw new Error('Respuesta vacía de la API de Gemini.');
-    
-    return JSON.parse(resultText.trim());
+    throw new Error(lastError || 'No se pudo conectar a la API de Gemini.');
   }
 
   // Sincronizar datos con Firestore REST API
