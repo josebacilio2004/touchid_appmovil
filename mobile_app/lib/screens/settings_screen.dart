@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/app_config.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _appIdController;
   late TextEditingController _senderIdController;
   late TextEditingController _systemPromptController;
+  late TextEditingController _backendUrlController;
   bool _obscureGeminiKey = true;
   double _touchOpacity = 0.08;
   bool _showApiSection = false;
@@ -37,6 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _appIdController = TextEditingController(text: widget.config.firebaseAppId);
     _senderIdController = TextEditingController(text: widget.config.firebaseMessagingSenderId);
     _systemPromptController = TextEditingController(text: widget.config.systemPrompt);
+    _backendUrlController = TextEditingController(text: widget.config.backendUrl);
     _touchOpacity = widget.config.touchOpacity;
   }
 
@@ -48,6 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _appIdController.dispose();
     _senderIdController.dispose();
     _systemPromptController.dispose();
+    _backendUrlController.dispose();
     super.dispose();
   }
 
@@ -61,6 +65,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         firebaseMessagingSenderId: _senderIdController.text.trim(),
         touchOpacity: _touchOpacity,
         systemPrompt: _systemPromptController.text.trim(),
+        userId: widget.config.userId,
+        backendUrl: _backendUrlController.text.trim(),
       );
 
       await updatedConfig.save();
@@ -145,6 +151,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const Text(
+                          'CONFIGURACIÓN DE CLIENTE (OPCIÓN B)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // ID de Cliente (Read-only con botón de copiar)
+                        TextFormField(
+                          initialValue: widget.config.userId.isNotEmpty ? widget.config.userId : 'No generado',
+                          readOnly: true,
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+                          decoration: InputDecoration(
+                            labelText: 'ID de Cliente (Client ID)',
+                            labelStyle: TextStyle(color: Colors.grey[400]),
+                            filled: true,
+                            fillColor: const Color(0xFF0F172A).withOpacity(0.6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.copy, color: Colors.blue),
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: widget.config.userId));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('ID de Cliente copiado al portapapeles'),
+                                    backgroundColor: Colors.blue,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // URL del Servidor Backend
+                        TextFormField(
+                          controller: _backendUrlController,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          decoration: InputDecoration(
+                            labelText: 'Servidor API Backend',
+                            labelStyle: TextStyle(color: Colors.grey[400]),
+                            hintText: 'https://touchid-backend.onrender.com',
+                            hintStyle: TextStyle(color: Colors.grey[600]),
+                            filled: true,
+                            fillColor: const Color(0xFF0F172A).withOpacity(0.6),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Por favor ingresa la URL del servidor backend';
+                            }
+                            // Validar que comience con http/https
+                            if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                              return 'La URL debe comenzar con http:// o https://';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        const Divider(color: Colors.white10),
+                        const SizedBox(height: 20),
+
                         if (_showApiSection) ...[
                           const Text(
                             'LLAVES DE API Y BASE DE DATOS',
