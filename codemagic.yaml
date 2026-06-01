@@ -33,7 +33,7 @@ workflows:
           
           # Crear la estructura manual de IPA (Payload) para instalación por Sideloading (Sideloadly / AltStore)
           mkdir -p build/ios/ipa/Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cp -RL build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
           
           # Comprimir a formato .ipa
           cd build/ios/ipa
