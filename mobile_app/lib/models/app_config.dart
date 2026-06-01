@@ -8,6 +8,7 @@ class AppConfig {
   String firebaseAppId;
   String firebaseMessagingSenderId;
   double touchOpacity;
+  String systemPrompt;
 
   AppConfig({
     this.geminiApiKey = '',
@@ -16,6 +17,7 @@ class AppConfig {
     this.firebaseAppId = '',
     this.firebaseMessagingSenderId = '',
     this.touchOpacity = 0.08,
+    this.systemPrompt = 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.',
   });
 
   // Cargar configuración desde SharedPreferences
@@ -32,6 +34,7 @@ class AppConfig {
           firebaseAppId: map['firebaseAppId'] ?? '',
           firebaseMessagingSenderId: map['firebaseMessagingSenderId'] ?? '',
           touchOpacity: (map['touchOpacity'] as num?)?.toDouble() ?? 0.08,
+          systemPrompt: map['systemPrompt'] ?? 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.',
         );
       } catch (e) {
         print('Error parsing config: $e');
@@ -50,6 +53,7 @@ class AppConfig {
       'firebaseAppId': firebaseAppId,
       'firebaseMessagingSenderId': firebaseMessagingSenderId,
       'touchOpacity': touchOpacity,
+      'systemPrompt': systemPrompt,
     };
     await prefs.setString('touchid_config', jsonEncode(map));
   }

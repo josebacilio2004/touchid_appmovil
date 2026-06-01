@@ -8,13 +8,15 @@
   // Variables globales de configuración
   let GEMINI_API_KEY = '';
   let FIREBASE_PROJECT_ID = 'touchid-forms-jose-2026'; // Valor por defecto
+  let SYSTEM_PROMPT = 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
 
   // Cargar configuración desde el almacenamiento de Chrome
   function loadConfig() {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['geminiApiKey', 'firebaseProjectId'], function (items) {
+      chrome.storage.local.get(['geminiApiKey', 'firebaseProjectId', 'systemPrompt'], function (items) {
         if (items.geminiApiKey) GEMINI_API_KEY = items.geminiApiKey;
         if (items.firebaseProjectId) FIREBASE_PROJECT_ID = items.firebaseProjectId;
+        if (items.systemPrompt) SYSTEM_PROMPT = items.systemPrompt;
       });
     }
   }
@@ -525,6 +527,9 @@ Debes responder estrictamente en formato JSON utilizando el siguiente esquema:
 
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT || 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.' }]
+      },
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
