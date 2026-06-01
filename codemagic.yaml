@@ -1,0 +1,50 @@
+# Codemagic CI/CD Configuration for TouchID Companion
+workflows:
+  android-ios-workflow:
+    name: Android & iOS Workflow
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      vars:
+        PACKAGE_NAME: "com.jose.touchid.mobile_app"
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+        - pattern: 'develop'
+          include: true
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          cd mobile_app
+          flutter pub get
+      - name: Build Android APK
+        script: |
+          cd mobile_app
+          flutter build apk --release
+      - name: Build iOS (Unsigned IPA)
+        script: |
+          cd mobile_app
+          # Compilar el binario puro de iOS sin firma
+          flutter build ios --release --no-codesign
+          
+          # Crear la estructura manual de IPA (Payload) para instalación por Sideloading (Sideloadly / AltStore)
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          
+          # Comprimir a formato .ipa
+          cd build/ios/ipa
+          zip -qr TouchIdChrome.ipa Payload
+    artifacts:
+      - mobile_app/build/app/outputs/flutter-apk/*.apk
+      - mobile_app/build/ios/ipa/TouchIdChrome.ipa
+    publishing:
+      email:
+        recipients:
+          - 74934503@continental.edu.pe
+        notify:
+          success: true
+          failure: true
