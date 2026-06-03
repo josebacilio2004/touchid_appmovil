@@ -29,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _backendUrlController;
   late TextEditingController _settingsPinController;
   late TextEditingController _licenseKeyController;
+  late TextEditingController _userIdController;
   bool _obscureGeminiKey = true;
   double _touchOpacity = 0.08;
   bool _showApiSection = false;
@@ -51,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _backendUrlController = TextEditingController(text: widget.config.backendUrl);
     _settingsPinController = TextEditingController(text: widget.config.settingsPin);
     _licenseKeyController = TextEditingController();
+    _userIdController = TextEditingController(text: widget.config.userId);
     _touchOpacity = widget.config.touchOpacity;
     
     _loadCreditsFromServer();
@@ -67,12 +69,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _backendUrlController.dispose();
     _settingsPinController.dispose();
     _licenseKeyController.dispose();
+    _userIdController.dispose();
     super.dispose();
   }
 
   Future<void> _loadCreditsFromServer() async {
     final backendUrl = _backendUrlController.text.trim();
-    final userId = widget.config.userId;
+    final userId = _userIdController.text.trim();
     if (backendUrl.isEmpty || userId.isEmpty) return;
 
     setState(() {
@@ -100,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _activateLicense() async {
     final backendUrl = _backendUrlController.text.trim();
-    final userId = widget.config.userId;
+    final userId = _userIdController.text.trim();
     final licenseKey = _licenseKeyController.text.trim();
 
     if (licenseKey.isEmpty) {
@@ -174,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         firebaseMessagingSenderId: _senderIdController.text.trim(),
         touchOpacity: _touchOpacity,
         systemPrompt: _systemPromptController.text.trim(),
-        userId: widget.config.userId,
+        userId: _userIdController.text.trim(),
         backendUrl: _backendUrlController.text.trim(),
         settingsPin: _settingsPinController.text.trim(),
       );
@@ -287,16 +290,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 'Créditos Disponibles:',
                                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
                               ),
-                              _isCheckingCredits
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
-                                    )
-                                  : Text(
-                                      _isUnlimited ? 'Ilimitado' : '$_credits',
-                                      style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 18),
-                                    ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh, color: Colors.blue, size: 20),
+                                    onPressed: _loadCreditsFromServer,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _isCheckingCredits
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
+                                        )
+                                      : Text(
+                                          _isUnlimited ? 'Ilimitado' : '$_credits',
+                                          style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 18),
+                                        ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -351,10 +365,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const Divider(color: Colors.white10),
                         const SizedBox(height: 20),
 
-                        // ID de Cliente (Read-only con botón de copiar)
+                        // ID de Cliente (Editable con botón de copiar)
                         TextFormField(
-                          initialValue: widget.config.userId.isNotEmpty ? widget.config.userId : 'No generado',
-                          readOnly: true,
+                          controller: _userIdController,
                           style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
                           decoration: InputDecoration(
                             labelText: 'ID de Cliente (Client ID)',
@@ -368,7 +381,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             suffixIcon: IconButton(
                               icon: const Icon(Icons.copy, color: Colors.blue),
                               onPressed: () {
-                                Clipboard.setData(ClipboardData(text: widget.config.userId));
+                                Clipboard.setData(ClipboardData(text: _userIdController.text.trim()));
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('ID de Cliente copiado al portapapeles'),
