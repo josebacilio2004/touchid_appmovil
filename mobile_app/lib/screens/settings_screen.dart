@@ -35,6 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _clickCount = 0;
   
   int _credits = 0;
+  bool _isUnlimited = false;
   bool _isCheckingCredits = false;
   bool _isActivatingLicense = false;
 
@@ -85,6 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final data = jsonDecode(response.body);
         setState(() {
           _credits = data['credits'] ?? 0;
+          _isUnlimited = data['isUnlimited'] ?? false;
         });
       }
     } catch (e) {
@@ -131,6 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final newCredits = data['credits'] ?? 0;
         setState(() {
           _credits = newCredits;
+          _isUnlimited = data['isUnlimited'] ?? false;
           _licenseKeyController.clear();
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -291,7 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
                                     )
                                   : Text(
-                                      '$_credits',
+                                      _isUnlimited ? 'Ilimitado' : '$_credits',
                                       style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 18),
                                     ),
                             ],
