@@ -28,13 +28,21 @@ app.post('/solve', async (req, res) => {
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
 
-    if (!userDoc.exists) {
-      return res.status(403).json({ error: 'Usuario no registrado. Registra créditos primero.' });
+    // Verificar si el usuario es ilimitado (hardcoded o por flag en Firestore)
+    let isUnlimited = (userId === 'unlimited_user_touchid');
+    if (!isUnlimited && userDoc.exists && userDoc.data().isUnlimited === true) {
+      isUnlimited = true;
     }
 
-    const credits = userDoc.data().credits || 0;
-    if (credits <= 0) {
-      return res.status(402).json({ error: 'Créditos insuficientes. Adquiere más créditos en el Dashboard.' });
+    if (!isUnlimited) {
+      if (!userDoc.exists) {
+        return res.status(403).json({ error: 'Usuario no registrado. Registra créditos primero.' });
+      }
+
+      const credits = userDoc.data().credits || 0;
+      if (credits <= 0) {
+        return res.status(402).json({ error: 'Créditos insuficientes. Adquiere más créditos en el Dashboard.' });
+      }
     }
 
     // Llamar a la API de Gemini usando tu API Key maestra del servidor
@@ -72,10 +80,12 @@ app.post('/solve', async (req, res) => {
     const response = await model.generateContent(requestBody);
     const resultText = response.response.text();
 
-    // Descontar 1 crédito
-    await userRef.update({
-      credits: admin.firestore.FieldValue.increment(-1)
-    });
+    // Descontar 1 crédito si no es ilimitado
+    if (!isUnlimited) {
+      await userRef.update({
+        credits: admin.firestore.FieldValue.increment(-1)
+      });
+    }
 
     // Guardar en historial de forma segura
     const parsedResult = JSON.parse(resultText.trim());
@@ -112,12 +122,20 @@ app.get('/credits/:userId', async (req, res) => {
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     
+    let isUnlimited = (userId === 'unlimited_user_touchid');
     let credits = 0;
     if (userDoc.exists) {
       credits = userDoc.data().credits || 0;
+      if (userDoc.data().isUnlimited === true) {
+        isUnlimited = true;
+      }
     }
     
-    res.json({ userId, credits });
+    if (isUnlimited) {
+      res.json({ userId, credits: 999999, isUnlimited: true });
+    } else {
+      res.json({ userId, credits, isUnlimited: false });
+    }
   } catch (e) {
     console.error('Error al obtener créditos:', e);
     res.status(500).json({ error: e.message || 'Error al obtener créditos.' });

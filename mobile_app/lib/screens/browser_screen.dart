@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:http/http.dart' as http;
@@ -75,7 +76,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     controller.setJavaScriptMode(JavaScriptMode.unrestricted);
     
     // Configurar User-Agent personalizado para evitar error 403: disallowed_useragent en Google Login
-    final platform = Theme.of(context).platform;
+    final platform = defaultTargetPlatform;
     if (platform == TargetPlatform.iOS) {
       controller.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1");
     } else {
