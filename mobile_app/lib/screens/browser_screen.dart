@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:http/http.dart' as http;
@@ -58,6 +59,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   
   final TextEditingController _urlController = TextEditingController(text: 'https://google.com');
   bool _isLoading = false;
+  int _loadingProgress = 100;
   
   // Posición del botón circular flotante
   double _btnRight = 20;
@@ -66,6 +68,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF1F1F1F),
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFF1F1F1F),
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
     _addNewTab('https://google.com');
   }
 
@@ -91,6 +101,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
     controller.setNavigationDelegate(
       NavigationDelegate(
+        onProgress: (int progress) {
+          final index = _tabs.indexWhere((t) => t.id == id);
+          if (index == _currentTabIndex) {
+            setState(() {
+              _loadingProgress = progress;
+            });
+          }
+        },
         onPageStarted: (String pageUrl) {
           setState(() {
             final index = _tabs.indexWhere((t) => t.id == id);
@@ -98,6 +116,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               _tabs[index].url = pageUrl;
               if (index == _currentTabIndex) {
                 _urlController.text = pageUrl;
+                _loadingProgress = 20;
               }
             }
           });
@@ -126,6 +145,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               _tabs[index].title = cleanTitle;
               if (index == _currentTabIndex) {
                 _urlController.text = pageUrl;
+                _loadingProgress = 100;
               }
             }
           });
@@ -174,6 +194,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     setState(() {
       _currentTabIndex = index;
       _urlController.text = _tabs[index].url;
+      _loadingProgress = 100;
     });
   }
 
@@ -610,9 +631,9 @@ Responde estrictamente en formato JSON:
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: const Color(0xFF202124),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return StatefulBuilder(
@@ -628,13 +649,13 @@ Responde estrictamente en formato JSON:
                       const Text(
                         'Pestañas',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFFE8EAED),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add, color: Colors.blueAccent, size: 28),
+                        icon: const Icon(Icons.add, color: Color(0xFF8AB4F8), size: 28),
                         onPressed: () {
                           _addNewTab('https://google.com');
                           Navigator.pop(context);
@@ -662,11 +683,11 @@ Responde estrictamente en formato JSON:
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0F172A),
+                              color: const Color(0xFF282A2D),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isActive ? Colors.blue : Colors.white.withOpacity(0.08),
-                                width: isActive ? 2.5 : 1,
+                                color: isActive ? const Color(0xFF8AB4F8) : const Color(0xFF3C4043),
+                                width: isActive ? 2.0 : 1.0,
                               ),
                             ),
                             padding: const EdgeInsets.all(10),
@@ -681,7 +702,7 @@ Responde estrictamente en formato JSON:
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
-                                          color: isActive ? Colors.blue : Colors.white,
+                                          color: isActive ? const Color(0xFF8AB4F8) : const Color(0xFFE8EAED),
                                           fontSize: 13,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -695,7 +716,7 @@ Responde estrictamente en formato JSON:
                                       },
                                       child: const Icon(
                                         Icons.close,
-                                        color: Colors.grey,
+                                        color: Color(0xFF9AA0A6),
                                         size: 16,
                                       ),
                                     ),
@@ -705,7 +726,7 @@ Responde estrictamente en formato JSON:
                                 Expanded(
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1E293B),
+                                      color: const Color(0xFF1F1F1F),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     padding: const EdgeInsets.all(8),
@@ -715,8 +736,8 @@ Responde estrictamente en formato JSON:
                                         maxLines: 4,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.grey[400],
+                                        style: const TextStyle(
+                                          color: Color(0xFF9AA0A6),
                                           fontSize: 10,
                                         ),
                                       ),
@@ -743,9 +764,9 @@ Responde estrictamente en formato JSON:
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: const Color(0xFF202124),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return StatefulBuilder(
@@ -846,66 +867,77 @@ Responde estrictamente en formato JSON:
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: const Color(0xFF202124),
         body: SafeArea(
           child: Stack(
             children: [
               Column(
                 children: [
-                  // Barra de navegación estilo Google Chrome
+                  // Barra de navegación estilo Google Chrome (Material 3 Dark)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1F1F1F), // Color gris oscuro de la barra de Chrome en modo oscuro
+                      color: Color(0xFF1F1F1F), // Color de la barra de Chrome en modo oscuro
                       border: Border(
                         bottom: BorderSide(
-                          color: Color(0xFF2F2F2F),
-                          width: 1.0,
+                          color: Color(0xFF282A2D),
+                          width: 0.8,
                         ),
                       ),
                     ),
                     child: Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.home_outlined, color: Colors.white, size: 24),
+                          icon: const Icon(Icons.home_rounded, color: Color(0xFFC4C7C5), size: 24),
+                          splashRadius: 20,
                           onPressed: () {
                             _tabs[_currentTabIndex].controller.loadRequest(Uri.parse('https://google.com'));
                           },
                         ),
                         Expanded(
                           child: Container(
-                            height: 38,
+                            height: 44, // Altura estándar del omnibox de Chrome
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2D2D2D), // Fondo de barra de dirección en Chrome
-                              borderRadius: BorderRadius.circular(20),
+                              color: const Color(0xFF2B2D30), // Fondo exacto del omnibox de Chrome
+                              borderRadius: BorderRadius.circular(24),
                             ),
                             child: Row(
                               children: [
                                 const Padding(
-                                  padding: EdgeInsets.only(left: 12, right: 6),
-                                  child: Icon(Icons.lock_outline, color: Colors.grey, size: 14),
+                                  padding: EdgeInsets.only(left: 14, right: 8),
+                                  child: Icon(Icons.tune_rounded, color: Color(0xFF9AA0A6), size: 17),
                                 ),
                                 Expanded(
                                   child: TextField(
                                     controller: _urlController,
-                                    style: const TextStyle(color: Colors.white, fontSize: 13.5),
+                                    style: const TextStyle(
+                                      color: Color(0xFFE8EAED),
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w400,
+                                      letterSpacing: 0.1,
+                                    ),
                                     decoration: const InputDecoration(
                                       hintText: 'Busca o escribe una dirección web',
-                                      hintStyle: TextStyle(color: Colors.grey, fontSize: 13.5),
+                                      hintStyle: TextStyle(
+                                        color: Color(0xFF8E918F),
+                                        fontSize: 14.0,
+                                      ),
                                       border: InputBorder.none,
                                       isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                                      contentPadding: EdgeInsets.symmetric(vertical: 11),
                                     ),
                                     onSubmitted: (_) => _loadUrl(),
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.refresh, color: Colors.white70, size: 18),
+                                  icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC4C7C5), size: 20),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
+                                  splashRadius: 18,
                                   onPressed: () => _tabs[_currentTabIndex].controller.reload(),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 10),
                               ],
                             ),
                           ),
@@ -915,19 +947,19 @@ Responde estrictamente en formato JSON:
                         GestureDetector(
                           onTap: _showTabSwitcher,
                           child: Container(
-                            width: 24,
-                            height: 24,
+                            width: 22,
+                            height: 22,
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white, width: 2),
-                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(color: const Color(0xFFC4C7C5), width: 1.8),
+                              borderRadius: BorderRadius.circular(6.5),
                             ),
                             child: Center(
                               child: Text(
                                 '${_tabs.length}',
                                 style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFC4C7C5),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -936,8 +968,12 @@ Responde estrictamente en formato JSON:
                         const SizedBox(width: 4),
                         // Menú de tres puntos de Chrome
                         PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, color: Colors.white),
-                          color: const Color(0xFF2D2D2D),
+                          icon: const Icon(Icons.more_vert_rounded, color: Color(0xFFC4C7C5), size: 23),
+                          color: const Color(0xFF282A2D),
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           onSelected: (value) {
                             if (value == 'historial') {
                               _showBrowsingHistory();
@@ -959,9 +995,9 @@ Responde estrictamente en formato JSON:
                               value: 'pestana',
                               child: Row(
                                 children: [
-                                  Icon(Icons.tab, color: Colors.white70),
-                                  SizedBox(width: 10),
-                                  Text('Nueva pestaña', style: TextStyle(color: Colors.white)),
+                                  Icon(Icons.add_box_outlined, color: Color(0xFFC4C7C5), size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Nueva pestaña', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
                                 ],
                               ),
                             ),
@@ -969,9 +1005,9 @@ Responde estrictamente en formato JSON:
                               value: 'historial',
                               child: Row(
                                 children: [
-                                  Icon(Icons.history, color: Colors.white70),
-                                  SizedBox(width: 10),
-                                  Text('Historial', style: TextStyle(color: Colors.white)),
+                                  Icon(Icons.history_rounded, color: Color(0xFFC4C7C5), size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Historial', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
                                 ],
                               ),
                             ),
@@ -979,9 +1015,9 @@ Responde estrictamente en formato JSON:
                               value: 'descargas',
                               child: Row(
                                 children: [
-                                  Icon(Icons.download_done, color: Colors.white70),
-                                  SizedBox(width: 10),
-                                  Text('Descargas', style: TextStyle(color: Colors.white)),
+                                  Icon(Icons.download_rounded, color: Color(0xFFC4C7C5), size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Descargas', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
                                 ],
                               ),
                             ),
@@ -990,9 +1026,9 @@ Responde estrictamente en formato JSON:
                               value: 'configuracion',
                               child: Row(
                                 children: [
-                                  Icon(Icons.settings, color: Colors.white70),
-                                  SizedBox(width: 10),
-                                  Text('Configuración', style: TextStyle(color: Colors.white)),
+                                  Icon(Icons.settings_outlined, color: Color(0xFFC4C7C5), size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Configuración', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
                                 ],
                               ),
                             ),
@@ -1000,9 +1036,9 @@ Responde estrictamente en formato JSON:
                               value: 'ayuda',
                               child: Row(
                                 children: [
-                                  Icon(Icons.help_outline, color: Colors.white70),
-                                  SizedBox(width: 10),
-                                  Text('Ayuda y comentarios', style: TextStyle(color: Colors.white)),
+                                  Icon(Icons.help_outline_rounded, color: Color(0xFFC4C7C5), size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Ayuda y comentarios', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
                                 ],
                               ),
                             ),
@@ -1011,6 +1047,13 @@ Responde estrictamente en formato JSON:
                       ],
                     ),
                   ),
+                  if (_loadingProgress < 100)
+                    LinearProgressIndicator(
+                      value: _loadingProgress / 100.0,
+                      minHeight: 2.5,
+                      backgroundColor: const Color(0xFF1F1F1F),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8AB4F8)),
+                    ),
                   
                   // El navegador WebView con IndexedStack para preservar el estado
                   Expanded(
@@ -1099,22 +1142,22 @@ Responde estrictamente en formato JSON:
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
+          backgroundColor: const Color(0xFF282A2D),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.white.withOpacity(0.08)),
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: Color(0xFF3C4043), width: 0.8),
           ),
           title: const Text(
             'Acceso de Seguridad',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Color(0xFFE8EAED), fontWeight: FontWeight.bold),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Introduce el PIN de configuración para ingresar.',
-                style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -1122,15 +1165,23 @@ Responde estrictamente en formato JSON:
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 8,
-                style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 8),
+                style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 20, letterSpacing: 8),
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
                   counterText: '',
                   filled: true,
-                  fillColor: const Color(0xFF0F172A).withOpacity(0.6),
+                  fillColor: const Color(0xFF1F1F1F),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF3C4043)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF3C4043)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8AB4F8), width: 1.5),
                   ),
                 ),
               ),
@@ -1139,12 +1190,13 @@ Responde estrictamente en formato JSON:
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              child: const Text('Cancelar', style: TextStyle(color: Color(0xFF9AA0A6))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+                backgroundColor: const Color(0xFF8AB4F8),
+                foregroundColor: const Color(0xFF1F1F1F),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
               onPressed: () {
                 final enteredPin = pinController.text.trim();
@@ -1170,7 +1222,7 @@ Responde estrictamente en formato JSON:
                   );
                 }
               },
-              child: const Text('Entrar'),
+              child: const Text('Entrar', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         );
