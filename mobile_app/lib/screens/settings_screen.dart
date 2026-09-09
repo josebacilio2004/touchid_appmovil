@@ -195,8 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {    final theme = Theme.of(context);
-
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: GestureDetector(
@@ -484,7 +483,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             obscureText: _obscureGeminiKey,
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
-                              labelText: 'Gemini API Key',
+                              labelText: 'Gemini API Key (Opcional si usa Servidor)',
                               labelStyle: TextStyle(color: Colors.grey[400]),
                               hintText: 'AIzaSy...',
                               hintStyle: TextStyle(color: Colors.grey[600]),
@@ -511,8 +510,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                             validator: (value) {
-                              if (_showApiSection && (value == null || value.trim().isEmpty)) {
-                                return 'Por favor ingresa tu API Key de Gemini';
+                              if (_showApiSection && _backendUrlController.text.trim().isEmpty && (value == null || value.trim().isEmpty)) {
+                                return 'Por favor ingresa tu API Key de Gemini o configura el Servidor';
                               }
                               return null;
                             },
@@ -524,7 +523,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             controller: _projectIdController,
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
-                              labelText: 'Firebase Project ID',
+                              labelText: 'Firebase Project ID (Opcional)',
                               labelStyle: TextStyle(color: Colors.grey[400]),
                               filled: true,
                               fillColor: const Color(0xFF0F172A).withOpacity(0.6),
@@ -538,9 +537,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                             validator: (value) {
-                              if (_showApiSection && (value == null || value.trim().isEmpty)) {
-                                return 'Por favor ingresa el ID del Proyecto Firebase';
-                              }
                               return null;
                             },
                           ),

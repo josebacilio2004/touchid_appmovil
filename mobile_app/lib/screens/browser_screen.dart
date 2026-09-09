@@ -209,12 +209,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  // Raspado del cuestionario e invocación a la API de Gemini
+  // Raspado del cuestionario e invocación a la API (Backend o Gemini)
   Future<void> _solveQuestionnaire() async {
-    if (widget.config.geminiApiKey.isEmpty) {
+    final hasBackend = widget.config.backendUrl.trim().isNotEmpty;
+    final hasUserId = widget.config.userId.trim().isNotEmpty;
+    final hasGeminiKey = widget.config.geminiApiKey.trim().isNotEmpty;
+
+    if (!hasBackend && !hasGeminiKey) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor, ingresa tu API Key de Gemini en Configuración.'),
+          content: Text('Por favor, configura tu cuenta/servidor o ingresa tu API Key en Configuración.'),
+          backgroundColor: Colors.amber,
+        ),
+      );
+      return;
+    }
+
+    if (hasBackend && !hasUserId && !hasGeminiKey) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, ingresa tu ID de Cliente en Configuración.'),
           backgroundColor: Colors.amber,
         ),
       );
@@ -399,7 +413,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             'options': options,
             'systemPrompt': systemPrompt,
           }),
-        ).timeout(const Duration(seconds: 15));
+        ).timeout(const Duration(seconds: 25));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -560,8 +574,8 @@ Responde estrictamente en formato JSON:
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withOpacity(0.02),
       builder: (context) {
-        final explanation = resData['explanation'] as String;
-        final subject = resData['subject'] as String;
+        final explanation = (resData['explanation'] ?? '').toString();
+        final subject = (resData['subject'] ?? 'General').toString();
 
         return Container(
           decoration: BoxDecoration(
