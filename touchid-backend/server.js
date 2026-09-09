@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
-const { GoogleGenAI } = require('@google/generative-ai');
+// API Gemini REST nativa vía fetch (sin dependencias SDK inconsistentes)
 require('dotenv').config();
 
 // 1. Inicializar Firebase Admin SDK usando la variable de entorno
@@ -45,9 +45,11 @@ app.post('/solve', async (req, res) => {
       }
     }
 
-    // Llamar a la API de Gemini usando tu API Key maestra del servidor
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    // Llamar a la API de Gemini usando la API Key maestra del servidor
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY no configurada en el servidor Render.' });
+    }
 
     let prompt = '';
     if (options && options.length > 0) {
@@ -76,9 +78,45 @@ app.post('/solve', async (req, res) => {
       }
     };
 
-    // Petición nativa a Gemini REST
-    const response = await model.generateContent(requestBody);
-    const resultText = response.response.text();
+    // Petición nativa a Gemini REST con modelos alternativos de respaldo
+    const models = [
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-flash-latest'
+    ];
+
+    let parsedResult = null;
+    let lastError = null;
+
+    for (const model of models) {
+      try {
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) {
+            parsedResult = JSON.parse(candidateText.trim());
+            break;
+          }
+        } else {
+          const errText = await geminiRes.text();
+          lastError = `Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+        }
+      } catch (err) {
+        lastError = err.message;
+      }
+    }
+
+    if (!parsedResult) {
+      throw new Error(lastError || 'No se pudo obtener respuesta válida de Gemini.');
+    }
 
     // Descontar 1 crédito si no es ilimitado
     if (!isUnlimited) {
