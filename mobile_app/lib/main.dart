@@ -105,12 +105,12 @@ class _TouchIdAppState extends State<TouchIdApp> {
       title: 'TouchID Cuestionarios',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF020617),
-        primaryColor: Colors.blue,
+        scaffoldBackgroundColor: const Color(0xFF202124),
+        primaryColor: const Color(0xFF8AB4F8),
         colorScheme: const ColorScheme.dark(
-          primary: Colors.blue,
-          secondary: Colors.cyan,
-          surface: Color(0xFF0F172A),
+          primary: Color(0xFF8AB4F8),
+          secondary: Color(0xFF8AB4F8),
+          surface: Color(0xFF282A2D),
         ),
       ),
       home: AppNavigationContainer(
