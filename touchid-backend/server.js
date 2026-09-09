@@ -126,7 +126,6 @@ app.post('/solve', async (req, res) => {
     }
 
     // Guardar en historial de forma segura
-    const parsedResult = JSON.parse(resultText.trim());
     try {
       await db.collection('history').add({
         question,
