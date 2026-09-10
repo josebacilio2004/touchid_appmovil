@@ -24,6 +24,9 @@ const statTotal = document.getElementById('stat-total');
 const statUsers = document.getElementById('stat-users');
 const statLicActive = document.getElementById('stat-lic-active');
 const statLicUsed = document.getElementById('stat-lic-used');
+const histStatTotal = document.getElementById('hist-stat-total');
+const histStatCredits = document.getElementById('hist-stat-credits');
+const histStatRate = document.getElementById('hist-stat-rate');
 
 // Contenedores de Listas
 const liveFeed = document.getElementById('live-question-feed');
@@ -214,10 +217,23 @@ function renderLicensesTable(licenses) {
 }
 
 function renderHistoryTable(history) {
+  let totalCredits = 0;
+  history.forEach(doc => {
+    const cost = doc.creditsUsed !== undefined ? doc.creditsUsed : 1;
+    totalCredits += cost;
+  });
+
+  if (histStatTotal) histStatTotal.textContent = history.length;
+  if (histStatCredits) histStatCredits.textContent = totalCredits;
+  if (histStatRate) {
+    const avg = history.length > 0 ? (totalCredits / history.length).toFixed(1) : '1.0';
+    histStatRate.textContent = `${avg} cr / rpta`;
+  }
+
   if (history.length === 0) {
     historyTableBody.innerHTML = `
       <tr>
-        <td colspan="5" class="table-placeholder">No hay preguntas resueltas aún.</td>
+        <td colspan="6" class="table-placeholder">No hay preguntas resueltas aún.</td>
       </tr>
     `;
     return;
@@ -229,12 +245,19 @@ function renderHistoryTable(history) {
     
     const date = new Date(doc.timestamp || Date.now());
     const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const cost = doc.creditsUsed !== undefined ? doc.creditsUsed : 1;
+    const isUnlimited = doc.userType === 'ilimitado' || cost === 0;
+
+    const creditBadge = isUnlimited
+      ? `<span class="badge-credits unlimited">0 cr (Ilimitado)</span>`
+      : `<span class="badge-credits standard">${cost} crédito</span>`;
 
     row.innerHTML = `
       <td class="row-date">${dateStr}</td>
       <td class="row-subject"><span class="row-subject">${doc.subject || 'General'}</span></td>
       <td class="row-question" title="${doc.question}">${doc.question}</td>
       <td class="row-answer">${doc.answer}</td>
+      <td class="row-credits">${creditBadge}</td>
       <td class="row-source">${doc.source === 'chrome_extension' ? 'PC' : 'Móvil'}</td>
     `;
     historyTableBody.appendChild(row);

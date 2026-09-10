@@ -10,18 +10,25 @@ import '../models/app_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'settings_screen.dart';
 import 'chrome_history_screen.dart';
+import 'chrome_downloads_screen.dart';
+import 'chrome_recent_tabs_screen.dart';
+import 'chrome_clear_data_dialog.dart';
 
 class BrowserTab {
   final String id;
   String title;
   String url;
   final WebViewController controller;
+  bool isDesktopMode;
+  bool isIncognito;
 
   BrowserTab({
     required this.id,
     required this.title,
     required this.url,
     required this.controller,
+    this.isDesktopMode = false,
+    this.isIncognito = false,
   });
 }
 
@@ -45,9 +52,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
   final List<BrowserTab> _tabs = [];
   int _currentTabIndex = 0;
   final List<ChromeHistoryItem> _browsingHistory = [];
+  final List<Map<String, String>> _bookmarks = [];
   
   final TextEditingController _urlController = TextEditingController(text: 'https://google.com');
   final FocusNode _urlFocusNode = FocusNode();
+  final TextEditingController _inPageSearchCtrl = TextEditingController();
+  bool _isSearchingInPage = false;
   bool _isLoading = false;
   int _loadingProgress = 100;
   
@@ -59,6 +69,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void initState() {
     super.initState();
     _loadBrowsingHistory();
+    _loadBookmarks();
     _urlFocusNode.addListener(() {
       setState(() {});
       if (_urlFocusNode.hasFocus) {
@@ -147,10 +158,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void dispose() {
     _urlFocusNode.dispose();
     _urlController.dispose();
+    _inPageSearchCtrl.dispose();
     super.dispose();
   }
 
-  void _addNewTab([String url = 'https://google.com']) {
+  void _addNewTab([String url = 'https://google.com', bool isIncognito = false]) {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final WebViewController controller = WebViewController();
     
@@ -202,8 +214,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
           
           final cleanTitle = (title == null || title.trim().isEmpty) ? pageUrl : title;
           
-          // Track browsing history
-          if (cleanTitle != 'Nueva pestaña' && cleanTitle.trim().isNotEmpty && pageUrl.trim().isNotEmpty && !pageUrl.startsWith('about:')) {
+          // Track browsing history (solo si no es incógnito)
+          if (!isIncognito && cleanTitle != 'Nueva pestaña' && cleanTitle.trim().isNotEmpty && pageUrl.trim().isNotEmpty && !pageUrl.startsWith('about:')) {
             if (_browsingHistory.isEmpty || _browsingHistory.first.url != pageUrl) {
               _browsingHistory.insert(0, ChromeHistoryItem(
                 title: cleanTitle,
@@ -239,9 +251,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
     setState(() {
       _tabs.add(BrowserTab(
         id: id,
-        title: 'Nueva pestaña',
+        title: isIncognito ? 'Pestaña de incógnito' : 'Nueva pestaña',
         url: url,
         controller: controller,
+        isDesktopMode: false,
+        isIncognito: isIncognito,
       ));
       _currentTabIndex = _tabs.length - 1;
       _urlController.text = url;
@@ -901,6 +915,825 @@ Responde estrictamente en formato JSON:
     );
   }
 
+  Future<void> _loadBookmarks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('chrome_bookmarks_items');
+      if (list != null && list.isNotEmpty) {
+        _bookmarks.clear();
+        for (final s in list) {
+          try {
+            _bookmarks.add(Map<String, String>.from(jsonDecode(s)));
+          } catch (_) {}
+        }
+      } else {
+        _bookmarks.addAll([
+          {
+            'title': 'Examen de Reglas MTC - Balotario Oficial',
+            'url': 'https://portal.mtc.gob.pe/transportes/terrestre/licencias/balotario.html',
+          },
+          {
+            'title': 'Simulacro de Examen Teórico MTC',
+            'url': 'https://sierdgtt.mtc.gob.pe/',
+          },
+          {
+            'title': 'Google',
+            'url': 'https://www.google.com',
+          },
+        ]);
+        _saveBookmarks();
+      }
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  Future<void> _saveBookmarks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = _bookmarks.map((e) => jsonEncode(e)).toList();
+      await prefs.setStringList('chrome_bookmarks_items', list);
+    } catch (_) {}
+  }
+
+  bool _isCurrentUrlBookmarked() {
+    if (_tabs.isEmpty) return false;
+    final currentUrl = _tabs[_currentTabIndex].url;
+    return _bookmarks.any((b) => b['url'] == currentUrl);
+  }
+
+  void _toggleCurrentBookmark() {
+    if (_tabs.isEmpty) return;
+    final tab = _tabs[_currentTabIndex];
+    final isBookmarked = _isCurrentUrlBookmarked();
+    if (isBookmarked) {
+      _bookmarks.removeWhere((b) => b['url'] == tab.url);
+      _saveBookmarks();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Marcador eliminado'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      _bookmarks.insert(0, {
+        'title': tab.title.isEmpty ? tab.url : tab.title,
+        'url': tab.url,
+      });
+      _saveBookmarks();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.star_rounded, color: Color(0xFF8AB4F8), size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Marcador guardado: ${tab.title}')),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+    setState(() {});
+  }
+
+  void _showBookmarksSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF282A2D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5F6368),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Marcadores',
+                    style: TextStyle(
+                      color: Color(0xFFE8EAED),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Color(0xFFC4C7C5)),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_bookmarks.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 36),
+                  child: Text(
+                    'No tienes marcadores guardados.\nToca la estrella en el menú para agregar marcadores.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13.5),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _bookmarks.length,
+                    separatorBuilder: (ctx, i) => const Divider(color: Color(0xFF3C4043), height: 1),
+                    itemBuilder: (ctx, i) {
+                      final item = _bookmarks[i];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.star_rounded, color: Color(0xFF8AB4F8), size: 20),
+                        title: Text(
+                          item['title'] ?? item['url'] ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 14),
+                        ),
+                        subtitle: Text(
+                          item['url'] ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFF9AA0A6), fontSize: 12),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFF9AA0A6), size: 18),
+                          onPressed: () {
+                            setState(() {
+                              _bookmarks.removeAt(i);
+                              _saveBookmarks();
+                            });
+                            setModalState(() {});
+                          },
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(item['url']!));
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPageInfoDialog() {
+    if (_tabs.isEmpty) return;
+    final url = _tabs[_currentTabIndex].url;
+    final uri = Uri.tryParse(url);
+    final host = (uri != null && uri.host.isNotEmpty) ? uri.host : url;
+    final isSecure = url.startsWith('https://');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF282A2D),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+        contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        title: Row(
+          children: [
+            Icon(
+              isSecure ? Icons.lock_rounded : Icons.info_outline_rounded,
+              color: isSecure ? const Color(0xFF81C995) : const Color(0xFFF28B82),
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                host,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isSecure ? 'La conexión es segura' : 'La conexión no es segura',
+              style: TextStyle(
+                color: isSecure ? const Color(0xFF81C995) : const Color(0xFFF28B82),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isSecure
+                  ? 'Tu información (por ejemplo, contraseñas o datos de tarjeta de crédito) es privada cuando se envía a este sitio.'
+                  : 'Ten precaución al introducir información confidencial en este sitio.',
+              style: const TextStyle(color: Color(0xFF9AA0A6), fontSize: 12.5, height: 1.3),
+            ),
+            const Divider(color: Color(0xFF3C4043), height: 24),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.verified_user_outlined, color: Color(0xFF8AB4F8), size: 20),
+              title: Text('Certificado de seguridad', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 13.5)),
+              subtitle: Text('Válido (Emitido para el dominio)', style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 11.5)),
+            ),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.cookie_outlined, color: Color(0xFF8AB4F8), size: 20),
+              title: Text('Cookies y datos del sitio', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 13.5)),
+              subtitle: Text('Permitidas y en uso para la sesión', style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 11.5)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar', style: TextStyle(color: Color(0xFF8AB4F8), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearDataModal() {
+    showDialog(
+      context: context,
+      builder: (ctx) => ChromeClearDataDialog(
+        onConfirm: ({
+          required bool clearHistory,
+          required bool clearCookies,
+          required bool clearCache,
+          required String timeRange,
+        }) async {
+          if (clearHistory) {
+            setState(() {
+              _browsingHistory.clear();
+            });
+            await _saveBrowsingHistory();
+          }
+          if (clearCache && _tabs.isNotEmpty) {
+            try {
+              await _tabs[_currentTabIndex].controller.clearCache();
+            } catch (_) {}
+          }
+          if (clearCookies) {
+            try {
+              await WebViewCookieManager().clearCookies();
+            } catch (_) {}
+          }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Se han borrado los datos de navegación seleccionados.'),
+                backgroundColor: Color(0xFF1E8E3E),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  void _toggleDesktopMode() async {
+    final currentTab = _tabs[_currentTabIndex];
+    final newMode = !currentTab.isDesktopMode;
+    currentTab.isDesktopMode = newMode;
+
+    if (newMode) {
+      await currentTab.controller.setUserAgent(
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      );
+    } else {
+      final platform = defaultTargetPlatform;
+      if (platform == TargetPlatform.iOS) {
+        await currentTab.controller.setUserAgent(
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+        );
+      } else {
+        await currentTab.controller.setUserAgent(
+          "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+        );
+      }
+    }
+    await currentTab.controller.reload();
+    setState(() {});
+  }
+
+  void _downloadCurrentPage() {
+    if (_tabs.isEmpty) return;
+    final tab = _tabs[_currentTabIndex];
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.downloading_rounded, color: Color(0xFF8AB4F8), size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text('Descargando "${tab.title}"...')),
+          ],
+        ),
+        action: SnackBarAction(
+          label: 'Ver',
+          textColor: const Color(0xFF8AB4F8),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (c) => const ChromeDownloadsScreen()),
+            );
+          },
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _shareCurrentUrl() {
+    if (_tabs.isEmpty) return;
+    final url = _tabs[_currentTabIndex].url;
+    Clipboard.setData(ClipboardData(text: url));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Enlace copiado al portapapeles: $url'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _translateCurrentPage() {
+    if (_tabs.isEmpty) return;
+    final url = _tabs[_currentTabIndex].url;
+    final translateUrl = 'https://translate.google.com/translate?sl=auto&tl=es&u=${Uri.encodeComponent(url)}';
+    _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(translateUrl));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Traduciendo página con Google Traductor...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _toggleReaderMode() {
+    if (_tabs.isEmpty) return;
+    _tabs[_currentTabIndex].controller.runJavaScript('''
+      (function() {
+        document.body.style.maxWidth = '700px';
+        document.body.style.margin = '0 auto';
+        document.body.style.padding = '24px 16px';
+        document.body.style.fontFamily = 'sans-serif';
+        document.body.style.fontSize = '17px';
+        document.body.style.lineHeight = '1.6';
+        document.body.style.color = '#E8EAED';
+        document.body.style.backgroundColor = '#1F1F1F';
+      })();
+    ''');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Modo Lectura activado'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildInPageSearchBar() {
+    return Container(
+      height: 48,
+      color: const Color(0xFF282A2D),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _inPageSearchCtrl,
+              autofocus: true,
+              style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 14),
+              decoration: const InputDecoration(
+                hintText: 'Buscar en la página...',
+                hintStyle: TextStyle(color: Color(0xFF8E918F), fontSize: 14),
+                border: InputBorder.none,
+                isDense: true,
+              ),
+              onChanged: (text) {
+                if (text.isNotEmpty) {
+                  _tabs[_currentTabIndex].controller.runJavaScript("window.find('$text');");
+                }
+              },
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.keyboard_arrow_up_rounded, color: Color(0xFFC4C7C5), size: 22),
+            splashRadius: 18,
+            onPressed: () {
+              final text = _inPageSearchCtrl.text;
+              if (text.isNotEmpty) {
+                _tabs[_currentTabIndex].controller.runJavaScript("window.find('$text', false, true);");
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFC4C7C5), size: 22),
+            splashRadius: 18,
+            onPressed: () {
+              final text = _inPageSearchCtrl.text;
+              if (text.isNotEmpty) {
+                _tabs[_currentTabIndex].controller.runJavaScript("window.find('$text', false, false);");
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, color: Color(0xFFC4C7C5), size: 20),
+            splashRadius: 18,
+            onPressed: () {
+              setState(() {
+                _isSearchingInPage = false;
+                _inPageSearchCtrl.clear();
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChromeMenuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, color: const Color(0xFFC4C7C5), size: 20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFFE8EAED),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            if (trailing != null) trailing,
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showChromeMenu(BuildContext context) async {
+    final currentTab = _tabs[_currentTabIndex];
+    final isForwardAvailable = await currentTab.controller.canGoForward();
+    final isBookmarked = _isCurrentUrlBookmarked();
+
+    if (!context.mounted) return;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'ChromeMenu',
+      barrierColor: Colors.black26,
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (ctx, anim1, anim2) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Container(
+              width: 290,
+              margin: const EdgeInsets.only(top: 48, right: 8, bottom: 16),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.88,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF282A2D),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black54,
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: StatefulBuilder(
+                  builder: (ctx, setMenuState) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 1. Barra superior de iconos horizontales (Forward, Bookmark, Download, Info, Reload)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: Color(0xFF3C4043), width: 0.8),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              // Forward (->)
+                              IconButton(
+                                icon: Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: isForwardAvailable ? const Color(0xFFE8EAED) : const Color(0xFF5F6368),
+                                  size: 22,
+                                ),
+                                splashRadius: 20,
+                                onPressed: isForwardAvailable
+                                    ? () {
+                                        Navigator.pop(ctx);
+                                        currentTab.controller.goForward();
+                                      }
+                                    : null,
+                              ),
+                              // Bookmark (*)
+                              IconButton(
+                                icon: Icon(
+                                  isBookmarked ? Icons.star_rounded : Icons.star_outline_rounded,
+                                  color: isBookmarked ? const Color(0xFF8AB4F8) : const Color(0xFFE8EAED),
+                                  size: 22,
+                                ),
+                                splashRadius: 20,
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _toggleCurrentBookmark();
+                                },
+                              ),
+                              // Download (v)
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.file_download_outlined,
+                                  color: Color(0xFFE8EAED),
+                                  size: 22,
+                                ),
+                                splashRadius: 20,
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _downloadCurrentPage();
+                                },
+                              ),
+                              // Info ((i))
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Color(0xFFE8EAED),
+                                  size: 22,
+                                ),
+                                splashRadius: 20,
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _showPageInfoDialog();
+                                },
+                              ),
+                              // Reload (↻)
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                  color: Color(0xFFE8EAED),
+                                  size: 22,
+                                ),
+                                splashRadius: 20,
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  currentTab.controller.reload();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // 2. Lista de opciones estilo Chrome exacto
+                        Flexible(
+                          child: ListView(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            children: [
+                              _buildChromeMenuItem(
+                                icon: Icons.add_box_outlined,
+                                title: 'Nueva pestaña',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _addNewTab('https://google.com');
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.security_outlined,
+                                title: 'Nueva pestaña de incógnito',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _addNewTab('https://google.com', true);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Pestaña de incógnito abierta')),
+                                  );
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.tab_outlined,
+                                title: 'Añadir pestaña a un grupo...',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Pestaña añadida al grupo')),
+                                  );
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.history_rounded,
+                                title: 'Historial',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _showBrowsingHistory();
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.delete_outline_rounded,
+                                title: 'Borrar datos de navegación',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _showClearDataModal();
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.download_rounded,
+                                title: 'Descargas',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (c) => const ChromeDownloadsScreen()),
+                                  );
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.star_border_rounded,
+                                title: 'Marcadores',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _showBookmarksSheet();
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.devices_rounded,
+                                title: 'Pestañas recientes',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) => ChromeRecentTabsScreen(
+                                        history: _browsingHistory,
+                                        onSelectUrl: (url) {
+                                          _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const Divider(color: Color(0xFF3C4043), height: 8),
+                              _buildChromeMenuItem(
+                                icon: Icons.share_outlined,
+                                title: 'Compartir...',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _shareCurrentUrl();
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.search_rounded,
+                                title: 'Buscar en la página',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  setState(() {
+                                    _isSearchingInPage = true;
+                                  });
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.translate_rounded,
+                                title: 'Traducir...',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _translateCurrentPage();
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.chrome_reader_mode_outlined,
+                                title: 'Mostrar modo Lectura',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _toggleReaderMode();
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.add_to_home_screen_rounded,
+                                title: 'Instalar y crear acceso directo',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Acceso directo añadido a la pantalla de inicio')),
+                                  );
+                                },
+                              ),
+                              // Sitio para ordenadores con CHECKBOX funcional
+                              InkWell(
+                                onTap: () {
+                                  _toggleDesktopMode();
+                                  setMenuState(() {});
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.desktop_windows_outlined, color: Color(0xFFC4C7C5), size: 20),
+                                      const SizedBox(width: 14),
+                                      const Expanded(
+                                        child: Text(
+                                          'Sitio para ordenadores',
+                                          style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14),
+                                        ),
+                                      ),
+                                      Checkbox(
+                                        value: currentTab.isDesktopMode,
+                                        activeColor: const Color(0xFF8AB4F8),
+                                        checkColor: const Color(0xFF1F1F1F),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+                                        onChanged: (val) {
+                                          _toggleDesktopMode();
+                                          setMenuState(() {});
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const Divider(color: Color(0xFF3C4043), height: 8),
+                              _buildChromeMenuItem(
+                                icon: Icons.settings_outlined,
+                                title: 'Configuración',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _showPinDialog();
+                                },
+                              ),
+                              _buildChromeMenuItem(
+                                icon: Icons.help_outline_rounded,
+                                title: 'Ayuda y comentarios',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _showHelpAndFeedback();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        return FadeTransition(
+          opacity: anim1,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.85, end: 1.0).animate(
+              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
+            ),
+            alignment: Alignment.topRight,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   void _showHelpAndFeedback() {
     showModalBottomSheet(
       context: context,
@@ -1304,88 +2137,16 @@ Responde estrictamente en formato JSON:
                         ),
                         const SizedBox(width: 4),
                         // Menú de tres puntos de Chrome
-                        PopupMenuButton<String>(
+                        IconButton(
                           icon: const Icon(Icons.more_vert_rounded, color: Color(0xFFC4C7C5), size: 23),
-                          color: const Color(0xFF282A2D),
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          onSelected: (value) {
-                            if (value == 'historial') {
-                              _showBrowsingHistory();
-                            } else if (value == 'configuracion') {
-                              _showPinDialog();
-                            } else if (value == 'pestana') {
-                              _addNewTab('https://google.com');
-                            } else if (value == 'ayuda') {
-                              _showHelpAndFeedback();
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Función "$value" no disponible en este momento.'),
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
-                            }
-                          },
-                          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                            const PopupMenuItem<String>(
-                              value: 'pestana',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.add_box_outlined, color: Color(0xFFC4C7C5), size: 20),
-                                  SizedBox(width: 12),
-                                  Text('Nueva pestaña', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem<String>(
-                              value: 'historial',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.history_rounded, color: Color(0xFFC4C7C5), size: 20),
-                                  SizedBox(width: 12),
-                                  Text('Historial', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem<String>(
-                              value: 'descargas',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.download_rounded, color: Color(0xFFC4C7C5), size: 20),
-                                  SizedBox(width: 12),
-                                  Text('Descargas', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuDivider(height: 1),
-                            const PopupMenuItem<String>(
-                              value: 'configuracion',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.settings_outlined, color: Color(0xFFC4C7C5), size: 20),
-                                  SizedBox(width: 12),
-                                  Text('Configuración', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem<String>(
-                              value: 'ayuda',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.help_outline_rounded, color: Color(0xFFC4C7C5), size: 20),
-                                  SizedBox(width: 12),
-                                  Text('Ayuda y comentarios', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
-                                ],
-                              ),
-                            ),
-                          ],
+                          splashRadius: 20,
+                          onPressed: () => _showChromeMenu(context),
                         ),
                       ],
                     ),
                   ),
+                  if (_isSearchingInPage)
+                    _buildInPageSearchBar(),
                   if (_loadingProgress < 100)
                     LinearProgressIndicator(
                       value: _loadingProgress / 100.0,

@@ -208,9 +208,27 @@
 
         <!-- SECCIÓN 2: HISTORIAL COMPLETO -->
         <section id="tab-history" class="tab-content">
+          <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Total Preguntas Registradas</span>
+              <span class="stat-value" id="hist-stat-total" style="font-size: 24px;">0</span>
+              <span class="stat-trend neutral">En base de datos</span>
+            </div>
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Total Créditos Consumidos</span>
+              <span class="stat-value" id="hist-stat-credits" style="font-size: 24px; color: #f59e0b;">0</span>
+              <span class="stat-trend positive">Por respuestas IA</span>
+            </div>
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Tarifa Promedio</span>
+              <span class="stat-value" id="hist-stat-rate" style="font-size: 24px; color: #38bdf8;">1 cr / rpta</span>
+              <span class="stat-trend info">Optimizado</span>
+            </div>
+          </div>
+
           <div class="card table-card">
             <div class="card-header search-header">
-              <h2>Historial de Preguntas Guardadas</h2>
+              <h2>Historial de Preguntas y Consumo de Créditos</h2>
               <div class="search-box">
                 <input type="text" id="history-search" placeholder="Buscar pregunta o materia...">
               </div>
@@ -223,12 +241,13 @@
                     <th>Materia</th>
                     <th>Pregunta</th>
                     <th>Respuesta Sugerida</th>
+                    <th>Créditos</th>
                     <th>Origen</th>
                   </tr>
                 </thead>
                 <tbody id="history-table-body">
                   <tr>
-                    <td colspan="5" class="table-placeholder">No hay preguntas resueltas aún.</td>
+                    <td colspan="6" class="table-placeholder">No hay preguntas resueltas aún.</td>
                   </tr>
                 </tbody>
               </table>
