@@ -2,9 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'models/app_config.dart';
-import 'screens/dashboard_screen.dart';
 import 'screens/browser_screen.dart';
-import 'screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -102,7 +100,7 @@ class _TouchIdAppState extends State<TouchIdApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'TouchID Cuestionarios',
+      title: 'Chrome',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF202124),

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Banco Oficial de Preguntas de Opción Múltiple y Simulador de Exámenes TouchID - MTC, Medicina, Razonamiento y Tecnología.">
+  <title>Simulador de Exámenes & Banco de Preguntas - TouchID</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <style>
+    /* Estilos específicos para el simulador interactivo */
+    .quiz-hero {
+      text-align: center;
+      padding: 40px 20px 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .quiz-title {
+      font-size: 2.4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+    .quiz-subtitle {
+      color: #94a3b8;
+      font-size: 1.05rem;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .quiz-categories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 1100px;
+      margin: 20px auto 40px;
+      padding: 0 20px;
+    }
+    .category-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .category-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(96, 165, 250, 0.4);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      background: rgba(30, 41, 59, 0.95);
+    }
+    .category-badge {
+      align-self: flex-start;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .category-card h3 {
+      font-size: 1.25rem;
+      color: #f8fafc;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .category-card p {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
+    .category-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .category-meta {
+      font-size: 0.85rem;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .btn-start {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-start:hover {
+      background: #2563eb;
+      transform: scale(1.03);
+    }
+
+    /* Área del Cuestionario Activo */
+    .quiz-active-container {
+      max-width: 840px;
+      margin: 20px auto;
+      padding: 0 20px 40px;
+      display: none;
+    }
+    .quiz-card {
+      background: rgba(26, 34, 52, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(15px);
+    }
+    .quiz-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .quiz-progress-info {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #38bdf8;
+    }
+    .quiz-timer {
+      background: rgba(15, 23, 42, 0.7);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #f59e0b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .progress-bar-container {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      width: 10%;
+      transition: width 0.3s ease;
+    }
+    .question-box {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #f8fafc;
+      line-height: 1.5;
+      margin-bottom: 26px;
+    }
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .option-item {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1.5px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      transition: all 0.2s ease;
+      color: #e2e8f0;
+      font-size: 1rem;
+      line-height: 1.45;
+    }
+    .option-item:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(96, 165, 250, 0.5);
+    }
+    .option-item.selected {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: #3b82f6;
+      color: #fff;
+    }
+    .option-item.correct {
+      background: rgba(16, 185, 129, 0.2) !important;
+      border-color: #10b981 !important;
+      color: #6ee7b7 !important;
+    }
+    .option-item.wrong {
+      background: rgba(239, 68, 68, 0.2) !important;
+      border-color: #ef4444 !important;
+      color: #fca5a5 !important;
+    }
+    .option-index {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      margin-top: -2px;
+    }
+    .option-item.selected .option-index {
+      background: #3b82f6;
+      color: #fff;
+    }
+    .option-item.correct .option-index {
+      background: #10b981;
+      color: #fff;
+    }
+    .option-item.wrong .option-index {
+      background: #ef4444;
+      color: #fff;
+    }
+    .explanation-card {
+      background: rgba(15, 23, 42, 0.85);
+      border-left: 4px solid #3b82f6;
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    .explanation-card.show {
+      display: block;
+    }
+    .explanation-card h4 {
+      color: #60a5fa;
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .explanation-card p {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .quiz-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-ai-solve {
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-ai-solve:hover {
+      opacity: 0.92;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+    }
+    .btn-next {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      padding: 11px 26px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-left: auto;
+    }
+    .btn-next:hover {
+      background: #2563eb;
+    }
+    .btn-prev {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 11px 20px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-prev:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Pantalla de Resultados */
+    .results-card {
+      text-align: center;
+      padding: 40px 20px;
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+    .results-score-circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(15, 23, 42, 0.8) 70%);
+      border: 4px solid #3b82f6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+    }
+    .score-number {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+    .score-total {
+      font-size: 1rem;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+    .results-status {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .status-pass {
+      color: #10b981;
+    }
+    .status-fail {
+      color: #ef4444;
+    }
+    .results-review-list {
+      text-align: left;
+      margin: 30px auto;
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .review-item {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+    .review-item.is-correct {
+      border-left: 4px solid #10b981;
+    }
+    .review-item.is-wrong {
+      border-left: 4px solid #ef4444;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+  <script type="module" crossorigin src="./assets/quiz-CDhUVnpD.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/web_dashboard-fyrII6JK.js">
+  <link rel="stylesheet" crossorigin href="./assets/web_dashboard-dVgCSs9d.css">
+</head>
+<body style="background: #080b13; color: #f8fafc; min-height: 100vh;">
+
+  <!-- Barra Superior del Simulador -->
+  <header style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 22, 42, 0.85); backdrop-filter: blur(15px); padding: 14px 24px; position: sticky; top: 0; z-index: 100;">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); box-shadow: 0 0 12px rgba(59,130,246,0.6);"></div>
+        <a href="./index.html" style="text-decoration: none; color: #f8fafc; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em;">TouchID <span style="color: #60a5fa; font-weight: 600;">Quiz Simulator</span></a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <button id="btn-mode-toggle" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+          Modo: <span id="current-mode-label" style="color: #38bdf8;">Estudio (Feedback Inmediato)</span>
+        </button>
+        <a href="./index.html" style="color: #94a3b8; text-decoration: none; font-size: 0.88rem; font-weight: 600; padding: 6px 12px; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">
+          Ir al Dashboard &rarr;
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- SECCIÓN 1: VISTA DE SELECCIÓN DE TEMARIOS -->
+  <main id="view-categories">
+    <div class="quiz-hero">
+      <div style="display: inline-block; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; padding: 4px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; margin-bottom: 16px;">
+        Banco de Preguntas & Evaluador Oficial
+      </div>
+      <h1 class="quiz-title">Simulador de Exámenes con Opción Múltiple</h1>
+      <p class="quiz-subtitle">
+        Pon a prueba tus conocimientos en distintas áreas con preguntas estructuradas, cronómetro de evaluación y explicaciones fundamentadas. Compatible con el Asistente IA de TouchID.
+      </p>
+    </div>
+
+    <!-- Rejilla de Categorías Dinámicas -->
+    <div class="quiz-categories-grid" id="categories-grid">
+      <!-- Inyectado vía JavaScript -->
+    </div>
+  </main>
+
+  <!-- SECCIÓN 2: VISTA DEL CUESTIONARIO ACTIVO -->
+  <section class="quiz-active-container" id="view-quiz">
+    <div class="quiz-card">
+      <div class="quiz-header-bar">
+        <div>
+          <span id="active-category-title" style="font-size: 0.85rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Categoría</span>
+          <div class="quiz-progress-info" id="quiz-question-counter">Pregunta 1 de 10</div>
+        </div>
+        <div class="quiz-timer" id="quiz-timer">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0 2C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm1-11h4v2h-6V7h2v4z"/></svg>
+          <span id="timer-display">00:00</span>
+        </div>
+      </div>
+
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+
+      <div class="question-box" id="question-text">
+        <!-- Texto de la pregunta -->
+      </div>
+
+      <div class="options-list" id="options-container">
+        <!-- Opciones A, B, C, D -->
+      </div>
+
+      <!-- Caja de Explicación / Fundamento -->
+      <div class="explanation-card" id="explanation-box">
+        <h4>
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          Justificación Oficial:
+        </h4>
+        <p id="explanation-text"></p>
+      </div>
+
+      <div class="quiz-actions">
+        <button class="btn-prev" id="btn-prev" style="visibility: hidden;">&larr; Anterior</button>
+        <button class="btn-ai-solve" id="btn-ai-solve" title="Resolver con IA usando el motor TouchID">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/></svg>
+          Resolver con IA
+        </button>
+        <button class="btn-next" id="btn-next">Siguiente &rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 3: PANTALLA DE RESULTADOS -->
+  <section class="results-card" id="view-results">
+    <div style="max-width: 760px; margin: 0 auto;">
+      <div class="results-score-circle">
+        <span class="score-number" id="res-score">0</span>
+        <span class="score-total" id="res-max">de 10</span>
+      </div>
+      <h2 class="results-status" id="res-status">¡Evaluación Finalizada!</h2>
+      <p id="res-msg" style="color: #94a3b8; font-size: 1.05rem; margin-bottom: 24px;"></p>
+
+      <div style="display: flex; justify-content: center; gap: 14px; margin-bottom: 30px;">
+        <button class="btn-start" id="btn-retry" style="padding: 12px 28px; font-size: 1rem;">Reintentar Cuestionario</button>
+        <button class="btn-prev" id="btn-change-category" style="padding: 12px 24px; font-size: 1rem;">Elegir otro Temario</button>
+      </div>
+
+      <div style="text-align: left; margin-top: 30px;">
+        <h3 style="color: #f8fafc; font-size: 1.2rem; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+          Desglose de Respuestas y Justificaciones:
+        </h3>
+        <div class="results-review-list" id="results-review-list">
+          <!-- Desglose de cada pregunta -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>
