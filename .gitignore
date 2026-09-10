@@ -33,3 +33,4 @@ touchid-backend/*.json
 
 # Binaries
 *.apk
+*.bak
