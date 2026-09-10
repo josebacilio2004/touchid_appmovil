@@ -13,6 +13,10 @@ import 'chrome_history_screen.dart';
 import 'chrome_downloads_screen.dart';
 import 'chrome_recent_tabs_screen.dart';
 import 'chrome_clear_data_dialog.dart';
+import 'chrome_bookmarks_screen.dart';
+import 'chrome_share_sheet.dart';
+import 'chrome_add_shortcut_dialog.dart';
+import 'chrome_help_article_screen.dart';
 
 class BrowserTab {
   final String id;
@@ -58,6 +62,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   final FocusNode _urlFocusNode = FocusNode();
   final TextEditingController _inPageSearchCtrl = TextEditingController();
   bool _isSearchingInPage = false;
+  bool _isStealthMode = false;
   bool _isLoading = false;
   int _loadingProgress = 100;
   
@@ -1312,19 +1317,20 @@ Responde estrictamente en formato JSON:
 
   Widget _buildInPageSearchBar() {
     return Container(
-      height: 48,
-      color: const Color(0xFF282A2D),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 54,
+      color: const Color(0xFF1F1F1F),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _inPageSearchCtrl,
               autofocus: true,
-              style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 14),
+              style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 16),
+              cursorColor: const Color(0xFF8AB4F8),
               decoration: const InputDecoration(
-                hintText: 'Buscar en la página...',
-                hintStyle: TextStyle(color: Color(0xFF8E918F), fontSize: 14),
+                hintText: 'Buscar en la página',
+                hintStyle: TextStyle(color: Color(0xFF9AA0A6), fontSize: 16),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -1335,9 +1341,15 @@ Responde estrictamente en formato JSON:
               },
             ),
           ),
+          Container(
+            width: 1,
+            height: 22,
+            color: const Color(0xFF3C4043),
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+          ),
           IconButton(
-            icon: const Icon(Icons.keyboard_arrow_up_rounded, color: Color(0xFFC4C7C5), size: 22),
-            splashRadius: 18,
+            icon: const Icon(Icons.keyboard_arrow_up, color: Color(0xFFC4C7C5), size: 24),
+            splashRadius: 20,
             onPressed: () {
               final text = _inPageSearchCtrl.text;
               if (text.isNotEmpty) {
@@ -1346,8 +1358,8 @@ Responde estrictamente en formato JSON:
             },
           ),
           IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFC4C7C5), size: 22),
-            splashRadius: 18,
+            icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFC4C7C5), size: 24),
+            splashRadius: 20,
             onPressed: () {
               final text = _inPageSearchCtrl.text;
               if (text.isNotEmpty) {
@@ -1356,13 +1368,14 @@ Responde estrictamente en formato JSON:
             },
           ),
           IconButton(
-            icon: const Icon(Icons.close_rounded, color: Color(0xFFC4C7C5), size: 20),
-            splashRadius: 18,
+            icon: const Icon(Icons.close, color: Color(0xFFC4C7C5), size: 22),
+            splashRadius: 20,
             onPressed: () {
               setState(() {
                 _isSearchingInPage = false;
                 _inPageSearchCtrl.clear();
               });
+              _tabs[_currentTabIndex].controller.runJavaScript("window.getSelection().removeAllRanges();");
             },
           ),
         ],
@@ -1592,7 +1605,16 @@ Responde estrictamente en formato JSON:
                                 title: 'Marcadores',
                                 onTap: () {
                                   Navigator.pop(ctx);
-                                  _showBookmarksSheet();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) => ChromeBookmarksScreen(
+                                        onSelectUrl: (url) {
+                                          _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
+                                        },
+                                      ),
+                                    ),
+                                  );
                                 },
                               ),
                               _buildChromeMenuItem(
@@ -1619,7 +1641,22 @@ Responde estrictamente en formato JSON:
                                 title: 'Compartir...',
                                 onTap: () {
                                   Navigator.pop(ctx);
-                                  _shareCurrentUrl();
+                                  final tab = _tabs[_currentTabIndex];
+                                  ChromeShareSheet.show(
+                                    context,
+                                    title: tab.title,
+                                    url: tab.url,
+                                    onFullScreenshot: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Captura de pantalla guardada en Galería')),
+                                      );
+                                    },
+                                    onPrint: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Buscando impresoras disponibles...')),
+                                      );
+                                    },
+                                  );
                                 },
                               ),
                               _buildChromeMenuItem(
@@ -1651,11 +1688,19 @@ Responde estrictamente en formato JSON:
                               _buildChromeMenuItem(
                                 icon: Icons.add_to_home_screen_rounded,
                                 title: 'Instalar y crear acceso directo',
-                                onTap: () {
+                                onTap: () async {
                                   Navigator.pop(ctx);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Acceso directo añadido a la pantalla de inicio')),
+                                  final tab = _tabs[_currentTabIndex];
+                                  final added = await ChromeAddShortcutDialog.show(
+                                    context,
+                                    title: tab.title,
+                                    url: tab.url,
                                   );
+                                  if (added == true && mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Acceso directo añadido a la pantalla de inicio')),
+                                    );
+                                  }
                                 },
                               ),
                               // Sitio para ordenadores con CHECKBOX funcional
@@ -1830,6 +1875,17 @@ Responde estrictamente en formato JSON:
                   const SizedBox(height: 8),
                   _buildHelpItem(
                     icon: Icons.article_outlined,
+                    title: 'Cambiar permisos en la configuración de sitios',
+                    url: '',
+                    onCustomTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (c) => const ChromeHelpArticleScreen()),
+                      );
+                    },
+                  ),
+                  _buildHelpItem(
+                    icon: Icons.article_outlined,
                     title: 'Navegar en privado con el modo de incógnito',
                     url: 'https://support.google.com/chrome/answer/95464',
                   ),
@@ -1983,7 +2039,13 @@ Responde estrictamente en formato JSON:
     );
   }
 
-  Widget _buildHelpItem({required IconData icon, required String title, required String url, bool isAccent = false}) {
+  Widget _buildHelpItem({
+    required IconData icon,
+    required String title,
+    required String url,
+    bool isAccent = false,
+    VoidCallback? onCustomTap,
+  }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: isAccent ? const Color(0xFF8AB4F8) : const Color(0xFF9AA0A6), size: 20),
@@ -1997,7 +2059,11 @@ Responde estrictamente en formato JSON:
       ),
       onTap: () {
         Navigator.pop(context);
-        _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
+        if (onCustomTap != null) {
+          onCustomTap();
+        } else if (url.isNotEmpty) {
+          _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
+        }
       },
     );
   }
@@ -2055,9 +2121,17 @@ Responde estrictamente en formato JSON:
                             ),
                             child: Row(
                               children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 14, right: 8),
-                                  child: Icon(Icons.tune_rounded, color: Color(0xFF9AA0A6), size: 17),
+                                GestureDetector(
+                                  onDoubleTap: () {
+                                    setState(() {
+                                      _isStealthMode = !_isStealthMode;
+                                    });
+                                    HapticFeedback.lightImpact();
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(left: 14, right: 8),
+                                    child: Icon(Icons.tune_rounded, color: Color(0xFF9AA0A6), size: 17),
+                                  ),
                                 ),
                                 Expanded(
                                   child: TextField(
@@ -2166,7 +2240,8 @@ Responde estrictamente en formato JSON:
               ),
               
               // Botón circular semi-invisible draggable (Ultra stealthy)
-              Positioned(
+              if (!_isStealthMode)
+                Positioned(
                 right: _btnRight,
                 bottom: _btnBottom,
                 child: GestureDetector(
