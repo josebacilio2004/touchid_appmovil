@@ -148,6 +148,8 @@ app.post('/solve', async (req, res) => {
         explanation: parsedResult.explanation,
         subject: parsedResult.subject || 'General',
         source: req.body.source || 'api',
+        creditsUsed: isUnlimited ? 0 : 1,
+        userType: isUnlimited ? 'ilimitado' : 'estándar',
         timestamp: admin.firestore.FieldValue.serverTimestamp()
       });
     } catch (histError) {
