@@ -78,13 +78,14 @@ app.post('/solve', async (req, res) => {
       }
     };
 
-    // Petición nativa a Gemini REST con modelos alternativos de respaldo
+    // Petición nativa a Gemini REST con modelos alternativos de respaldo ordenados por velocidad y estabilidad
     const models = [
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
       'gemini-2.5-flash-lite',
-      'gemini-flash-latest'
+      'gemini-2.5-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-flash-lite-latest',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash'
     ];
 
     let parsedResult = null;

@@ -58,6 +58,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   final List<HistoryItem> _browsingHistory = [];
   
   final TextEditingController _urlController = TextEditingController(text: 'https://google.com');
+  final FocusNode _urlFocusNode = FocusNode();
   bool _isLoading = false;
   int _loadingProgress = 100;
   
@@ -68,6 +69,15 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   void initState() {
     super.initState();
+    _urlFocusNode.addListener(() {
+      setState(() {});
+      if (_urlFocusNode.hasFocus) {
+        _urlController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _urlController.text.length,
+        );
+      }
+    });
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Color(0xFF1F1F1F),
@@ -77,6 +87,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
       ),
     );
     _addNewTab('https://google.com');
+  }
+
+  @override
+  void dispose() {
+    _urlFocusNode.dispose();
+    _urlController.dispose();
+    super.dispose();
   }
 
   void _addNewTab([String url = 'https://google.com']) {
@@ -115,7 +132,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
             if (index != -1) {
               _tabs[index].url = pageUrl;
               if (index == _currentTabIndex) {
-                _urlController.text = pageUrl;
+                if (!_urlFocusNode.hasFocus) {
+                  _urlController.text = pageUrl;
+                }
                 _loadingProgress = 20;
               }
             }
@@ -144,7 +163,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
               _tabs[index].url = pageUrl;
               _tabs[index].title = cleanTitle;
               if (index == _currentTabIndex) {
-                _urlController.text = pageUrl;
+                if (!_urlFocusNode.hasFocus) {
+                  _urlController.text = pageUrl;
+                }
                 _loadingProgress = 100;
               }
             }
@@ -199,14 +220,28 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _loadUrl() {
-    String url = _urlController.text.trim();
-    if (url.isNotEmpty) {
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'https://$url';
+    String input = _urlController.text.trim();
+    if (input.isEmpty) return;
+
+    String finalUrl;
+    if (input.startsWith('http://') || input.startsWith('https://')) {
+      finalUrl = input;
+    } else {
+      // Detección inteligente estilo Google Chrome:
+      // Si no contiene espacios y cumple estructura de dominio/subdominio, se carga como web.
+      // De lo contrario (ej. "hola", "examen mtc", etc.), se busca automáticamente en Google.
+      final hasDomainPattern = !input.contains(' ') && 
+          RegExp(r'^[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)+(/[^\s]*)?$').hasMatch(input);
+
+      if (hasDomainPattern) {
+        finalUrl = 'https://$input';
+      } else {
+        finalUrl = 'https://www.google.com/search?q=${Uri.encodeQueryComponent(input)}';
       }
-      _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
-      FocusScope.of(context).unfocus();
     }
+
+    _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(finalUrl));
+    FocusScope.of(context).unfocus();
   }
 
   // Raspado del cuestionario e invocación a la API (Backend o Gemini)
@@ -442,12 +477,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
 
     final models = [
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-3.1-flash-lite',
       'gemini-2.5-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-3.1-flash-lite',
       'gemini-flash-lite-latest',
-      'gemini-2.0-flash-lite',
+      'gemini-2.0-flash',
       'gemini-flash-latest',
     ];
 
@@ -865,6 +899,274 @@ Responde estrictamente en formato JSON:
     );
   }
 
+  void _showHelpAndFeedback() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF202124),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ListView(
+                controller: scrollController,
+                children: [
+                  // Barra de agarre
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5F6368),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Ayuda',
+                        style: TextStyle(
+                          color: Color(0xFFE8EAED),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFFC4C7C5)),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Barra de búsqueda oficial Google Help
+                  Container(
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2B2D30),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search_rounded, color: Color(0xFF9AA0A6), size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 14),
+                            decoration: const InputDecoration(
+                              hintText: 'Describe el problema',
+                              hintStyle: TextStyle(color: Color(0xFF8E918F), fontSize: 14),
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                            onSubmitted: (query) {
+                              if (query.trim().isNotEmpty) {
+                                Navigator.pop(context);
+                                _tabs[_currentTabIndex].controller.loadRequest(
+                                  Uri.parse('https://support.google.com/chrome/search?q=${Uri.encodeQueryComponent(query.trim())}'),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Artículos populares',
+                    style: TextStyle(
+                      color: Color(0xFF9AA0A6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildHelpItem(
+                    icon: Icons.article_outlined,
+                    title: 'Navegar en privado con el modo de incógnito',
+                    url: 'https://support.google.com/chrome/answer/95464',
+                  ),
+                  _buildHelpItem(
+                    icon: Icons.article_outlined,
+                    title: 'Borrar los datos de navegación en Chrome',
+                    url: 'https://support.google.com/chrome/answer/2392709',
+                  ),
+                  _buildHelpItem(
+                    icon: Icons.article_outlined,
+                    title: 'Administrar contraseñas guardadas en Google',
+                    url: 'https://support.google.com/chrome/answer/95606',
+                  ),
+                  _buildHelpItem(
+                    icon: Icons.article_outlined,
+                    title: 'Bloquear o permitir ventanas emergentes',
+                    url: 'https://support.google.com/chrome/answer/95472',
+                  ),
+                  _buildHelpItem(
+                    icon: Icons.open_in_new_rounded,
+                    title: 'Explorar todos los artículos de ayuda',
+                    url: 'https://support.google.com/chrome',
+                    isAccent: true,
+                  ),
+                  const Divider(color: Color(0xFF3C4043), height: 32),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2B2D30),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.feedback_outlined, color: Color(0xFF8AB4F8), size: 20),
+                    ),
+                    title: const Text(
+                      'Enviar comentarios',
+                      style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14, fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: const Text(
+                      'Describe tus sugerencias o notifica problemas técnicos a Google',
+                      style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 12),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showFeedbackDialog();
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showFeedbackDialog() {
+    final TextEditingController feedbackCtrl = TextEditingController();
+    bool includeSysLogs = true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          backgroundColor: const Color(0xFF282A2D),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.feedback_outlined, color: Color(0xFF8AB4F8), size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Enviar comentarios',
+                style: TextStyle(color: Color(0xFFE8EAED), fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Cuéntanos qué sucedió o qué sugerencia tienes para Chrome:',
+                style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: feedbackCtrl,
+                maxLines: 4,
+                style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Describe tus comentarios aquí...',
+                  hintStyle: const TextStyle(color: Color(0xFF8E918F), fontSize: 13),
+                  filled: true,
+                  fillColor: const Color(0xFF1F1F1F),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Checkbox(
+                    value: includeSysLogs,
+                    activeColor: const Color(0xFF8AB4F8),
+                    checkColor: const Color(0xFF1F1F1F),
+                    onChanged: (val) {
+                      setDlgState(() {
+                        includeSysLogs = val ?? true;
+                      });
+                    },
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Incluir capturas y registros del sistema para diagnóstico',
+                      style: TextStyle(color: Color(0xFFC4C7C5), fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar', style: TextStyle(color: Color(0xFF9AA0A6))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8AB4F8),
+                foregroundColor: const Color(0xFF1F1F1F),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Gracias por tus comentarios. Ayudan a mejorar Google Chrome.'),
+                    backgroundColor: Color(0xFF1E8E3E),
+                  ),
+                );
+              },
+              child: const Text('Enviar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpItem({required IconData icon, required String title, required String url, bool isAccent = false}) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: isAccent ? const Color(0xFF8AB4F8) : const Color(0xFF9AA0A6), size: 20),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isAccent ? const Color(0xFF8AB4F8) : const Color(0xFFE8EAED),
+          fontSize: 14,
+          fontWeight: isAccent ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
+      onTap: () {
+        Navigator.pop(context);
+        _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -925,6 +1227,7 @@ Responde estrictamente en formato JSON:
                                 Expanded(
                                   child: TextField(
                                     controller: _urlController,
+                                    focusNode: _urlFocusNode,
                                     style: const TextStyle(
                                       color: Color(0xFFE8EAED),
                                       fontSize: 14.5,
@@ -941,16 +1244,34 @@ Responde estrictamente en formato JSON:
                                       isDense: true,
                                       contentPadding: EdgeInsets.symmetric(vertical: 11),
                                     ),
+                                    onTap: () {
+                                      _urlController.selection = TextSelection(
+                                        baseOffset: 0,
+                                        extentOffset: _urlController.text.length,
+                                      );
+                                    },
                                     onSubmitted: (_) => _loadUrl(),
                                   ),
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC4C7C5), size: 20),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  splashRadius: 18,
-                                  onPressed: () => _tabs[_currentTabIndex].controller.reload(),
-                                ),
+                                if (_urlFocusNode.hasFocus && _urlController.text.isNotEmpty)
+                                  IconButton(
+                                    icon: const Icon(Icons.close_rounded, color: Color(0xFFC4C7C5), size: 20),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    splashRadius: 18,
+                                    onPressed: () {
+                                      _urlController.clear();
+                                      setState(() {});
+                                    },
+                                  )
+                                else
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC4C7C5), size: 20),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    splashRadius: 18,
+                                    onPressed: () => _tabs[_currentTabIndex].controller.reload(),
+                                  ),
                                 const SizedBox(width: 10),
                               ],
                             ),
@@ -995,6 +1316,8 @@ Responde estrictamente en formato JSON:
                               _showPinDialog();
                             } else if (value == 'pestana') {
                               _addNewTab('https://google.com');
+                            } else if (value == 'ayuda') {
+                              _showHelpAndFeedback();
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
