@@ -50,6 +50,8 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "../chrome.png"
+  adaptive_icon_background: "#00000000"
+  adaptive_icon_foreground: "../chrome_adaptive.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
