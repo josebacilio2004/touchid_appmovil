@@ -7,8 +7,9 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/app_config.dart';
-import 'dashboard_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'settings_screen.dart';
+import 'chrome_history_screen.dart';
 
 class BrowserTab {
   final String id;
@@ -21,18 +22,6 @@ class BrowserTab {
     required this.title,
     required this.url,
     required this.controller,
-  });
-}
-
-class HistoryItem {
-  final String title;
-  final String url;
-  final DateTime timestamp;
-
-  HistoryItem({
-    required this.title,
-    required this.url,
-    required this.timestamp,
   });
 }
 
@@ -55,7 +44,7 @@ class BrowserScreen extends StatefulWidget {
 class _BrowserScreenState extends State<BrowserScreen> {
   final List<BrowserTab> _tabs = [];
   int _currentTabIndex = 0;
-  final List<HistoryItem> _browsingHistory = [];
+  final List<ChromeHistoryItem> _browsingHistory = [];
   
   final TextEditingController _urlController = TextEditingController(text: 'https://google.com');
   final FocusNode _urlFocusNode = FocusNode();
@@ -69,6 +58,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   void initState() {
     super.initState();
+    _loadBrowsingHistory();
     _urlFocusNode.addListener(() {
       setState(() {});
       if (_urlFocusNode.hasFocus) {
@@ -87,6 +77,70 @@ class _BrowserScreenState extends State<BrowserScreen> {
       ),
     );
     _addNewTab('https://google.com');
+  }
+
+  Future<void> _loadBrowsingHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final historyRaw = prefs.getStringList('chrome_browsing_history');
+      if (historyRaw != null && historyRaw.isNotEmpty) {
+        _browsingHistory.clear();
+        for (final itemStr in historyRaw) {
+          try {
+            final map = jsonDecode(itemStr) as Map<String, dynamic>;
+            _browsingHistory.add(ChromeHistoryItem.fromJson(map));
+          } catch (_) {}
+        }
+        if (mounted) setState(() {});
+      } else {
+        _seedInitialHistory();
+      }
+    } catch (e) {
+      print('Error cargando historial: $e');
+    }
+  }
+
+  void _seedInitialHistory() {
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1));
+    _browsingHistory.addAll([
+      ChromeHistoryItem(
+        title: 'Examen de Reglas MTC Perú - Simulacro Oficial',
+        url: 'https://sierdgtt.mtc.gob.pe/',
+        timestamp: now.subtract(const Duration(minutes: 15)),
+      ),
+      ChromeHistoryItem(
+        title: 'MTC Simulacro de Examen de Conocimientos',
+        url: 'https://mtc.dhs.pe/evaluacion',
+        timestamp: now.subtract(const Duration(hours: 1)),
+      ),
+      ChromeHistoryItem(
+        title: 'Google',
+        url: 'https://www.google.com',
+        timestamp: now.subtract(const Duration(hours: 3)),
+      ),
+      ChromeHistoryItem(
+        title: 'Balotario de Preguntas para Licencia de Conducir Clase A',
+        url: 'https://portal.mtc.gob.pe/transportes/terrestre/licencias/balotario.html',
+        timestamp: yesterday.subtract(const Duration(hours: 2)),
+      ),
+      ChromeHistoryItem(
+        title: 'Reglamento Nacional de Tránsito TUO DS 016-2009-MTC',
+        url: 'https://transparencia.mtc.gob.pe/normas_transito',
+        timestamp: yesterday.subtract(const Duration(hours: 5)),
+      ),
+    ]);
+    _saveBrowsingHistory();
+  }
+
+  Future<void> _saveBrowsingHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = _browsingHistory.map((item) => jsonEncode(item.toJson())).toList();
+      await prefs.setStringList('chrome_browsing_history', list);
+    } catch (e) {
+      print('Error guardando historial: $e');
+    }
   }
 
   @override
@@ -149,12 +203,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
           final cleanTitle = (title == null || title.trim().isEmpty) ? pageUrl : title;
           
           // Track browsing history
-          if (_browsingHistory.isEmpty || _browsingHistory.first.url != pageUrl) {
-            _browsingHistory.insert(0, HistoryItem(
-              title: cleanTitle,
-              url: pageUrl,
-              timestamp: DateTime.now(),
-            ));
+          if (cleanTitle != 'Nueva pestaña' && cleanTitle.trim().isNotEmpty && pageUrl.trim().isNotEmpty && !pageUrl.startsWith('about:')) {
+            if (_browsingHistory.isEmpty || _browsingHistory.first.url != pageUrl) {
+              _browsingHistory.insert(0, ChromeHistoryItem(
+                title: cleanTitle,
+                url: pageUrl,
+                timestamp: DateTime.now(),
+              ));
+              if (_browsingHistory.length > 200) {
+                _browsingHistory.removeLast();
+              }
+              _saveBrowsingHistory();
+            }
           }
 
           setState(() {
@@ -428,15 +488,25 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final backendUrl = widget.config.backendUrl.trim();
     final userId = widget.config.userId.trim();
 
+    // Determinar system prompt inteligente (con detección MTC y alta precisión)
+    String systemPrompt = widget.config.systemPrompt.trim();
+    if (systemPrompt.isEmpty) {
+      final isMtc = RegExp(
+        r'mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|adelantamiento|preferencia|estacionar|remolque|soat|citv|inspecci[óo]n|v[íi]a|intersecci[óo]n',
+        caseSensitive: false,
+      ).hasMatch('$question ${options.join(' ')}');
+      if (isMtc) {
+        systemPrompt = 'Eres el evaluador oficial y perito experto del examen de reglas de tránsito del MTC (Ministerio de Transportes y Comunicaciones del Perú). Tu objetivo es responder con 100% de precisión y exactitud jurídica basándote estrictamente en el TUO del Reglamento Nacional de Tránsito (D.S. N° 016-2009-MTC y sus modificatorias como D.S. N° 025-2021-MTC sobre límites de velocidad de 30 km/h en calles/jirones y 50 km/h en avenidas) y el Balotario Oficial de Preguntas del MTC. Responde de forma rigurosa seleccionando la alternativa oficial correcta.';
+      } else {
+        systemPrompt = 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
+      }
+    }
+
     if (backendUrl.isNotEmpty) {
       String urlStr = backendUrl;
       if (!urlStr.endsWith('/solve')) {
         urlStr = urlStr.endsWith('/') ? '${urlStr}solve' : '$urlStr/solve';
       }
-      
-      final systemPrompt = widget.config.systemPrompt.trim().isNotEmpty
-          ? widget.config.systemPrompt.trim()
-          : 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
 
       try {
         final response = await http.post(
@@ -516,10 +586,6 @@ Responde estrictamente en formato JSON:
 ''';
     }
 
-    final systemPrompt = widget.config.systemPrompt.trim().isNotEmpty
-        ? widget.config.systemPrompt.trim()
-        : 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
-
     final requestBody = {
       'contents': [
         {
@@ -534,6 +600,7 @@ Responde estrictamente en formato JSON:
         ]
       },
       'generationConfig': {
+        'temperature': 0.0,
         'responseMimeType': 'application/json',
         'responseSchema': {
           'type': 'OBJECT',
@@ -809,93 +876,28 @@ Responde estrictamente en formato JSON:
   }
 
   void _showBrowsingHistory() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF202124),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.8,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Historial del Navegador',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setModalState(() {
-                            _browsingHistory.clear();
-                          });
-                          setState(() {});
-                        },
-                        child: const Text('Borrar todo', style: TextStyle(color: Colors.redAccent)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: _browsingHistory.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'No hay historial de navegación',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: _browsingHistory.length,
-                            itemBuilder: (context, index) {
-                              final item = _browsingHistory[index];
-                              return ListTile(
-                                leading: const Icon(Icons.history, color: Colors.grey),
-                                title: Text(
-                                  item.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                                ),
-                                subtitle: Text(
-                                  item.url,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 11),
-                                ),
-                                onTap: () {
-                                  _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(item.url));
-                                  Navigator.pop(context);
-                                },
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
-                                  onPressed: () {
-                                    setModalState(() {
-                                      _browsingHistory.removeAt(index);
-                                    });
-                                    setState(() {});
-                                  },
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => ChromeHistoryScreen(
+          history: _browsingHistory,
+          onSelectUrl: (url) {
+            _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
           },
-        );
-      },
+          onDeleteItem: (id) {
+            setState(() {
+              _browsingHistory.removeWhere((item) => item.id == id);
+            });
+            _saveBrowsingHistory();
+          },
+          onClearAll: () {
+            setState(() {
+              _browsingHistory.clear();
+            });
+            _saveBrowsingHistory();
+          },
+        ),
+      ),
     );
   }
 

@@ -387,5 +387,19 @@ historySearch.addEventListener('input', (e) => {
   });
 });
 
+// Enrutamiento por Hash directo (ej. #quizzes)
+function checkHashRoute() {
+  const hash = window.location.hash;
+  if (hash) {
+    const targetItem = document.querySelector(`.nav-item[href="${hash}"]`);
+    if (targetItem) {
+      targetItem.click();
+    }
+  }
+}
+
 // Inicializar el dashboard al cargar
-initDashboard();
+initDashboard().then(() => {
+  checkHashRoute();
+});
+window.addEventListener('hashchange', checkHashRoute);

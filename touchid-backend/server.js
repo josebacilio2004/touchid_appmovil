@@ -11,9 +11,11 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
+const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../docs')));
 
 // 2. Endpoint para resolver preguntas (Gemini API Gateway)
 app.post('/solve', async (req, res) => {
@@ -58,12 +60,22 @@ app.post('/solve', async (req, res) => {
       prompt = `Pregunta/Contenido: "${question}"\n\nResponde en JSON estructurado: { "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
     }
 
-    const systemInstructionText = systemPrompt || 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
+    const isMtcQuery = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(question);
+
+    let systemInstructionText = systemPrompt;
+    if (!systemInstructionText || systemInstructionText.trim() === '') {
+      if (isMtcQuery) {
+        systemInstructionText = 'Actúa como evaluador oficial del Examen Nacional de Conducir del MTC (Perú). Responde con el 100% de precisión según el Texto Único Ordenado del Reglamento Nacional de Tránsito (D.S. 016-2009-MTC, D.S. 025-2021-MTC y modificatorias) y el Balotario Oficial de Preguntas del MTC. Presta extrema atención a límites de velocidad vigentes en calles/avenidas, reglas de preferencia de paso y preguntas trampa.';
+      } else {
+        systemInstructionText = 'Actúa como un evaluador académico de élite y responde con el 100% de precisión analizando rigurosamente todas las alternativas y descartando distractores.';
+      }
+    }
 
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
       systemInstruction: { parts: [{ text: systemInstructionText }] },
       generationConfig: {
+        temperature: 0.0,
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',

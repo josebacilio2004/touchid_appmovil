@@ -651,6 +651,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             letterSpacing: 1.0,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Plantillas rápidas recomendadas:',
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ActionChip(
+                              avatar: const Text('🚗', style: TextStyle(fontSize: 13)),
+                              label: const Text('Examen MTC (Perú)', style: TextStyle(color: Colors.white, fontSize: 11.5)),
+                              backgroundColor: const Color(0xFF1E293B),
+                              side: const BorderSide(color: Colors.blueAccent, width: 0.8),
+                              onPressed: () {
+                                setState(() {
+                                  _systemPromptController.text =
+                                      'Actúa como el evaluador oficial y máxima autoridad del Examen Nacional de Conducir del MTC (Perú). Responde con el 100% de precisión según el Texto Único Ordenado del Reglamento Nacional de Tránsito (D.S. 016-2009-MTC y D.S. 025-2021-MTC), el Balotario Oficial de Preguntas del MTC para licencias Clase A y B, normas de preferencia de paso, límites de velocidad actualizados (calles/jirones 30 km/h, avenidas 50 km/h) e infracciones (M, G, L). Evita trampas y selecciona la respuesta exactamente válida.';
+                                });
+                              },
+                            ),
+                            ActionChip(
+                              avatar: const Text('🫁', style: TextStyle(fontSize: 13)),
+                              label: const Text('Neumología', style: TextStyle(color: Colors.white, fontSize: 11.5)),
+                              backgroundColor: const Color(0xFF1E293B),
+                              side: const BorderSide(color: Colors.tealAccent, width: 0.8),
+                              onPressed: () {
+                                setState(() {
+                                  _systemPromptController.text =
+                                      'Actúa como un médico especialista de alto nivel en Neumología y Medicina Interna. Responde con el 100% de precisión científica según guías clínicas GOLD, GINA, ATS/ERS, fisiopatología respiratoria y farmacología oficial.';
+                                });
+                              },
+                            ),
+                            ActionChip(
+                              avatar: const Text('🎓', style: TextStyle(fontSize: 13)),
+                              label: const Text('Académico', style: TextStyle(color: Colors.white, fontSize: 11.5)),
+                              backgroundColor: const Color(0xFF1E293B),
+                              side: const BorderSide(color: Colors.purpleAccent, width: 0.8),
+                              onPressed: () {
+                                setState(() {
+                                  _systemPromptController.text =
+                                      'Actúa como un profesor universitario y examinador académico de élite. Analiza minuciosamente la pregunta, descarta distractores y opciones trampa, y determina con certeza absoluta la alternativa correcta.';
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _systemPromptController,

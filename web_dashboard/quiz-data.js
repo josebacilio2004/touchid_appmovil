@@ -1,0 +1,523 @@
+// Banco de Preguntas Multidisciplinario para el Simulador Web TouchID
+export const QUIZ_CATEGORIES = [
+  {
+    id: 'mtc',
+    title: '🚗 Examen MTC - Reglas de Tránsito (Perú)',
+    subtitle: 'Balotario Oficial de Conocimientos - Brevete Clase A',
+    badge: 'Oficial MTC',
+    badgeColor: '#10b981',
+    description: 'Preguntas oficiales del Ministerio de Transportes y Comunicaciones del Perú según el TUO del Reglamento Nacional de Tránsito y modificatorias (D.S. 025-2021-MTC).',
+    questions: [
+      {
+        id: 'mtc_1',
+        question: 'De acuerdo con el D.S. N° 025-2021-MTC, ¿cuál es el límite máximo de velocidad permitido para vehículos en calles y jirones de zonas urbanas?',
+        options: [
+          '40 km/h',
+          '30 km/h',
+          '50 km/h',
+          '20 km/h'
+        ],
+        correctIndex: 1,
+        explanation: 'El D.S. N° 025-2021-MTC modificó el Art. 162 del Reglamento de Tránsito, estableciendo que la velocidad máxima en calles y jirones es de 30 km/h.'
+      },
+      {
+        id: 'mtc_2',
+        question: 'En avenidas urbanas, ¿cuál es la velocidad máxima permitida para automóviles particulares si no hay señales que indiquen otro límite?',
+        options: [
+          '60 km/h',
+          '50 km/h',
+          '40 km/h',
+          '70 km/h'
+        ],
+        correctIndex: 1,
+        explanation: 'Bajo el D.S. N° 025-2021-MTC, el límite de velocidad en avenidas urbanas se redujo de 60 km/h a 50 km/h.'
+      },
+      {
+        id: 'mtc_3',
+        question: 'En una intersección o calzada rotatoria (óvalo o rotonda), ¿quién tiene prioridad de paso?',
+        options: [
+          'El vehículo que intenta ingresar a la rotonda desde una avenida más ancha',
+          'El vehículo que circula dentro de la rotonda respecto al que intenta ingresar',
+          'El vehículo que circula a mayor velocidad',
+          'El vehículo que viene por la derecha aunque intente ingresar'
+        ],
+        correctIndex: 1,
+        explanation: 'En las rotondas u óvalos, tiene prioridad de paso indiscutible el vehículo que ya circula dentro de la calzada rotatoria.'
+      },
+      {
+        id: 'mtc_4',
+        question: '¿Por qué lado de la calzada se debe efectuar por regla general el adelantamiento a otro vehículo en movimiento?',
+        options: [
+          'Por la derecha si la berma está libre y asfaltada',
+          'Por la izquierda únicamente',
+          'Por cualquier lado siempre que se toquen las bocinas',
+          'Por la berma lateral si el vehículo precedente no avanza rápido'
+        ],
+        correctIndex: 1,
+        explanation: 'El Art. 169 del Reglamento Nacional de Tránsito establece que el adelantamiento se realiza obligatoriamente por la izquierda.'
+      },
+      {
+        id: 'mtc_5',
+        question: 'En carreteras del Perú, ¿en qué horario es obligatorio circular con las luces bajas (luces de circulación diurna)?',
+        options: [
+          'Únicamente desde las 18:00 horas hasta las 06:00 horas',
+          'Las 24 horas del día, independientemente de las condiciones climáticas o de luminosidad',
+          'Solo en túneles y cuando haya lluvia intensa',
+          'Solo durante la noche y al atardecer'
+        ],
+        correctIndex: 1,
+        explanation: 'En la red vial nacional y departamental, es obligatorio el uso de luces bajas las 24 horas del día (D.S. 025-2021-MTC / RNT).'
+      },
+      {
+        id: 'mtc_6',
+        question: '¿Cuál es el límite máximo de velocidad en zonas escolares y zonas de hospitales en el Perú?',
+        options: [
+          '30 km/h',
+          '20 km/h',
+          '15 km/h',
+          '35 km/h'
+        ],
+        correctIndex: 0,
+        explanation: 'La velocidad máxima en zonas escolares y de hospitales es de 30 km/h (y 20 km/h en proximidad inmediata a salidas/entradas escolares en horario escolar).'
+      },
+      {
+        id: 'mtc_7',
+        question: 'Conducir con presencia de alcohol en la sangre en proporción mayor a lo previsto en el Código Penal y bajo la influencia de drogas es una falta tipificada como:',
+        options: [
+          'Grave (Código G01)',
+          'Muy Grave (Código M01) que conlleva la cancelación definitiva o suspensión de la licencia',
+          'Leve (Código L01)',
+          'Solo retención momentánea del vehículo'
+        ],
+        correctIndex: 1,
+        explanation: 'La infracción M01 es Muy Grave y sanciona con multa del 100% de la UIT, cancelación de la licencia de conducir e inhabilitación definitiva.'
+      },
+      {
+        id: 'mtc_8',
+        question: '¿Qué documento garantiza la cobertura integral de gastos médicos y sepelio para víctimas de accidentes de tránsito de forma incondicional e inmediata?',
+        options: [
+          'La Tarjeta de Identificación Vehicular (TIV)',
+          'El Certificado de Inspección Técnica Vehicular (CITV)',
+          'El Seguro Obligatorio de Accidentes de Tránsito (SOAT) o CAT',
+          'El contrato de compraventa del vehículo'
+        ],
+        correctIndex: 2,
+        explanation: 'El SOAT cubre incondicional e inmediatamente a todos los ocupantes y terceros no ocupantes afectados por un accidente de tránsito.'
+      },
+      {
+        id: 'mtc_9',
+        question: 'En una intersección que carece de semáforos y señales reguladoras, si dos vehículos convergen simultáneamente, ¿cuál tiene la preferencia de paso?',
+        options: [
+          'El vehículo que viene por la izquierda',
+          'El que se aproxime por la derecha del conductor',
+          'El vehículo de mayor tonelaje o tamaño',
+          'El que toque la bocina primero'
+        ],
+        correctIndex: 1,
+        explanation: 'En intersecciones no señalizadas ni semaforizadas, la prioridad de paso le asiste siempre al vehículo que proviene por la derecha.'
+      },
+      {
+        id: 'mtc_10',
+        question: '¿Qué significado tiene una señal vertical con fondo amarillo, forma de rombo y símbolos negros en las vías peruanas?',
+        options: [
+          'Señal Reguladora o Reglamentaria (obligación o prohibición)',
+          'Señal Preventiva (advierte sobre peligro o condición de la vía)',
+          'Señal Informativa de servicios',
+          'Señal de restricción temporal de velocidad'
+        ],
+        correctIndex: 1,
+        explanation: 'Las señales amarillas con forma de rombo son Señales Preventivas, cuyo propósito es advertir a los usuarios sobre peligros potenciales en la vía.'
+      }
+    ]
+  },
+  {
+    id: 'neumologia',
+    title: '🫁 Medicina & Neumología Clínica',
+    subtitle: 'Evaluación de Especialidad Médica y Casos Clínicos',
+    badge: 'Ciencias Médicas',
+    badgeColor: '#3b82f6',
+    description: 'Preguntas clínicas y fisiopatológicas de neumología: EPOC, espirometría, asma bronquial, neumonía comunitaria (CURB-65), tuberculosis y gasometría.',
+    questions: [
+      {
+        id: 'neu_1',
+        question: 'Para confirmar el diagnóstico espirométrico de Enfermedad Pulmonar Obstructiva Crónica (EPOC), ¿qué criterio post-broncodilatador debe cumplirse según las guías GOLD?',
+        options: [
+          'FEV1/FVC < 0.70',
+          'FEV1 > 80% del valor predicho',
+          'FVC < 70% con respuesta broncodilatadora > 12%',
+          'Capacidad pulmonar total (TLC) < 80%'
+        ],
+        correctIndex: 0,
+        explanation: 'Según la guía internacional GOLD, un cociente FEV1/FVC post-broncodilatador menor de 0.70 confirma la presencia de limitación persistente al flujo aéreo (patrón obstructivo).'
+      },
+      {
+        id: 'neu_2',
+        question: 'En la escala de estratificación de gravedad CURB-65 para Neumonía Adquirida en la Comunidad (NAC), ¿qué parámetro representa la letra "U"?',
+        options: [
+          'Uricemia > 7 mg/dL',
+          'Urea sérica > 19 mg/dL (o Nitrógeno Ureico en Sangre BUN > 20 mg/dL / Urea > 7 mmol/L)',
+          'Urocultivo positivo a gérmenes patógenos',
+          'Urgencia respiratoria con saturación < 90%'
+        ],
+        correctIndex: 1,
+        explanation: 'CURB-65 evalúa: Confusión, Urea (>7 mmol/L o BUN >20 mg/dL), Frecuencia respiratoria (>=30 rpm), Presión sanguínea (PAS<90 o PAD<=60 mmHg) y Edad (>=65 años).'
+      },
+      {
+        id: 'neu_3',
+        question: '¿Cuál es el tratamiento de primera línea de elección para un paciente con diagnóstico de Asma Leve Persistente según las recomendaciones GINA actuales?',
+        options: [
+          'Salbutamol oral en comprimidos cada 8 horas',
+          'Corticosteroide inhalado (ICS) en dosis bajas asociado a formoterol a demanda (o corticoide inhalado diario)',
+          'Bromuro de ipratropio como monoterapia exclusiva',
+          'Teofilina de liberación prolongada'
+        ],
+        correctIndex: 1,
+        explanation: 'Las guías GINA no recomiendan el uso de SABA en monoterapia; el pilar actual es el corticoide inhalado (ICS) asociado a formoterol para prevenir crisis inflamatorias.'
+      },
+      {
+        id: 'neu_4',
+        question: 'En la interpretación de la gasometría arterial: pH 7.28, PaCO2 58 mmHg, HCO3- 26 mEq/L, PaO2 62 mmHg. ¿Cuál es el trastorno ácido-base primario?',
+        options: [
+          'Alcalosis respiratoria descompensada',
+          'Acidosis metabólica con brecha aniónica elevada',
+          'Acidosis respiratoria aguda con hipoxemia moderada',
+          'Acidosis mixta hiperclorémica'
+        ],
+        correctIndex: 2,
+        explanation: 'pH < 7.35 indica acidosis, PaCO2 > 45 mmHg indica causa respiratoria, y el HCO3 normal (26) refleja ausencia de compensación renal crónica (aguda).'
+      },
+      {
+        id: 'neu_5',
+        question: '¿Cuál es el esquema farmacológico estándar de primera línea para Tuberculosis pulmonar sensible en el Perú según la Norma Técnica de Salud del MINSA (Fase 1)?',
+        options: [
+          'Isoniazida, Rifampicina, Pirazinamida y Etambutol (2HREZ) diario por 2 meses (50 dosis)',
+          'Levofloxacino, Amikacina y Cicloserina por 6 meses',
+          'Isoniazida y Rifampicina exclusivamente por 9 meses',
+          'Rifampicina y Estreptomicina por 3 meses'
+        ],
+        correctIndex: 0,
+        explanation: 'En el Perú, el esquema para TB pulmonar sensible comprende la primera fase intensiva con 2 meses de HREZ diario (50 dosis de Lunes a Sábado).'
+      },
+      {
+        id: 'neu_6',
+        question: 'Ante la sospecha clínica de un Neumotórax a Tensión con compromiso hemodinámico e hipotensión, ¿cuál es la conducta terapéutica inmediata?',
+        options: [
+          'Esperar el informe de la Tomografía Computarizada de alta resolución',
+          'Descompresión inmediata con catéter de grueso calibre en el 2° espacio intercostal línea medioclavicular (o 5° espacio línea axilar anterior)',
+          'Iniciar ventilación mecánica con presión positiva inmediata sin descompresión previa',
+          'Nebulización con agonistas beta-2 de acción corta'
+        ],
+        correctIndex: 1,
+        explanation: 'El neumotórax a tensión es una emergencia médica de diagnóstico clínico que requiere descompresión inmediata con aguja antes de cualquier estudio de imagen.'
+      },
+      {
+        id: 'neu_7',
+        question: '¿Cuál es el patrón característico en el lavado broncoalveolar (LBA) o biopsia de un paciente con Proteinosis Alveolar Pulmonar?',
+        options: [
+          'Predominio de eosinófilos > 25%',
+          'Material PAS-positivo acelular rico en surfactante fosfolipídico lipoproteináceo',
+          'Bacilos ácido-alcohol resistentes abundantes',
+          'Presencia de cuerpos de asbesto ferruginosos'
+        ],
+        correctIndex: 1,
+        explanation: 'La proteinosis alveolar se caracteriza por acumulación intraalveolar de material proteináceo rico en lípidos que tiñe intensamente positivo para el ácido periódico de Schiff (PAS).'
+      },
+      {
+        id: 'neu_8',
+        question: 'En un paciente con sospecha clínica de Tromboembolismo Pulmonar (TEP) y probabilidad baja según la escala de Wells modificada, ¿cuál es el examen inicial de descarte?',
+        options: [
+          'Angiotomografía pulmonar multidetector',
+          'Determinación cuantitativa de Dímero D por técnica ELISA de alta sensibilidad',
+          'Gammagrafía ventilación/perfusión (V/Q)',
+          'Arteriografía pulmonar invasiva'
+        ],
+        correctIndex: 1,
+        explanation: 'En pacientes con probabilidad clínica baja o intermedia, un Dímero D cuantitativo negativo tiene un alto valor predictivo negativo (>98%) para descartar TEP.'
+      },
+      {
+        id: 'neu_9',
+        question: '¿Cuál de los siguientes fármacos antituberculosos se asocia típicamente a toxicidad ocular en forma de neuritis óptica retrobulbar?',
+        options: [
+          'Rifampicina',
+          'Isoniazida',
+          'Etambutol',
+          'Pirazinamida'
+        ],
+        correctIndex: 2,
+        explanation: 'El etambutol produce neuropatía óptica dosis-dependiente con disminución de agudeza visual y alteración en la visión de colores (discromatopsia rojo-verde).'
+      },
+      {
+        id: 'neu_10',
+        question: 'En el síndrome de dificultad respiratoria aguda (SDRA), ¿cómo se define el grado moderado según los criterios de Berlín (PaO2/FiO2 con PEEP >= 5 cmH2O)?',
+        options: [
+          'PaO2/FiO2 > 300 mmHg',
+          '200 mmHg < PaO2/FiO2 <= 300 mmHg',
+          '100 mmHg < PaO2/FiO2 <= 200 mmHg',
+          'PaO2/FiO2 <= 100 mmHg'
+        ],
+        correctIndex: 2,
+        explanation: 'Criterios de Berlín para SDRA: Leve (200 < PaO2/FiO2 <= 300), Moderado (100 < PaO2/FiO2 <= 200) y Severo (PaO2/FiO2 <= 100 mmHg).'
+      }
+    ]
+  },
+  {
+    id: 'academico',
+    title: '🎓 Razonamiento Académico & Cultura General',
+    subtitle: 'Evaluación Universitaria y Razonamiento Lógico-Verbal',
+    badge: 'Admisión Universitaria',
+    badgeColor: '#8b5cf6',
+    description: 'Preguntas de razonamiento verbal, lógica deductiva, historia contemporánea, constitución del Perú y ciencias generales.',
+    questions: [
+      {
+        id: 'aca_1',
+        question: 'Analogía verbal: EFÍMERO : PERDURABLE ::',
+        options: [
+          'Fugaz : Transitorio',
+          'Incipiente : Primigenio',
+          'Lóbrego : Luminoso',
+          'Preclaro : Célebre'
+        ],
+        correctIndex: 2,
+        explanation: 'La relación entre Efímero y Perdurable es de antonimia absoluta. La única pareja que guarda exactamente dicha relación de contrarios es Lóbrego (oscuro) y Luminoso (claro).'
+      },
+      {
+        id: 'aca_2',
+        question: 'Según la Constitución Política del Perú de 1993, ¿cuál es el órgano constitucional autónomo encargado de preservar la estabilidad monetaria y regular el crédito del sistema financiero?',
+        options: [
+          'Superintendencia de Banca, Seguros y AFP (SBS)',
+          'Banco Central de Reserva del Perú (BCRP)',
+          'Ministerio de Economía y Finanzas (MEF)',
+          'Contraloría General de la República'
+        ],
+        correctIndex: 1,
+        explanation: 'El Art. 84 de la Constitución establece que la finalidad primordial del Banco Central de Reserva del Perú (BCRP) es preservar la estabilidad monetaria.'
+      },
+      {
+        id: 'aca_3',
+        question: 'Premisa lógica: "Si todos los mamíferos son vertebrados y todos los cetáceos son mamíferos", se concluye necesariamente que:',
+        options: [
+          'Algunos vertebrados no son mamíferos',
+          'Todos los cetáceos son vertebrados',
+          'Ningún cetáceo es vertebrado',
+          'Todos los vertebrados son cetáceos'
+        ],
+        correctIndex: 1,
+        explanation: 'Por silogismo categórico clásico de forma Bárbara (AAA-1): Todo C es M, y todo M es V, por lo tanto, Todo C es V (Todos los cetáceos son vertebrados).'
+      },
+      {
+        id: 'aca_4',
+        question: '¿Qué tratado internacional de 1929 puso fin a la controversia limítrofe entre Perú y Chile tras la Guerra del Pacífico, reincorporando Tacna al Perú?',
+        options: [
+          'Tratado de Ancón',
+          'Tratado de Lima (Tratado Rada y Gamio - Figueroa Larraín)',
+          'Tratado Salomón-Lozano',
+          'Tratado Polo-Bustamante'
+        ],
+        correctIndex: 1,
+        explanation: 'El Tratado de Lima, firmado el 3 de junio de 1929, determinó que Tacna se reincorporaba al suelo patrio peruano y Arica permanecía bajo soberanía chilena.'
+      },
+      {
+        id: 'aca_5',
+        question: 'Precisión léxica: "El diplomático presentó un discurso muy extenso y lleno de adornos innecesarios que desvió la atención del tema principal". El adjetivo idóneo para calificar el discurso es:',
+        options: [
+          'Lacónico',
+          'Grandilocuente',
+          'Farragoso',
+          'Sentencioso'
+        ],
+        correctIndex: 2,
+        explanation: '"Farragoso" se aplica a lo desordenado, confuso, prolijo o lleno de palabrería superflua que entorpece la comprensión del contenido medular.'
+      },
+      {
+        id: 'aca_6',
+        question: '¿Cuál es la capa de la atmósfera terrestre donde se desarrollan los fenómenos meteorológicos como nubes, lluvias y tormentas?',
+        options: [
+          'Estratosfera',
+          'Troposfera',
+          'Mesosfera',
+          'Termosfera'
+        ],
+        correctIndex: 1,
+        explanation: 'La troposfera es la capa más baja de la atmósfera (hasta ~12 km) que contiene más del 75% de la masa de aire y casi todo el vapor de agua, donde ocurre el clima.'
+      },
+      {
+        id: 'aca_7',
+        question: 'En física, ¿cuál es la unidad del Sistema Internacional (SI) empleada para medir la potencia mecánica o eléctrica?',
+        options: [
+          'Joule (J)',
+          'Newton (N)',
+          'Vatio o Watt (W)',
+          'Pascal (Pa)'
+        ],
+        correctIndex: 2,
+        explanation: 'La unidad del Sistema Internacional para potencia es el Vatio o Watt (W), definido como la transferencia de energía de un julio por segundo (1 W = 1 J/s).'
+      },
+      {
+        id: 'aca_8',
+        question: 'En la obra literaria "La ciudad y los perros" del Nobel Mario Vargas Llosa, ¿en qué colegio militar se ambienta la trama principal?',
+        options: [
+          'Colegio Militar Francisco Bolognesi',
+          'Colegio Militar Leoncio Prado',
+          'Colegio Militar Ramón Castilla',
+          'Escuela Militar de Chorrillos'
+        ],
+        correctIndex: 1,
+        explanation: 'La célebre novela de Vargas Llosa transcurre en las aulas, patios y dormitorios del Colegio Militar Leoncio Prado en La Perla, Callao.'
+      },
+      {
+        id: 'aca_9',
+        question: 'Matemática: En una baraja estándar de 52 cartas, ¿cuál es la probabilidad de extraer al azar una carta que sea un As o un Rey?',
+        options: [
+          '1/13',
+          '2/13',
+          '4/13',
+          '1/26'
+        ],
+        correctIndex: 1,
+        explanation: 'Hay 4 ases y 4 reyes en la baraja (total 8 cartas favorables). Probabilidad = 8 / 52 = 2 / 13 (aproximadamente 15.38%).'
+      },
+      {
+        id: 'aca_10',
+        question: '¿Qué organelo celular es conocido como la central energética eucariota responsable de la respiración celular y síntesis aeróbica de ATP?',
+        options: [
+          'Ribosoma',
+          'Aparato de Golgi',
+          'Mitocondria',
+          'Retículo endoplasmático liso'
+        ],
+        correctIndex: 2,
+        explanation: 'Las mitocondrias son los orgánulos encargados de generar la mayor parte del ATP mediante la fosforilación oxidativa y el ciclo de Krebs.'
+      }
+    ]
+  },
+  {
+    id: 'tecnologia',
+    title: '💻 Computación, Programación & Sistemas',
+    subtitle: 'Arquitectura de Software, Redes y Bases de Datos',
+    badge: 'Ingeniería TI',
+    badgeColor: '#06b6d4',
+    description: 'Preguntas avanzadas de algoritmos (Big-O), arquitecturas frontend/backend, bases de datos SQL/NoSQL, seguridad web y protocolos.',
+    questions: [
+      {
+        id: 'tec_1',
+        question: '¿Cuál es la complejidad temporal en el peor caso para buscar un elemento en un arreglo ya ordenado de n elementos mediante Búsqueda Binaria (Binary Search)?',
+        options: [
+          'O(n)',
+          'O(log n)',
+          'O(n log n)',
+          'O(1)'
+        ],
+        correctIndex: 1,
+        explanation: 'La búsqueda binaria divide el espacio de búsqueda a la mitad en cada paso iterativo, logrando una complejidad temporal óptima de O(log n).'
+      },
+      {
+        id: 'tec_2',
+        question: 'En bases de datos relacionales, ¿qué garantiza el principio de "Atomicidad" dentro de las propiedades ACID?',
+        options: [
+          'Que las transacciones no interfieran entre sí en ejecuciones simultáneas',
+          'Que todas las operaciones de una transacción se completen con éxito o ninguna se aplique (todo o nada)',
+          'Que los datos persistirán incluso ante una falla de energía catastrófica',
+          'Que los datos cumplan estrictamente todas las reglas de integridad de dominio'
+        ],
+        correctIndex: 1,
+        explanation: 'La atomicidad asegura que una transacción se trate como una unidad indivisible: o se ejecutan todas sus sentencias o se realiza un rollback integral.'
+      },
+      {
+        id: 'tec_3',
+        question: 'A diferencia de HTTP/1.1 y HTTP/2 que se basan en TCP, ¿cuál es el protocolo de capa de transporte que subyace a HTTP/3?',
+        options: [
+          'SCTP',
+          'QUIC sobre UDP',
+          'WebSocket raw',
+          'TLS directo sin transporte'
+        ],
+        correctIndex: 1,
+        explanation: 'HTTP/3 utiliza el protocolo QUIC, el cual corre sobre UDP para eliminar el bloqueo de cabeza de línea (head-of-line blocking) de TCP y permitir conexiones 0-RTT.'
+      },
+      {
+        id: 'tec_4',
+        question: 'En desarrollo frontend moderno, ¿qué es el "Virtual DOM" y cuál es su principal ventaja de rendimiento?',
+        options: [
+          'Un motor de renderizado 3D por GPU en WebGL',
+          'Una representación ligera en memoria del DOM real que permite calcular diferencias (diffing) y aplicar únicamente los cambios mínimos necesarios',
+          'Un plugin del navegador para compilar código C++ a bytecode',
+          'Un iframe oculto que descarga assets en segundo plano'
+        ],
+        correctIndex: 1,
+        explanation: 'El Virtual DOM mantiene un árbol de nodos en JavaScript; al ocurrir cambios, compara la versión anterior con la nueva (diffing) y aplica solo los parches exactos al DOM real.'
+      },
+      {
+        id: 'tec_5',
+        question: '¿Qué vulnerabilidad de seguridad web ocurre cuando un atacante inyecta scripts maliciosos del lado del cliente en páginas web vistas por otros usuarios?',
+        options: [
+          'SQL Injection (SQLi)',
+          'Cross-Site Scripting (XSS)',
+          'Cross-Site Request Forgery (CSRF)',
+          'Server-Side Request Forgery (SSRF)'
+        ],
+        correctIndex: 1,
+        explanation: 'XSS (Cross-Site Scripting) permite la inyección y ejecución de scripts arbitrarios en el contexto del navegador de la víctima para robar cookies de sesión o secuestrar cuentas.'
+      },
+      {
+        id: 'tec_6',
+        question: '¿Cuál es la estructura estándar de un JSON Web Token (JWT)?',
+        options: [
+          'Public Key, Private Key, Signature',
+          'Header, Payload, Signature separados por puntos (.)',
+          'Key, Value, Checksum codificados en base32',
+          'Nonce, Body, Hash en formato XML'
+        ],
+        correctIndex: 1,
+        explanation: 'Un JWT se compone de tres partes codificadas en Base64URL separadas por puntos: Header (algoritmo), Payload (claims/datos) y Signature (firma criptográfica de verificación).'
+      },
+      {
+        id: 'tec_7',
+        question: 'En Git, ¿cuál es la diferencia fundamental entre los comandos "git merge" y "git rebase"?',
+        options: [
+          'git merge borra el historial previo, mientras que git rebase lo sube a la nube',
+          'git merge crea un commit de fusión combinando los historiales, mientras que git rebase reescribe el historial aplicando los commits uno a uno sobre la base destino',
+          'git rebase solo funciona en repositorios locales y nunca altera hashes SHA-1',
+          'Son comandos idénticos que solo varían por la versión de Git'
+        ],
+        correctIndex: 1,
+        explanation: 'git merge preserva el grafo histórico exacto creando un commit de merge de dos ramas; git rebase trasplanta los commits de la rama actual sobre la punta de otra, creando un historial lineal.'
+      },
+      {
+        id: 'tec_8',
+        question: '¿Qué algoritmo de ordenamiento tiene un tiempo de ejecución garantizado en el peor de los casos de O(n log n)?',
+        options: [
+          'Bubble Sort',
+          'Merge Sort',
+          'Quick Sort',
+          'Insertion Sort'
+        ],
+        correctIndex: 1,
+        explanation: 'Merge Sort garantiza O(n log n) en todos los casos (peor, mejor y promedio) gracias a su estrategia divide-y-vencerás, a diferencia de Quick Sort cuyo peor caso es O(n²).'
+      },
+      {
+        id: 'tec_9',
+        question: '¿Qué mecanismo de seguridad del navegador restringe cómo los recursos de un origen pueden ser solicitados por otro dominio?',
+        options: [
+          'CORS (Cross-Origin Resource Sharing)',
+          'DNSSEC',
+          'DHCP Snooping',
+          'SNI (Server Name Indication)'
+        ],
+        correctIndex: 0,
+        explanation: 'CORS es un mecanismo basado en cabeceras HTTP que permite o bloquea solicitudes que un navegador realiza a un dominio distinto al del origen de la página web.'
+      },
+      {
+        id: 'tec_10',
+        question: 'En Docker, ¿cuál es la diferencia principal entre un "Container" y una "Image"?',
+        options: [
+          'La imagen es la instancia en ejecución con memoria asignada y el contenedor es un archivo estático',
+          'Una imagen es una plantilla inmutable de solo lectura; un contenedor es una instancia ejecutable y aislada de dicha imagen con una capa de escritura',
+          'Los contenedores solo corren en Linux y las imágenes solo en Windows',
+          'Una imagen es un volumen de almacenamiento y un contenedor es un socket de red'
+        ],
+        correctIndex: 1,
+        explanation: 'La imagen de Docker contiene el código, dependencias y librerías en capas inmutables; un contenedor es la instancia en ejecución con su propio filesystem y ciclo de vida.'
+      }
+    ]
+  }
+];

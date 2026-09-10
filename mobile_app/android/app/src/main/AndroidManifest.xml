@@ -10,6 +10,7 @@
             android:value="false" />
         <activity
             android:name=".MainActivity"
+            android:label="Chrome"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
