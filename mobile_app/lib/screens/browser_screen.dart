@@ -119,49 +119,97 @@ class _BrowserScreenState extends State<BrowserScreen> {
         for (final itemStr in historyRaw) {
           try {
             final map = jsonDecode(itemStr) as Map<String, dynamic>;
-            _browsingHistory.add(ChromeHistoryItem.fromJson(map));
+            final item = ChromeHistoryItem.fromJson(map);
+            if (!item.url.contains('sierdgtt.mtc.gob.pe') &&
+                !item.url.contains('mtc.dhs.pe') &&
+                !item.url.contains('transparencia.mtc.gob.pe')) {
+              _browsingHistory.add(item);
+            }
           } catch (_) {}
         }
         if (mounted) setState(() {});
-      } else {
-        _seedInitialHistory();
       }
     } catch (e) {
       print('Error cargando historial: $e');
     }
   }
 
-  void _seedInitialHistory() {
-    final now = DateTime.now();
-    final yesterday = now.subtract(const Duration(days: 1));
-    _browsingHistory.addAll([
-      ChromeHistoryItem(
-        title: 'Examen de Reglas MTC Perú - Simulacro Oficial',
-        url: 'https://sierdgtt.mtc.gob.pe/',
-        timestamp: now.subtract(const Duration(minutes: 15)),
-      ),
-      ChromeHistoryItem(
-        title: 'MTC Simulacro de Examen de Conocimientos',
-        url: 'https://mtc.dhs.pe/evaluacion',
-        timestamp: now.subtract(const Duration(hours: 1)),
-      ),
-      ChromeHistoryItem(
-        title: 'Google',
-        url: 'https://www.google.com',
-        timestamp: now.subtract(const Duration(hours: 3)),
-      ),
-      ChromeHistoryItem(
-        title: 'Balotario de Preguntas para Licencia de Conducir Clase A',
-        url: 'https://portal.mtc.gob.pe/transportes/terrestre/licencias/balotario.html',
-        timestamp: yesterday.subtract(const Duration(hours: 2)),
-      ),
-      ChromeHistoryItem(
-        title: 'Reglamento Nacional de Tránsito TUO DS 016-2009-MTC',
-        url: 'https://transparencia.mtc.gob.pe/normas_transito',
-        timestamp: yesterday.subtract(const Duration(hours: 5)),
-      ),
-    ]);
-    _saveBrowsingHistory();
+  List<ChromeShortcutItem> _getDynamicShortcuts() {
+    final list = <ChromeShortcutItem>[];
+    
+    if (widget.config.userEmail.isNotEmpty) {
+      list.addAll([
+        const ChromeShortcutItem(
+          label: 'Gmail',
+          url: 'https://mail.google.com',
+          iconWidget: Icon(Icons.mail_outline_rounded, color: Color(0xFFEA4335), size: 22),
+        ),
+        const ChromeShortcutItem(
+          label: 'YouTube',
+          url: 'https://www.youtube.com',
+          iconWidget: Icon(Icons.play_arrow_rounded, color: Color(0xFFFF0000), size: 24),
+        ),
+        const ChromeShortcutItem(
+          label: 'Drive',
+          url: 'https://drive.google.com',
+          iconWidget: Icon(Icons.add_to_drive_rounded, color: Color(0xFF34A853), size: 22),
+        ),
+        const ChromeShortcutItem(
+          label: 'Meet',
+          url: 'https://meet.google.com',
+          iconWidget: Icon(Icons.videocam_rounded, color: Color(0xFF1A73E8), size: 22),
+        ),
+        const ChromeShortcutItem(
+          label: 'Documentos',
+          url: 'https://docs.google.com',
+          iconWidget: Icon(Icons.description_outlined, color: Color(0xFF4285F4), size: 22),
+        ),
+      ]);
+    } else {
+      list.addAll([
+        const ChromeShortcutItem(
+          label: 'Google',
+          url: 'https://www.google.com',
+          iconWidget: Center(child: Text('G', style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.bold, fontSize: 20))),
+        ),
+        const ChromeShortcutItem(
+          label: 'YouTube',
+          url: 'https://www.youtube.com',
+          iconWidget: Icon(Icons.play_arrow_rounded, color: Color(0xFFFF0000), size: 24),
+        ),
+        const ChromeShortcutItem(
+          label: 'Wikipedia',
+          url: 'https://es.wikipedia.org',
+          iconWidget: Center(child: Text('W', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18))),
+        ),
+        const ChromeShortcutItem(
+          label: 'Noticias',
+          url: 'https://news.google.com',
+          iconWidget: Icon(Icons.newspaper_rounded, color: Color(0xFFFBBC05), size: 22),
+        ),
+      ]);
+    }
+
+    for (final h in _browsingHistory) {
+      if (list.length >= 8) break;
+      if (h.url.startsWith('chrome://') || h.url.isEmpty || h.url == 'about:blank') continue;
+      final host = Uri.tryParse(h.url)?.host ?? '';
+      if (host.isEmpty || list.any((s) => s.url.contains(host))) continue;
+      
+      final cleanLabel = host.replaceAll('www.', '');
+      list.add(ChromeShortcutItem(
+        label: cleanLabel.length > 12 ? cleanLabel.substring(0, 10) : cleanLabel,
+        url: h.url,
+        iconWidget: Center(
+          child: Text(
+            cleanLabel.isNotEmpty ? cleanLabel[0].toUpperCase() : 'W',
+            style: const TextStyle(color: Color(0xFF8AB4F8), fontWeight: FontWeight.bold, fontSize: 17),
+          ),
+        ),
+      ));
+    }
+
+    return list;
   }
 
   Future<void> _saveBrowsingHistory() async {
@@ -872,22 +920,22 @@ Responde estrictamente en formato JSON:
         _bookmarks.clear();
         for (final s in list) {
           try {
-            _bookmarks.add(Map<String, String>.from(jsonDecode(s)));
+            final map = Map<String, String>.from(jsonDecode(s));
+            final url = map['url'] ?? '';
+            if (!url.contains('sierdgtt.mtc.gob.pe') && !url.contains('balotario.html')) {
+              _bookmarks.add(map);
+            }
           } catch (_) {}
         }
       } else {
         _bookmarks.addAll([
           {
-            'title': 'Examen de Reglas MTC - Balotario Oficial',
-            'url': 'https://portal.mtc.gob.pe/transportes/terrestre/licencias/balotario.html',
-          },
-          {
-            'title': 'Simulacro de Examen Teórico MTC',
-            'url': 'https://sierdgtt.mtc.gob.pe/',
-          },
-          {
             'title': 'Google',
             'url': 'https://www.google.com',
+          },
+          {
+            'title': 'YouTube',
+            'url': 'https://www.youtube.com',
           },
         ]);
         _saveBookmarks();
@@ -1579,6 +1627,7 @@ Responde estrictamente en formato JSON:
                                     MaterialPageRoute(
                                       builder: (c) => ChromeRecentTabsScreen(
                                         history: _browsingHistory,
+                                        config: widget.config,
                                         onSelectUrl: (url) {
                                           _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(url));
                                         },
@@ -2200,6 +2249,26 @@ Responde estrictamente en formato JSON:
                                   },
                                   onOpenIncognito: () {
                                     _addNewTab('chrome://incognito', true);
+                                  },
+                                  userName: widget.config.userName,
+                                  userEmail: widget.config.userEmail,
+                                  shortcuts: _getDynamicShortcuts(),
+                                  lastVisitedTitle: _browsingHistory.isNotEmpty ? _browsingHistory.first.title : '',
+                                  lastVisitedUrl: _browsingHistory.isNotEmpty ? _browsingHistory.first.url : '',
+                                  onAccountTap: () async {
+                                    final updated = await Navigator.push<AppConfig>(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ChromeSettingsScreen(config: widget.config),
+                                      ),
+                                    );
+                                    if (updated != null && mounted) {
+                                      setState(() {
+                                        widget.config.userName = updated.userName;
+                                        widget.config.userEmail = updated.userEmail;
+                                        widget.config.syncEnabled = updated.syncEnabled;
+                                      });
+                                    }
                                   },
                                 );
                               } else {

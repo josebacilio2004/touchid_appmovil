@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -72,7 +72,12 @@ class _ChromeBookmarksScreenState extends State<ChromeBookmarksScreen> {
         _bookmarks.clear();
         for (final s in list) {
           try {
-            _bookmarks.add(BookmarkItem.fromJson(jsonDecode(s)));
+            final item = BookmarkItem.fromJson(jsonDecode(s));
+            if (!item.url.contains('sierdgtt.mtc.gob.pe') &&
+                !item.url.contains('josebacilio2004') &&
+                !item.url.contains('neumologia.pdf')) {
+              _bookmarks.add(item);
+            }
           } catch (_) {}
         }
       } else {
@@ -86,20 +91,10 @@ class _ChromeBookmarksScreenState extends State<ChromeBookmarksScreen> {
 
   void _seedInitialBookmarks() {
     _bookmarks.clear();
-    // 7 marcadores de móvil
     _bookmarks.addAll([
-      BookmarkItem(id: 'b1', title: 'Examen de Reglas MTC - Balotario Oficial', url: 'https://portal.mtc.gob.pe/transportes/terrestre/licencias/balotario.html', folder: 'mobile'),
-      BookmarkItem(id: 'b2', title: 'Simulacro de Examen Teórico MTC', url: 'https://sierdgtt.mtc.gob.pe/', folder: 'mobile'),
-      BookmarkItem(id: 'b3', title: 'Google', url: 'https://www.google.com', folder: 'mobile'),
-      BookmarkItem(id: 'b4', title: 'Plataforma Única del Estado Peruano', url: 'https://www.gob.pe/', folder: 'mobile'),
-      BookmarkItem(id: 'b5', title: 'Reglamento Nacional de Tránsito TUO', url: 'https://transparencia.mtc.gob.pe/normas_transito', folder: 'mobile'),
-      BookmarkItem(id: 'b6', title: 'SUNARP - Consulta Vehicular', url: 'https://www.sunarp.gob.pe/', folder: 'mobile'),
-      BookmarkItem(id: 'b7', title: 'SAT Lima - Consulta de Papeletas', url: 'https://www.sat.gob.pe/', folder: 'mobile'),
-      
-      // 3 en otros marcadores
-      BookmarkItem(id: 'b8', title: 'Guía Clínica de Neumología 2024', url: 'https://minsa.gob.pe/normas/neumologia.pdf', folder: 'other'),
-      BookmarkItem(id: 'b9', title: 'ChatGPT / Gemini AI', url: 'https://gemini.google.com', folder: 'other'),
-      BookmarkItem(id: 'b10', title: 'GitHub - josebacilio2004/touchid_appmovil', url: 'https://github.com/josebacilio2004/touchid_appmovil', folder: 'other'),
+      BookmarkItem(id: 'b1', title: 'Google', url: 'https://www.google.com', folder: 'mobile'),
+      BookmarkItem(id: 'b2', title: 'YouTube', url: 'https://www.youtube.com', folder: 'mobile'),
+      BookmarkItem(id: 'b3', title: 'Wikipedia', url: 'https://es.wikipedia.org', folder: 'mobile'),
     ]);
     _saveBookmarks();
   }

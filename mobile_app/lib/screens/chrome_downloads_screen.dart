@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -86,69 +86,15 @@ class _ChromeDownloadsScreenState extends State<ChromeDownloadsScreen> {
         _items.clear();
         for (final s in list) {
           try {
-            _items.add(ChromeDownloadItem.fromJson(jsonDecode(s)));
+            final item = ChromeDownloadItem.fromJson(jsonDecode(s));
+            if (!item.url.contains('mtc.gob.pe') && !item.url.contains('minsa.gob.pe')) {
+              _items.add(item);
+            }
           } catch (_) {}
         }
-      } else {
-        _seedInitialDownloads();
       }
       if (mounted) setState(() {});
-    } catch (e) {
-      _seedInitialDownloads();
-    }
-  }
-
-  void _seedInitialDownloads() {
-    final now = DateTime.now();
-    _items.clear();
-    _items.addAll([
-      ChromeDownloadItem(
-        id: 'dl_1',
-        title: 'Balotario_Oficial_MTC_Clase_A.pdf',
-        url: 'https://portal.mtc.gob.pe/transportes/terrestre/licencias/balotario.pdf',
-        domain: 'mtc.gob.pe',
-        size: '14,2 MB',
-        category: 'Documentos',
-        date: now.subtract(const Duration(days: 2)),
-      ),
-      ChromeDownloadItem(
-        id: 'dl_2',
-        title: 'Simulacro_Examen_Reglas_MTC.html',
-        url: 'https://sierdgtt.mtc.gob.pe/simulacro.html',
-        domain: 'sierdgtt.mtc.gob.pe',
-        size: '3,8 MB',
-        category: 'Páginas',
-        date: now.subtract(const Duration(days: 5)),
-      ),
-      ChromeDownloadItem(
-        id: 'dl_3',
-        title: 'Guia_Clinica_Neumologia_2024.pdf',
-        url: 'https://minsa.gob.pe/normas/neumologia_guia.pdf',
-        domain: 'minsa.gob.pe',
-        size: '28,6 MB',
-        category: 'Documentos',
-        date: now.subtract(const Duration(days: 12)),
-      ),
-      ChromeDownloadItem(
-        id: 'dl_4',
-        title: 'Diagrama_Senales_Transito_Peru.png',
-        url: 'https://portal.mtc.gob.pe/img/senales.png',
-        domain: 'portal.mtc.gob.pe',
-        size: '6,4 MB',
-        category: 'Imágenes',
-        date: now.subtract(const Duration(days: 18)),
-      ),
-      ChromeDownloadItem(
-        id: 'dl_5',
-        title: 'Reglamento_Nacional_Transito_DS016.pdf',
-        url: 'https://transparencia.mtc.gob.pe/normas/ds016.pdf',
-        domain: 'transparencia.mtc.gob.pe',
-        size: '20,8 MB',
-        category: 'Documentos',
-        date: now.subtract(const Duration(days: 25)),
-      ),
-    ]);
-    _saveDownloads();
+    } catch (_) {}
   }
 
   Future<void> _saveDownloads() async {
@@ -390,10 +336,17 @@ class _ChromeDownloadsScreenState extends State<ChromeDownloadsScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
                         Icon(Icons.download_done_rounded, color: Color(0xFF5F6368), size: 54),
-                        SizedBox(height: 12),
+                        SizedBox(height: 14),
                         Text(
-                          'No hay descargas',
-                          style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 16),
+                          'Los archivos que descargues aparecerán aquí',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFFE8EAED), fontSize: 15, fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Puedes descargar páginas web, fotos y otros archivos',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13),
                         ),
                       ],
                     ),

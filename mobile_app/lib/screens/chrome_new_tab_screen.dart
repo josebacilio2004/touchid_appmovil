@@ -1,11 +1,27 @@
 import 'package:flutter/material.dart';
 import '../widgets/incognito_icon.dart';
 
+class ChromeShortcutItem {
+  final String label;
+  final String url;
+  final Widget? iconWidget;
+
+  const ChromeShortcutItem({
+    required this.label,
+    required this.url,
+    this.iconWidget,
+  });
+}
+
 class ChromeNewTabScreen extends StatelessWidget {
   final Function(String) onOpenUrl;
   final VoidCallback onSearchTap;
   final VoidCallback onModoIA;
   final VoidCallback onOpenIncognito;
+  final VoidCallback? onAccountTap;
+  final String userName;
+  final String userEmail;
+  final List<ChromeShortcutItem> shortcuts;
   final String lastVisitedTitle;
   final String lastVisitedUrl;
 
@@ -15,8 +31,12 @@ class ChromeNewTabScreen extends StatelessWidget {
     required this.onSearchTap,
     required this.onModoIA,
     required this.onOpenIncognito,
-    this.lastVisitedTitle = 'Examen de Reglas MTC Perú - Simulacro Oficial',
-    this.lastVisitedUrl = 'https://sierdgtt.mtc.gob.pe/',
+    this.onAccountTap,
+    this.userName = '',
+    this.userEmail = '',
+    this.shortcuts = const [],
+    this.lastVisitedTitle = '',
+    this.lastVisitedUrl = '',
   });
 
   @override
@@ -24,9 +44,51 @@ class ChromeNewTabScreen extends StatelessWidget {
     return Container(
       color: const Color(0xFF141518),
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         children: [
-          const SizedBox(height: 24),
+          // 0. Top Right: Botón / Avatar de Cuenta de Google del usuario actual
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: onAccountTap,
+              child: userEmail.isNotEmpty
+                  ? Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF1A73E8),
+                        border: Border.all(color: const Color(0xFF5F6368), width: 1.2),
+                      ),
+                      child: Center(
+                        child: Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : userEmail[0].toUpperCase(),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF282A2D),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFF3C4043), width: 0.8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.account_circle_outlined, color: Color(0xFF8AB4F8), size: 18),
+                          SizedBox(width: 6),
+                          Text(
+                            'Acceder',
+                            style: TextStyle(color: Color(0xFF8AB4F8), fontSize: 12.5, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // 1. Logo Oficial de Google
           Center(
@@ -155,156 +217,146 @@ class ChromeNewTabScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // 4. Accesos Directos (Shortcuts)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildShortcutItem(
-                  iconWidget: Container(
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFC5221F)),
-                    child: const Center(
-                      child: Text('I', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                    ),
-                  ),
-                  label: 'ICPNARC I...',
-                  onTap: () => onOpenUrl('https://icpna.edu.pe'),
-                ),
-                _buildShortcutItem(
-                  iconWidget: Container(
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF1A73E8)),
-                    child: const Center(
-                      child: Text('MTC', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                    ),
-                  ),
-                  label: 'Inicio',
-                  onTap: () => onOpenUrl('https://sierdgtt.mtc.gob.pe/'),
-                ),
-                _buildShortcutItem(
-                  iconWidget: Container(
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF10A37F)),
-                    child: const Center(
-                      child: Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 20),
-                    ),
-                  ),
-                  label: 'ChatGPT',
-                  onTap: () => onOpenUrl('https://chatgpt.com'),
-                ),
-                _buildShortcutItem(
-                  iconWidget: Container(
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF1A73E8)),
-                    child: const Center(
-                      child: Text('G', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                    ),
-                  ),
-                  label: 'Acceso Ind...',
-                  onTap: () => onOpenUrl('https://accounts.google.com'),
-                ),
-                _buildShortcutItem(
-                  iconWidget: Container(
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF2D8CFF)),
-                    child: const Center(
-                      child: Icon(Icons.videocam_rounded, color: Colors.white, size: 20),
-                    ),
-                  ),
-                  label: 'Reuni...',
-                  onTap: () => onOpenUrl('https://meet.google.com'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 5. Sección: Continuar con esta pestaña
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF202124),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF282A2D), width: 1),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Continuar con esta pestaña',
-                      style: TextStyle(
-                        color: Color(0xFFE8EAED),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => onOpenUrl(lastVisitedUrl),
-                      child: const Text(
-                        'Ver más',
-                        style: TextStyle(
-                          color: Color(0xFF8AB4F8),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => onOpenUrl(lastVisitedUrl),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 58,
-                        height: 58,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF6B21A8), Color(0xFF3B82F6)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+          // 4. Accesos Directos Dinámicos (Shortcuts)
+          if (shortcuts.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: shortcuts.map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: _buildShortcutItem(
+                        iconWidget: item.iconWidget ?? Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFF282A2D),
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          child: Center(
+                            child: Text(
+                              item.label.isNotEmpty ? item.label[0].toUpperCase() : 'W',
+                              style: const TextStyle(
+                                color: Color(0xFF8AB4F8),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
                         ),
-                        child: const Center(
-                          child: Icon(Icons.description_outlined, color: Colors.white, size: 28),
+                        label: item.label.length > 10 ? '${item.label.substring(0, 8)}...' : item.label,
+                        onTap: () => onOpenUrl(item.url),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // 5. Sección: Continuar con esta pestaña (sólo si hay pestaña previa real)
+          if (lastVisitedUrl.isNotEmpty && 
+              lastVisitedUrl != 'chrome://newtab' && 
+              lastVisitedUrl != 'chrome://incognito' &&
+              lastVisitedUrl != 'about:blank') ...[
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF202124),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF282A2D), width: 1),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Continuar con esta pestaña',
+                        style: TextStyle(
+                          color: Color(0xFFE8EAED),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              lastVisitedTitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFFE8EAED),
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              Uri.tryParse(lastVisitedUrl)?.host ?? lastVisitedUrl,
-                              style: const TextStyle(
-                                color: Color(0xFF9AA0A6),
-                                fontSize: 12.5,
-                              ),
-                            ),
-                          ],
+                      InkWell(
+                        onTap: () => onOpenUrl(lastVisitedUrl),
+                        child: const Text(
+                          'Ver más',
+                          style: TextStyle(
+                            color: Color(0xFF8AB4F8),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 14),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => onOpenUrl(lastVisitedUrl),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2D2F31),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFF3C4043), width: 0.8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              (Uri.tryParse(lastVisitedUrl)?.host ?? 'W').isNotEmpty
+                                  ? (Uri.tryParse(lastVisitedUrl)?.host ?? 'W')[0].toUpperCase()
+                                  : 'W',
+                              style: const TextStyle(
+                                color: Color(0xFF8AB4F8),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                lastVisitedTitle.isNotEmpty ? lastVisitedTitle : (Uri.tryParse(lastVisitedUrl)?.host ?? lastVisitedUrl),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFFE8EAED),
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                Uri.tryParse(lastVisitedUrl)?.host ?? lastVisitedUrl,
+                                style: const TextStyle(
+                                  color: Color(0xFF9AA0A6),
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
+          ],
 
           // 6. Sección: Feed de Noticias (Discover)
           Container(
