@@ -1,21 +1,41 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
-const admin = require('firebase-admin');
-// API Gemini REST nativa vía fetch (sin dependencias SDK inconsistentes)
+const path = require('path');
+const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
-// 1. Inicializar Firebase Admin SDK usando la variable de entorno
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-const db = admin.firestore();
-
-const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../docs')));
+
+// Conexión a MongoDB (Usa variable de entorno MONGODB_URI o localhost por defecto)
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:touchid_secure_2026@localhost:27017/touchid?authSource=admin';
+let dbClient = null;
+let db = null;
+
+async function getDb() {
+  if (db) return db;
+  dbClient = new MongoClient(MONGODB_URI, {
+    maxPoolSize: 20,
+    serverSelectionTimeoutMS: 5000,
+  });
+  await dbClient.connect();
+  db = dbClient.db('touchid');
+  console.log('✅ Conectado exitosamente a MongoDB');
+  return db;
+}
+
+// Middleware para asegurar conexión a la base de datos
+app.use(async (req, res, next) => {
+  try {
+    req.db = await getDb();
+    next();
+  } catch (err) {
+    console.error('❌ Error conectando a MongoDB:', err.message);
+    res.status(503).json({ error: 'Base de datos temporalmente no disponible.' });
+  }
+});
 
 // 2. Endpoint para resolver preguntas (Gemini API Gateway)
 app.post('/solve', async (req, res) => {
@@ -26,22 +46,20 @@ app.post('/solve', async (req, res) => {
   }
 
   try {
-    // Verificar si el usuario tiene créditos en Firestore
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
+    // Verificar si el usuario tiene créditos en MongoDB
+    const userDoc = await req.db.collection('users').findOne({ _id: userId });
 
-    // Verificar si el usuario es ilimitado (hardcoded o por flag en Firestore)
     let isUnlimited = (userId === 'unlimited_user_touchid');
-    if (!isUnlimited && userDoc.exists && userDoc.data().isUnlimited === true) {
+    if (!isUnlimited && userDoc && userDoc.isUnlimited === true) {
       isUnlimited = true;
     }
 
     if (!isUnlimited) {
-      if (!userDoc.exists) {
+      if (!userDoc) {
         return res.status(403).json({ error: 'Usuario no registrado. Registra créditos primero.' });
       }
 
-      const credits = userDoc.data().credits || 0;
+      const credits = userDoc.credits || 0;
       if (credits <= 0) {
         return res.status(402).json({ error: 'Créditos insuficientes. Adquiere más créditos en el Dashboard.' });
       }
@@ -90,7 +108,6 @@ app.post('/solve', async (req, res) => {
       }
     };
 
-    // Petición nativa a Gemini REST con modelos alternativos de respaldo ordenados por velocidad y estabilidad
     const models = [
       'gemini-2.5-flash-lite',
       'gemini-2.5-flash',
@@ -133,14 +150,16 @@ app.post('/solve', async (req, res) => {
 
     // Descontar 1 crédito si no es ilimitado
     if (!isUnlimited) {
-      await userRef.update({
-        credits: admin.firestore.FieldValue.increment(-1)
-      });
+      await req.db.collection('users').updateOne(
+        { _id: userId },
+        { $inc: { credits: -1 }, $set: { updatedAt: new Date() } }
+      );
     }
 
-    // Guardar en historial de forma segura
+    // Guardar en historial
     try {
-      await db.collection('history').add({
+      await req.db.collection('history').insertOne({
+        userId,
         question,
         options: options || [],
         answer: parsedResult.correct_option_text,
@@ -150,7 +169,7 @@ app.post('/solve', async (req, res) => {
         source: req.body.source || 'api',
         creditsUsed: isUnlimited ? 0 : 1,
         userType: isUnlimited ? 'ilimitado' : 'estándar',
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
+        timestamp: new Date()
       });
     } catch (histError) {
       console.error('Error al guardar historial:', histError);
@@ -171,14 +190,13 @@ app.get('/credits/:userId', async (req, res) => {
   }
 
   try {
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
+    const userDoc = await req.db.collection('users').findOne({ _id: userId });
     
     let isUnlimited = (userId === 'unlimited_user_touchid');
     let credits = 0;
-    if (userDoc.exists) {
-      credits = userDoc.data().credits || 0;
-      if (userDoc.data().isUnlimited === true) {
+    if (userDoc) {
+      credits = userDoc.credits || 0;
+      if (userDoc.isUnlimited === true) {
         isUnlimited = true;
       }
     }
@@ -202,48 +220,41 @@ app.post('/activate', async (req, res) => {
   }
 
   try {
-    const licenseRef = db.collection('licenses').doc(licenseKey);
+    const license = await req.db.collection('licenses').findOne({ _id: licenseKey });
+    if (!license) {
+      return res.status(400).json({ error: 'Licencia no encontrada o inválida.' });
+    }
     
-    // Transacción atómica de Firestore
-    const newCredits = await db.runTransaction(async (transaction) => {
-      const licenseDoc = await transaction.get(licenseRef);
-      if (!licenseDoc.exists) {
-        throw new Error('Licencia no encontrada o inválida.');
+    if (license.status !== 'unused') {
+      return res.status(400).json({ error: 'Esta licencia ya ha sido utilizada.' });
+    }
+
+    const addedCredits = license.credits || 0;
+
+    // Marcar licencia como usada
+    await req.db.collection('licenses').updateOne(
+      { _id: licenseKey },
+      {
+        $set: {
+          status: 'used',
+          usedBy: userId,
+          usedAt: new Date()
+        }
       }
-      
-      const licenseData = licenseDoc.data();
-      if (licenseData.status !== 'unused') {
-        throw new Error('Esta licencia ya ha sido utilizada.');
-      }
+    );
 
-      const userRef = db.collection('users').doc(userId);
-      const userDoc = await transaction.get(userRef);
-      
-      let currentCredits = 0;
-      if (userDoc.exists) {
-        currentCredits = userDoc.data().credits || 0;
-      }
+    // Actualizar créditos de usuario con upsert
+    await req.db.collection('users').updateOne(
+      { _id: userId },
+      {
+        $inc: { credits: addedCredits },
+        $set: { updatedAt: new Date() }
+      },
+      { upsert: true }
+    );
 
-      const addedCredits = licenseData.credits || 0;
-      const updatedCredits = currentCredits + addedCredits;
-
-      // Marcar licencia como usada
-      transaction.update(licenseRef, {
-        status: 'used',
-        usedBy: userId,
-        usedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      // Actualizar créditos de usuario
-      transaction.set(userRef, {
-        credits: updatedCredits,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-
-      return updatedCredits;
-    });
-
-    res.json({ success: true, credits: newCredits });
+    const userDoc = await req.db.collection('users').findOne({ _id: userId });
+    res.json({ success: true, credits: userDoc ? userDoc.credits : addedCredits });
   } catch (e) {
     console.error('Error en /activate:', e);
     res.status(400).json({ error: e.message || 'Error al activar créditos.' });
@@ -266,25 +277,13 @@ app.post('/admin/verify', checkAdminToken, (req, res) => {
   res.json({ success: true, message: 'Token válido.' });
 });
 
-// Estadísticas del Dashboard
+// Estadísticas del Dashboard (Cero costo de lectura)
 app.get('/admin/stats', checkAdminToken, async (req, res) => {
   try {
-    const usersSnap = await db.collection('users').get();
-    const historySnap = await db.collection('history').get();
-    const licensesSnap = await db.collection('licenses').get();
-
-    let totalQuestions = historySnap.size;
-    let totalUsers = usersSnap.size;
-
-    let activeLicenses = 0;
-    let usedLicenses = 0;
-    licensesSnap.forEach(doc => {
-      if (doc.data().status === 'unused') {
-        activeLicenses++;
-      } else {
-        usedLicenses++;
-      }
-    });
+    const totalQuestions = await req.db.collection('history').countDocuments();
+    const totalUsers = await req.db.collection('users').countDocuments();
+    const activeLicenses = await req.db.collection('licenses').countDocuments({ status: 'unused' });
+    const usedLicenses = await req.db.collection('licenses').countDocuments({ status: 'used' });
 
     res.json({
       totalQuestions,
@@ -300,21 +299,14 @@ app.get('/admin/stats', checkAdminToken, async (req, res) => {
 // Listar licencias
 app.get('/admin/licenses', checkAdminToken, async (req, res) => {
   try {
-    const snap = await db.collection('licenses').get();
-    const licenses = [];
-    snap.forEach(doc => {
-      const data = doc.data();
-      let usedAt = data.usedAt;
-      if (usedAt && usedAt.toDate) {
-        usedAt = usedAt.toDate().toISOString();
-      }
-      licenses.push({
-        ...data,
-        usedAt
-      });
-    });
-    // Ordenar de más reciente a más antiguo en código
-    licenses.sort((a, b) => b.code.localeCompare(a.code));
+    const docs = await req.db.collection('licenses').find().sort({ code: -1 }).toArray();
+    const licenses = docs.map(doc => ({
+      code: doc.code || doc._id,
+      credits: doc.credits,
+      status: doc.status,
+      usedBy: doc.usedBy || '',
+      usedAt: doc.usedAt ? (doc.usedAt.toISOString ? doc.usedAt.toISOString() : doc.usedAt) : null
+    }));
     res.json(licenses);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -337,14 +329,16 @@ app.post('/admin/licenses', checkAdminToken, async (req, res) => {
     const code = `LIC-${credits}-${randCode}`;
 
     const licenseData = {
+      _id: code,
       code,
       credits,
       status: 'unused',
       usedBy: '',
-      usedAt: null
+      usedAt: null,
+      createdAt: new Date()
     };
 
-    await db.collection('licenses').doc(code).set(licenseData);
+    await req.db.collection('licenses').insertOne(licenseData);
     res.json(licenseData);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -354,20 +348,20 @@ app.post('/admin/licenses', checkAdminToken, async (req, res) => {
 // Listar historial
 app.get('/admin/history', checkAdminToken, async (req, res) => {
   try {
-    const snap = await db.collection('history').orderBy('timestamp', 'desc').limit(100).get();
-    const history = [];
-    snap.forEach(doc => {
-      const data = doc.data();
-      let timestamp = data.timestamp;
-      if (timestamp && timestamp.toDate) {
-        timestamp = timestamp.toDate().toISOString();
-      }
-      history.push({
-        id: doc.id,
-        ...data,
-        timestamp
-      });
-    });
+    const docs = await req.db.collection('history').find().sort({ timestamp: -1 }).limit(100).toArray();
+    const history = docs.map(doc => ({
+      id: doc._id.toString(),
+      question: doc.question,
+      options: doc.options || [],
+      answer: doc.answer,
+      answerIndex: doc.answerIndex,
+      explanation: doc.explanation,
+      subject: doc.subject,
+      source: doc.source,
+      creditsUsed: doc.creditsUsed,
+      userType: doc.userType,
+      timestamp: doc.timestamp ? (doc.timestamp.toISOString ? doc.timestamp.toISOString() : doc.timestamp) : null
+    }));
     res.json(history);
   } catch (e) {
     res.status(500).json({ error: e.message });
