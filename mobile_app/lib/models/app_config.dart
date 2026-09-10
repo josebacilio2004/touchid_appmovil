@@ -13,6 +13,13 @@ class AppConfig {
   String userId;
   String backendUrl;
   String settingsPin;
+  String userName;
+  String userEmail;
+  String searchEngine;
+  String addressBarPosition;
+  bool syncEnabled;
+  String homepageUrl;
+  bool savePasswords;
 
   AppConfig({
     this.geminiApiKey = '',
@@ -25,6 +32,13 @@ class AppConfig {
     this.userId = '',
     this.backendUrl = 'https://touchid-backend.onrender.com',
     this.settingsPin = '1234',
+    this.userName = 'Jose Bacilio',
+    this.userEmail = '74934503@continental.edu.pe',
+    this.searchEngine = 'Google',
+    this.addressBarPosition = 'Arriba',
+    this.syncEnabled = true,
+    this.homepageUrl = 'https://www.google.com',
+    this.savePasswords = true,
   });
 
   // Generar un ID hexadecimal aleatorio sencillo
@@ -59,6 +73,13 @@ class AppConfig {
           userId: userId,
           backendUrl: map['backendUrl'] ?? 'https://touchid-backend.onrender.com',
           settingsPin: map['settingsPin'] ?? '1234',
+          userName: map['userName'] ?? 'Jose Bacilio',
+          userEmail: map['userEmail'] ?? '74934503@continental.edu.pe',
+          searchEngine: map['searchEngine'] ?? 'Google',
+          addressBarPosition: map['addressBarPosition'] ?? 'Arriba',
+          syncEnabled: map['syncEnabled'] ?? true,
+          homepageUrl: map['homepageUrl'] ?? 'https://www.google.com',
+          savePasswords: map['savePasswords'] ?? true,
         );
         
         // Guardar el ID recién generado si no existía
@@ -93,6 +114,13 @@ class AppConfig {
       'userId': userId,
       'backendUrl': backendUrl,
       'settingsPin': settingsPin,
+      'userName': userName,
+      'userEmail': userEmail,
+      'searchEngine': searchEngine,
+      'addressBarPosition': addressBarPosition,
+      'syncEnabled': syncEnabled,
+      'homepageUrl': homepageUrl,
+      'savePasswords': savePasswords,
     };
     await prefs.setString('touchid_config', jsonEncode(map));
   }

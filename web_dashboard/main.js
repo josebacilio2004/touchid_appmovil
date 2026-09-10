@@ -47,7 +47,7 @@ const newLicenseDisplay = document.getElementById('new-license-display');
 const newLicenseCode = document.getElementById('new-license-code');
 const copyNewLicBtn = document.getElementById('copy-new-lic-btn');
 
-// --- 1. Autenticación y Verificación de Token ---
+let lastVerifyError = '';
 async function verifyAdminAccess(tokenToVerify) {
   if (!tokenToVerify) return false;
   try {
@@ -58,9 +58,21 @@ async function verifyAdminAccess(tokenToVerify) {
         'x-admin-token': tokenToVerify
       }
     });
-    return response.ok;
+    if (response.ok) {
+      lastVerifyError = '';
+      return true;
+    }
+    if (response.status === 503) {
+      lastVerifyError = 'Base de datos o túnel no disponible (Error 503). Verifica que el túnel esté levantado.';
+    } else if (response.status === 401) {
+      lastVerifyError = 'Clave incorrecta. Inténtalo de nuevo.';
+    } else {
+      lastVerifyError = `Error de respuesta del servidor (HTTP ${response.status}).`;
+    }
+    return false;
   } catch (e) {
     console.error('Error verificando token:', e);
+    lastVerifyError = `No se pudo conectar con el servidor backend (${backendUrl}).`;
     return false;
   }
 }
@@ -112,6 +124,7 @@ lockForm.addEventListener('submit', async (e) => {
     lockPassword.value = '';
     initDashboard();
   } else {
+    lockErrorMsg.textContent = lastVerifyError || 'Clave incorrecta. Inténtalo de nuevo.';
     lockErrorMsg.style.display = 'block';
   }
 });
