@@ -366,13 +366,21 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                     const IncognitoIcon(size: 16, color: Color(0xFF9AA0A6))
                   else if (tab.url.contains('google.com'))
                     const Icon(Icons.search_rounded, size: 16, color: Color(0xFF8AB4F8))
-                  else if (tab.url.contains('mtc.gob.pe'))
+                  else if (!tab.url.startsWith('chrome://') && tab.url.isNotEmpty && tab.url != 'about:blank')
                     Container(
                       width: 16,
                       height: 16,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFC5221F)),
-                      child: const Center(
-                        child: Text('M', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF3C4043),
+                      ),
+                      child: Center(
+                        child: Text(
+                          (Uri.tryParse(tab.url)?.host.replaceFirst('www.', '').isNotEmpty == true)
+                              ? Uri.tryParse(tab.url)!.host.replaceFirst('www.', '')[0].toUpperCase()
+                              : 'W',
+                          style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     )
                   else
@@ -441,28 +449,52 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
       );
     }
 
-    if (tab.url.contains('sierdgtt.mtc.gob.pe') || tab.url.contains('mtc')) {
+    if (!tab.url.startsWith('chrome://') && tab.url.isNotEmpty && tab.url != 'about:blank') {
+      final host = Uri.tryParse(tab.url)?.host.replaceFirst('www.', '') ?? tab.url;
+      final initial = host.isNotEmpty ? host[0].toUpperCase() : 'W';
       return Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(10.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              height: 18,
+              height: 20,
               padding: const EdgeInsets.symmetric(horizontal: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFC5221F).withOpacity(0.2),
+                color: const Color(0xFF3C4043),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text('MTC Perú • Simulacro', style: TextStyle(color: Color(0xFFF28B82), fontSize: 9.5)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    host,
+                    style: const TextStyle(color: Color(0xFF8AB4F8), fontSize: 9.5, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            const Center(
-              child: Icon(Icons.assignment_turned_in_rounded, size: 38, color: Color(0xFF8AB4F8)),
+            const SizedBox(height: 16),
+            Center(
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF282A2D),
+                  border: Border.all(color: const Color(0xFF3C4043), width: 1),
+                ),
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
             ),
             const Spacer(),
             Text(
-              tab.title,
+              tab.title.isNotEmpty ? tab.title : host,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 11),

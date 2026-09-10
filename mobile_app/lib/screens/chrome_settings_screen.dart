@@ -140,28 +140,35 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     child: Row(
                       children: [
-                        // Avatar dinámico de Google
+                        // Avatar dinámico de Google o silueta sin cuenta
                         Container(
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1A73E8), Color(0xFF4285F4)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                            color: _config.userEmail.isNotEmpty ? const Color(0xFF1A73E8) : const Color(0xFF3C4043),
+                            gradient: _config.userEmail.isNotEmpty
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF1A73E8), Color(0xFF4285F4)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
                             border: Border.all(color: const Color(0xFF5F6368), width: 1.5),
                           ),
                           child: Center(
-                            child: Text(
-                              _config.userName.isNotEmpty ? _config.userName[0].toUpperCase() : 'G',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            child: _config.userEmail.isNotEmpty
+                                ? Text(
+                                    _config.userName.isNotEmpty
+                                        ? _config.userName[0].toUpperCase()
+                                        : _config.userEmail[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  )
+                                : const Icon(Icons.person_rounded, color: Color(0xFF9AA0A6), size: 24),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -170,7 +177,9 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _config.userName.isNotEmpty ? _config.userName : 'Usuario Google',
+                                _config.userEmail.isNotEmpty
+                                    ? (_config.userName.isNotEmpty ? _config.userName : _config.userEmail.split('@').first)
+                                    : 'Activar la sincronización',
                                 style: const TextStyle(
                                   color: Color(0xFFE8EAED),
                                   fontSize: 15.5,
@@ -179,7 +188,9 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                _config.userEmail.isNotEmpty ? _config.userEmail : 'cuenta@gmail.com',
+                                _config.userEmail.isNotEmpty
+                                    ? _config.userEmail
+                                    : 'Inicia sesión con tu cuenta de Google',
                                 style: const TextStyle(
                                   color: Color(0xFF9AA0A6),
                                   fontSize: 13,
@@ -191,13 +202,15 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                                   Icon(
                                     _config.syncEnabled ? Icons.sync : Icons.sync_disabled,
                                     size: 13,
-                                    color: _config.syncEnabled ? const Color(0xFF81C995) : const Color(0xFFE29DA0),
+                                    color: _config.syncEnabled ? const Color(0xFF81C995) : const Color(0xFF9AA0A6),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    _config.syncEnabled ? 'Sincronización activada' : 'Sincronización desactivada',
+                                    _config.syncEnabled
+                                        ? 'Sincronización activada'
+                                        : (_config.userEmail.isNotEmpty ? 'Sincronización desactivada' : 'Sin cuenta activa'),
                                     style: TextStyle(
-                                      color: _config.syncEnabled ? const Color(0xFF81C995) : const Color(0xFFE29DA0),
+                                      color: _config.syncEnabled ? const Color(0xFF81C995) : const Color(0xFF9AA0A6),
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -481,7 +494,7 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                       filled: true,
                       fillColor: const Color(0xFF282A2D),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      hintText: 'Ej. Jose Bacilio',
+                      hintText: 'Tu nombre',
                       hintStyle: const TextStyle(color: Color(0xFF5F6368)),
                     ),
                   ),
@@ -496,7 +509,7 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                       filled: true,
                       fillColor: const Color(0xFF282A2D),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      hintText: 'Ej. 74934503@continental.edu.pe',
+                      hintText: 'tu_correo@gmail.com',
                       hintStyle: const TextStyle(color: Color(0xFF5F6368)),
                     ),
                   ),
@@ -507,7 +520,7 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                     title: const Text('Sincronización de Chrome', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 15)),
                     subtitle: const Text('Sincroniza marcadores, historial y contraseñas', style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 12.5)),
                     value: syncVal,
-                    activeColor: const Color(0xFF8AB4F8),
+                    activeThumbColor: const Color(0xFF8AB4F8),
                     onChanged: (val) {
                       setModalState(() => syncVal = val);
                     },
@@ -540,17 +553,17 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                           onPressed: () async {
                             final newName = nameController.text.trim();
                             final newEmail = emailController.text.trim();
-                            if (newName.isNotEmpty) _config.userName = newName;
-                            if (newEmail.isNotEmpty) _config.userEmail = newEmail;
-                            _config.syncEnabled = syncVal;
+                            _config.userName = newName;
+                            _config.userEmail = newEmail;
+                            _config.syncEnabled = newEmail.isNotEmpty ? syncVal : false;
                             await _config.save();
                             if (mounted) {
                               setState(() {});
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Cuenta de Google actualizada con éxito'),
-                                  backgroundColor: Color(0xFF1E3A5F),
+                                SnackBar(
+                                  content: Text(newEmail.isNotEmpty ? 'Cuenta de Google guardada con éxito' : 'Cuenta cerrada'),
+                                  backgroundColor: const Color(0xFF1E3A5F),
                                 ),
                               );
                             }
@@ -560,6 +573,25 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                       ),
                     ],
                   ),
+                  if (_config.userEmail.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Center(
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.logout_rounded, color: Color(0xFFF28B82), size: 18),
+                        label: const Text('Cerrar sesión y quitar cuenta de Chrome', style: TextStyle(color: Color(0xFFF28B82), fontSize: 13)),
+                        onPressed: () async {
+                          _config.userName = '';
+                          _config.userEmail = '';
+                          _config.syncEnabled = false;
+                          await _config.save();
+                          if (mounted) {
+                            setState(() {});
+                            Navigator.pop(context);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
