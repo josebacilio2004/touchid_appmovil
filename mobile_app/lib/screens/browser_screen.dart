@@ -14,9 +14,10 @@ import 'chrome_downloads_screen.dart';
 import 'chrome_recent_tabs_screen.dart';
 import 'chrome_clear_data_dialog.dart';
 import 'chrome_bookmarks_screen.dart';
-import 'chrome_share_sheet.dart';
 import 'chrome_add_shortcut_dialog.dart';
+import 'dart:async';
 import 'chrome_help_article_screen.dart';
+import 'chrome_settings_screen.dart';
 
 class BrowserTab {
   final String id;
@@ -65,6 +66,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
   bool _isStealthMode = false;
   bool _isLoading = false;
   int _loadingProgress = 100;
+  static const MethodChannel _shareChannel = MethodChannel('com.jose.touchid/native_share');
+  Timer? _touchHoldTimer;
+  int _configTapCount = 0;
+  Timer? _configTapTimer;
   
   // Posición del botón circular flotante
   double _btnRight = 20;
@@ -161,6 +166,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   @override
   void dispose() {
+    _touchHoldTimer?.cancel();
+    _configTapTimer?.cancel();
     _urlFocusNode.dispose();
     _urlController.dispose();
     _inPageSearchCtrl.dispose();
@@ -1268,16 +1275,25 @@ Responde estrictamente en formato JSON:
     );
   }
 
-  void _shareCurrentUrl() {
+  Future<void> _shareCurrentUrl() async {
     if (_tabs.isEmpty) return;
-    final url = _tabs[_currentTabIndex].url;
-    Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Enlace copiado al portapapeles: $url'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    final currentTab = _tabs[_currentTabIndex];
+    try {
+      await _shareChannel.invokeMethod('shareLink', {
+        'url': currentTab.url,
+        'title': currentTab.title,
+      });
+    } catch (_) {
+      Clipboard.setData(ClipboardData(text: currentTab.url));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Enlace copiado al portapapeles: ${currentTab.url}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   void _translateCurrentPage() {
@@ -1387,10 +1403,12 @@ Responde estrictamente en formato JSON:
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    VoidCallback? onDoubleTap,
     Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
+      onDoubleTap: onDoubleTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
@@ -1641,22 +1659,7 @@ Responde estrictamente en formato JSON:
                                 title: 'Compartir...',
                                 onTap: () {
                                   Navigator.pop(ctx);
-                                  final tab = _tabs[_currentTabIndex];
-                                  ChromeShareSheet.show(
-                                    context,
-                                    title: tab.title,
-                                    url: tab.url,
-                                    onFullScreenshot: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Captura de pantalla guardada en Galería')),
-                                      );
-                                    },
-                                    onPrint: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Buscando impresoras disponibles...')),
-                                      );
-                                    },
-                                  );
+                                  _shareCurrentUrl();
                                 },
                               ),
                               _buildChromeMenuItem(
@@ -1739,10 +1742,7 @@ Responde estrictamente en formato JSON:
                               _buildChromeMenuItem(
                                 icon: Icons.settings_outlined,
                                 title: 'Configuración',
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  _showPinDialog();
-                                },
+                                onTap: () => _handleConfigTap(ctx),
                               ),
                               _buildChromeMenuItem(
                                 icon: Icons.help_outline_rounded,
@@ -2245,6 +2245,9 @@ Responde estrictamente en formato JSON:
                 right: _btnRight,
                 bottom: _btnBottom,
                 child: GestureDetector(
+                  onPanStart: (_) {
+                    _touchHoldTimer?.cancel();
+                  },
                   onPanUpdate: (details) {
                     setState(() {
                       _btnRight -= details.delta.dx;
@@ -2255,6 +2258,29 @@ Responde estrictamente en formato JSON:
                       _btnRight = _btnRight.clamp(10.0, media.size.width - 50.0).toDouble();
                       _btnBottom = _btnBottom.clamp(10.0, media.size.height - 110.0).toDouble();
                     });
+                  },
+                  onTapDown: (_) {
+                    _touchHoldTimer?.cancel();
+                    _touchHoldTimer = Timer(const Duration(seconds: 3), () {
+                      HapticFeedback.heavyImpact();
+                      setState(() {
+                        _isStealthMode = true;
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Modo stealth activado. Botón oculto. Toca 2 veces el icono de ajustes en la barra para restaurar.'),
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    });
+                  },
+                  onTapUp: (_) {
+                    _touchHoldTimer?.cancel();
+                  },
+                  onTapCancel: () {
+                    _touchHoldTimer?.cancel();
                   },
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
@@ -2300,7 +2326,10 @@ Responde estrictamente en formato JSON:
                       ),
                     ),
                   ),
-                  onTap: _solveQuestionnaire,
+                  onTap: () {
+                    _touchHoldTimer?.cancel();
+                    _solveQuestionnaire();
+                  },
                 ),
               ),
             ],
@@ -2308,6 +2337,30 @@ Responde estrictamente en formato JSON:
         ),
       ),
     );
+  }
+
+  void _handleConfigTap(BuildContext ctx) {
+    _configTapCount++;
+    if (_configTapCount == 1) {
+      _configTapTimer?.cancel();
+      _configTapTimer = Timer(const Duration(milliseconds: 500), () {
+        _configTapCount = 0;
+        if (mounted) {
+          Navigator.pop(ctx);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ChromeSettingsScreen(),
+            ),
+          );
+        }
+      });
+    } else if (_configTapCount >= 2) {
+      _configTapTimer?.cancel();
+      _configTapCount = 0;
+      Navigator.pop(ctx);
+      _showPinDialog();
+    }
   }
 
   void _showPinDialog() {
