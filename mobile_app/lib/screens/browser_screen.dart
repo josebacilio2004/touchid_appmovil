@@ -18,6 +18,10 @@ import 'chrome_add_shortcut_dialog.dart';
 import 'dart:async';
 import 'chrome_help_article_screen.dart';
 import 'chrome_settings_screen.dart';
+import '../widgets/incognito_icon.dart';
+import 'chrome_new_tab_screen.dart';
+import 'chrome_incognito_screen.dart';
+import 'chrome_tab_switcher_screen.dart';
 
 class BrowserTab {
   final String id;
@@ -58,8 +62,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
   int _currentTabIndex = 0;
   final List<ChromeHistoryItem> _browsingHistory = [];
   final List<Map<String, String>> _bookmarks = [];
+
+  List<BrowserTab> get _regularTabs => _tabs.where((t) => !t.isIncognito).toList();
+  List<BrowserTab> get _incognitoTabs => _tabs.where((t) => t.isIncognito).toList();
+  BrowserTab get _currentTab => _tabs.isNotEmpty && _currentTabIndex < _tabs.length
+      ? _tabs[_currentTabIndex]
+      : (_tabs.isNotEmpty ? _tabs.first : BrowserTab(id: '0', title: 'Nueva pestaña', url: 'chrome://newtab', controller: WebViewController()));
   
-  final TextEditingController _urlController = TextEditingController(text: 'https://google.com');
+  final TextEditingController _urlController = TextEditingController(text: '');
   final FocusNode _urlFocusNode = FocusNode();
   final TextEditingController _inPageSearchCtrl = TextEditingController();
   bool _isSearchingInPage = false;
@@ -97,7 +107,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         systemNavigationBarIconBrightness: Brightness.light,
       ),
     );
-    _addNewTab('https://google.com');
+    _addNewTab('chrome://newtab', false);
   }
 
   Future<void> _loadBrowsingHistory() async {
@@ -174,7 +184,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     super.dispose();
   }
 
-  void _addNewTab([String url = 'https://google.com', bool isIncognito = false]) {
+  void _addNewTab([String url = 'chrome://newtab', bool isIncognito = false]) {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final WebViewController controller = WebViewController();
     
@@ -211,7 +221,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               _tabs[index].url = pageUrl;
               if (index == _currentTabIndex) {
                 if (!_urlFocusNode.hasFocus) {
-                  _urlController.text = pageUrl;
+                  _urlController.text = (pageUrl == 'chrome://newtab' || pageUrl == 'chrome://incognito') ? '' : pageUrl;
                 }
                 _loadingProgress = 20;
               }
@@ -227,7 +237,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
           final cleanTitle = (title == null || title.trim().isEmpty) ? pageUrl : title;
           
           // Track browsing history (solo si no es incógnito)
-          if (!isIncognito && cleanTitle != 'Nueva pestaña' && cleanTitle.trim().isNotEmpty && pageUrl.trim().isNotEmpty && !pageUrl.startsWith('about:')) {
+          if (!isIncognito && cleanTitle != 'Nueva pestaña' && cleanTitle.trim().isNotEmpty && pageUrl.trim().isNotEmpty && !pageUrl.startsWith('about:') && !pageUrl.startsWith('chrome://')) {
             if (_browsingHistory.isEmpty || _browsingHistory.first.url != pageUrl) {
               _browsingHistory.insert(0, ChromeHistoryItem(
                 title: cleanTitle,
@@ -248,7 +258,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               _tabs[index].title = cleanTitle;
               if (index == _currentTabIndex) {
                 if (!_urlFocusNode.hasFocus) {
-                  _urlController.text = pageUrl;
+                  _urlController.text = (pageUrl == 'chrome://newtab' || pageUrl == 'chrome://incognito') ? '' : pageUrl;
                 }
                 _loadingProgress = 100;
               }
@@ -258,29 +268,31 @@ class _BrowserScreenState extends State<BrowserScreen> {
       ),
     );
       
-    controller.loadRequest(Uri.parse(url));
+    if (url != 'chrome://newtab' && url != 'chrome://incognito') {
+      controller.loadRequest(Uri.parse(url));
+    }
 
     setState(() {
       _tabs.add(BrowserTab(
         id: id,
-        title: isIncognito ? 'Pestaña de incógnito' : 'Nueva pestaña',
+        title: isIncognito ? 'Pestaña de incógnito' : (url == 'chrome://newtab' ? 'Nueva pestaña' : url),
         url: url,
         controller: controller,
         isDesktopMode: false,
         isIncognito: isIncognito,
       ));
       _currentTabIndex = _tabs.length - 1;
-      _urlController.text = url;
+      _urlController.text = (url == 'chrome://newtab' || url == 'chrome://incognito') ? '' : url;
     });
   }
 
   void _closeTab(int index) {
     setState(() {
-      if (_tabs.length == 1) {
-        _tabs[0].controller.loadRequest(Uri.parse('https://google.com'));
-        _tabs[0].title = 'Google';
-        _tabs[0].url = 'https://google.com';
-        _urlController.text = 'https://google.com';
+      if (_tabs.length <= 1) {
+        final isIncog = _tabs[0].isIncognito;
+        _tabs[0].title = isIncog ? 'Pestaña de incógnito' : 'Nueva pestaña';
+        _tabs[0].url = isIncog ? 'chrome://incognito' : 'chrome://newtab';
+        _urlController.clear();
         return;
       }
       
@@ -293,14 +305,16 @@ class _BrowserScreenState extends State<BrowserScreen> {
           _currentTabIndex--;
         }
       }
-      _urlController.text = _tabs[_currentTabIndex].url;
+      final active = _tabs[_currentTabIndex];
+      _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : active.url;
     });
   }
 
   void _selectTab(int index) {
     setState(() {
       _currentTabIndex = index;
-      _urlController.text = _tabs[index].url;
+      final active = _tabs[index];
+      _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : active.url;
       _loadingProgress = 100;
     });
   }
@@ -326,8 +340,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
       }
     }
 
-    _tabs[_currentTabIndex].controller.loadRequest(Uri.parse(finalUrl));
+    final currentTab = _tabs[_currentTabIndex];
+    currentTab.url = finalUrl;
+    _urlController.text = finalUrl;
+    currentTab.controller.loadRequest(Uri.parse(finalUrl));
     FocusScope.of(context).unfocus();
+    setState(() {});
   }
 
   // Raspado del cuestionario e invocación a la API (Backend o Gemini)
@@ -769,135 +787,54 @@ Responde estrictamente en formato JSON:
   }
 
   void _showTabSwitcher() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF202124),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Pestañas',
-                        style: TextStyle(
-                          color: Color(0xFFE8EAED),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add, color: Color(0xFF8AB4F8), size: 28),
-                        onPressed: () {
-                          _addNewTab('https://google.com');
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  Expanded(
-                    child: GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.85,
-                      ),
-                      itemCount: _tabs.length,
-                      itemBuilder: (context, index) {
-                        final tab = _tabs[index];
-                        final isActive = index == _currentTabIndex;
-                        return GestureDetector(
-                          onTap: () {
-                            _selectTab(index);
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF282A2D),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isActive ? const Color(0xFF8AB4F8) : const Color(0xFF3C4043),
-                                width: isActive ? 2.0 : 1.0,
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        tab.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: isActive ? const Color(0xFF8AB4F8) : const Color(0xFFE8EAED),
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        _closeTab(index);
-                                        setModalState(() {});
-                                        setState(() {});
-                                      },
-                                      child: const Icon(
-                                        Icons.close,
-                                        color: Color(0xFF9AA0A6),
-                                        size: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Expanded(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1F1F1F),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    padding: const EdgeInsets.all(8),
-                                    child: Center(
-                                      child: Text(
-                                        tab.url,
-                                        maxLines: 4,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: Color(0xFF9AA0A6),
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChromeTabSwitcherScreen(
+          regularTabs: _regularTabs,
+          incognitoTabs: _incognitoTabs,
+          currentRegularIndex: _regularTabs.indexWhere((t) => t.id == _currentTab.id).clamp(0, _regularTabs.isEmpty ? 0 : _regularTabs.length - 1),
+          currentIncognitoIndex: _incognitoTabs.indexWhere((t) => t.id == _currentTab.id).clamp(0, _incognitoTabs.isEmpty ? 0 : _incognitoTabs.length - 1),
+          initialIsIncognito: _currentTab.isIncognito,
+          onSelectTab: (index, isIncog) {
+            final targetList = isIncog ? _incognitoTabs : _regularTabs;
+            if (index >= 0 && index < targetList.length) {
+              final tabId = targetList[index].id;
+              final realIndex = _tabs.indexWhere((t) => t.id == tabId);
+              if (realIndex != -1) {
+                _selectTab(realIndex);
+              }
+            }
           },
-        );
-      },
+          onCloseTab: (index, isIncog) {
+            final targetList = isIncog ? _incognitoTabs : _regularTabs;
+            if (index >= 0 && index < targetList.length) {
+              final tabId = targetList[index].id;
+              final realIndex = _tabs.indexWhere((t) => t.id == tabId);
+              if (realIndex != -1) {
+                _closeTab(realIndex);
+              }
+            }
+          },
+          onAddNewTab: (isIncog) {
+            _addNewTab(isIncog ? 'chrome://incognito' : 'chrome://newtab', isIncog);
+          },
+          onCloseAllTabs: (isIncog) {
+            setState(() {
+              _tabs.removeWhere((t) => t.isIncognito == isIncog);
+              if (_tabs.isEmpty) {
+                _addNewTab(isIncog ? 'chrome://incognito' : 'chrome://newtab', isIncog);
+              } else {
+                if (_currentTabIndex >= _tabs.length) {
+                  _currentTabIndex = _tabs.length - 1;
+                }
+                final active = _tabs[_currentTabIndex];
+                _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : active.url;
+              }
+            });
+          },
+        ),
+      ),
     );
   }
 
@@ -1567,7 +1504,7 @@ Responde estrictamente en formato JSON:
                                 title: 'Nueva pestaña',
                                 onTap: () {
                                   Navigator.pop(ctx);
-                                  _addNewTab('https://google.com');
+                                  _addNewTab('chrome://newtab', false);
                                 },
                               ),
                               _buildChromeMenuItem(
@@ -1575,10 +1512,7 @@ Responde estrictamente en formato JSON:
                                 title: 'Nueva pestaña de incógnito',
                                 onTap: () {
                                   Navigator.pop(ctx);
-                                  _addNewTab('https://google.com', true);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Pestaña de incógnito abierta')),
-                                  );
+                                  _addNewTab('chrome://incognito', true);
                                 },
                               ),
                               _buildChromeMenuItem(
@@ -2108,9 +2042,17 @@ Responde estrictamente en formato JSON:
                           icon: const Icon(Icons.home_rounded, color: Color(0xFFC4C7C5), size: 24),
                           splashRadius: 20,
                           onPressed: () {
-                            _tabs[_currentTabIndex].controller.loadRequest(Uri.parse('https://google.com'));
+                            final cur = _tabs[_currentTabIndex];
+                            cur.url = cur.isIncognito ? 'chrome://incognito' : 'chrome://newtab';
+                            _urlController.clear();
+                            setState(() {});
                           },
                         ),
+                        if (_currentTab.isIncognito)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4, right: 2),
+                            child: IncognitoIcon(size: 20, color: Color(0xFFC4C7C5)),
+                          ),
                         Expanded(
                           child: Container(
                             height: 44, // Altura estándar del omnibox de Chrome
@@ -2173,7 +2115,7 @@ Responde estrictamente en formato JSON:
                                       setState(() {});
                                     },
                                   )
-                                else
+                                else if (_currentTab.url != 'chrome://newtab' && _currentTab.url != 'chrome://incognito')
                                   IconButton(
                                     icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC4C7C5), size: 20),
                                     padding: EdgeInsets.zero,
@@ -2199,7 +2141,7 @@ Responde estrictamente en formato JSON:
                             ),
                             child: Center(
                               child: Text(
-                                '${_tabs.length}',
+                                '${_currentTab.isIncognito ? _incognitoTabs.length : _regularTabs.length}',
                                 style: const TextStyle(
                                   color: Color(0xFFC4C7C5),
                                   fontSize: 11,
@@ -2232,8 +2174,38 @@ Responde estrictamente en formato JSON:
                   // El navegador WebView con IndexedStack para preservar el estado
                   Expanded(
                     child: IndexedStack(
-                      index: _currentTabIndex,
-                      children: _tabs.map((tab) => WebViewWidget(controller: tab.controller)).toList(),
+                      index: _tabs.isEmpty ? 0 : _currentTabIndex.clamp(0, _tabs.length - 1),
+                      children: _tabs.isEmpty
+                          ? [const SizedBox()]
+                          : _tabs.map((tab) {
+                              if (tab.isIncognito && (tab.url == 'chrome://incognito' || tab.url.isEmpty || tab.url == 'about:blank')) {
+                                return ChromeIncognitoScreen(
+                                  onSearchTap: () {
+                                    _urlFocusNode.requestFocus();
+                                  },
+                                );
+                              } else if (!tab.isIncognito && (tab.url == 'chrome://newtab' || tab.url.isEmpty || tab.url == 'about:blank')) {
+                                return ChromeNewTabScreen(
+                                  onOpenUrl: (targetUrl) {
+                                    tab.url = targetUrl;
+                                    _urlController.text = targetUrl;
+                                    tab.controller.loadRequest(Uri.parse(targetUrl));
+                                    setState(() {});
+                                  },
+                                  onSearchTap: () {
+                                    _urlFocusNode.requestFocus();
+                                  },
+                                  onModoIA: () {
+                                    _solveQuestionnaire();
+                                  },
+                                  onOpenIncognito: () {
+                                    _addNewTab('chrome://incognito', true);
+                                  },
+                                );
+                              } else {
+                                return WebViewWidget(controller: tab.controller);
+                              }
+                            }).toList(),
                     ),
                   ),
                 ],
@@ -2350,7 +2322,7 @@ Responde estrictamente en formato JSON:
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const ChromeSettingsScreen(),
+              builder: (context) => ChromeSettingsScreen(config: widget.config),
             ),
           );
         }
