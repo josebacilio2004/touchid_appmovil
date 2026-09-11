@@ -312,6 +312,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
               }
             }
           });
+
+          // Detección automática y extracción de sesión real de Google / Gmail
+          if (!isIncognito && (pageUrl.contains('google.') || pageUrl.contains('accounts.google') || pageUrl.contains('mail.google'))) {
+            _detectGoogleSession(controller);
+          }
         },
       ),
     );
@@ -580,17 +585,23 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final backendUrl = widget.config.backendUrl.trim();
     final userId = widget.config.userId.trim();
 
-    // Determinar system prompt inteligente (con detección MTC y alta precisión)
+    // Determinar system prompt inteligente (con detección MTC, médica/romanos y alta precisión)
     String systemPrompt = widget.config.systemPrompt.trim();
     if (systemPrompt.isEmpty) {
       final isMtc = RegExp(
         r'mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|adelantamiento|preferencia|estacionar|remolque|soat|citv|inspecci[óo]n|v[íi]a|intersecci[óo]n',
         caseSensitive: false,
       ).hasMatch('$question ${options.join(' ')}');
+      final isRomanOrMedical = RegExp(
+        r'\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco',
+        caseSensitive: false,
+      ).hasMatch('$question ${options.join(' ')}');
       if (isMtc) {
         systemPrompt = 'Eres el evaluador oficial y perito experto del examen de reglas de tránsito del MTC (Ministerio de Transportes y Comunicaciones del Perú). Tu objetivo es responder con 100% de precisión y exactitud jurídica basándote estrictamente en el TUO del Reglamento Nacional de Tránsito (D.S. N° 016-2009-MTC y sus modificatorias como D.S. N° 025-2021-MTC sobre límites de velocidad de 30 km/h en calles/jirones y 50 km/h en avenidas) y el Balotario Oficial de Preguntas del MTC. Responde de forma rigurosa seleccionando la alternativa oficial correcta.';
+      } else if (isRomanOrMedical) {
+        systemPrompt = 'Actúa como evaluador experto de exámenes médicos de alta exigencia (ENAM, MIR, USMLE). Para preguntas con premisas numeradas (I, II, III, IV) o correspondencia múltiple: 1) Evalúa rigurosamente cada ítem por separado determinando si es Verdadero o Falso según la evidencia médica y fisiopatológica de referencia. 2) Agrupa los ítems que responden fielmente a lo solicitado. 3) Compara minuciosamente con las alternativas combinadas (A, B, C, D, E) y descarta distractores engañosos. 4) Retorna el índice exacto de la alternativa correcta en formato JSON.';
       } else {
-        systemPrompt = 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.';
+        systemPrompt = 'Actúa como un experto académico de élite y responde con el 100% de precisión analizando rigurosamente todas las alternativas y descartando distractores.';
       }
     }
 
@@ -2255,21 +2266,7 @@ Responde estrictamente en formato JSON:
                                   shortcuts: _getDynamicShortcuts(),
                                   lastVisitedTitle: _browsingHistory.isNotEmpty ? _browsingHistory.first.title : '',
                                   lastVisitedUrl: _browsingHistory.isNotEmpty ? _browsingHistory.first.url : '',
-                                  onAccountTap: () async {
-                                    final updated = await Navigator.push<AppConfig>(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ChromeSettingsScreen(config: widget.config),
-                                      ),
-                                    );
-                                    if (updated != null && mounted) {
-                                      setState(() {
-                                        widget.config.userName = updated.userName;
-                                        widget.config.userEmail = updated.userEmail;
-                                        widget.config.syncEnabled = updated.syncEnabled;
-                                      });
-                                    }
-                                  },
+                                  onAccountTap: _showGoogleAccountBottomSheet,
                                 );
                               } else {
                                 return WebViewWidget(controller: tab.controller);
@@ -2391,7 +2388,10 @@ Responde estrictamente en formato JSON:
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ChromeSettingsScreen(config: widget.config),
+              builder: (context) => ChromeSettingsScreen(
+                config: widget.config,
+                onOpenUrl: _navigateToUrl,
+              ),
             ),
           );
         }
@@ -2496,6 +2496,380 @@ Responde estrictamente en formato JSON:
           ],
         );
       },
+    );
+  }
+
+  void _navigateToUrl(String targetUrl) {
+    if (_tabs.isEmpty) {
+      _addNewTab(targetUrl);
+      return;
+    }
+    final currentTab = _tabs[_currentTabIndex];
+    currentTab.url = targetUrl;
+    _urlController.text = (targetUrl == 'chrome://newtab' || targetUrl == 'chrome://incognito') ? '' : targetUrl;
+    currentTab.controller.loadRequest(Uri.parse(targetUrl));
+    setState(() {});
+  }
+
+  Future<void> _openChromeSettings() async {
+    final updated = await Navigator.push<AppConfig>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChromeSettingsScreen(
+          config: widget.config,
+          onOpenUrl: _navigateToUrl,
+        ),
+      ),
+    );
+    if (updated != null && mounted) {
+      setState(() {
+        widget.config.userName = updated.userName;
+        widget.config.userEmail = updated.userEmail;
+        widget.config.syncEnabled = updated.syncEnabled;
+      });
+    }
+  }
+
+  Future<void> _detectGoogleSession(WebViewController controller) async {
+    try {
+      const extractJs = '''
+        (function() {
+          try {
+            var email = null;
+            var name = null;
+            
+            var accountEl = document.querySelector('a[href*="SignOutOptions"], [data-email], [data-identifier], div[aria-label*="@"], a[aria-label*="@"], [data-email-address]');
+            if (accountEl) {
+              email = accountEl.getAttribute('data-email') || accountEl.getAttribute('data-identifier') || accountEl.getAttribute('data-email-address');
+              var label = accountEl.getAttribute('aria-label') || accountEl.getAttribute('title') || '';
+              if (!email && label) {
+                var m = label.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);
+                if (m) email = m[1];
+              }
+              if (label) {
+                var nm = label.match(/Cuenta de Google:\\s*([^(]+)/i) || label.match(/Google Account:\\s*([^(]+)/i);
+                if (nm) name = nm[1].trim();
+              }
+            }
+
+            if (!email) {
+              var titleMatch = (document.title || '').match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);
+              if (titleMatch) email = titleMatch[1];
+            }
+
+            if (!email && window.WIZ_global_data && typeof window.WIZ_global_data.o6ZaF === 'string') {
+              if (window.WIZ_global_data.o6ZaF.includes('@')) {
+                email = window.WIZ_global_data.o6ZaF;
+              }
+            }
+
+            if (!email && window.location.hostname.includes('myaccount.google.com')) {
+              var bodyMatch = document.body.innerText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);
+              if (bodyMatch) email = bodyMatch[1];
+            }
+
+            if (email) {
+              return JSON.stringify({ email: email.toLowerCase().trim(), name: name || '' });
+            }
+          } catch(e) {}
+          return '';
+        })()
+      ''';
+
+      final res = await controller.runJavaScriptReturningResult(extractJs);
+      String raw = res.toString().trim();
+      if (raw.startsWith('"') && raw.endsWith('"')) {
+        raw = raw.substring(1, raw.length - 1).replaceAll('\\"', '"').replaceAll('\\\\', '\\');
+      }
+
+      if (raw.isNotEmpty && raw != 'null' && raw.startsWith('{')) {
+        final Map<String, dynamic> data = jsonDecode(raw);
+        final String detectedEmail = (data['email'] ?? '').toString().trim();
+        final String detectedName = (data['name'] ?? '').toString().trim();
+
+        if (detectedEmail.isNotEmpty && detectedEmail.contains('@') && detectedEmail != widget.config.userEmail) {
+          setState(() {
+            widget.config.userEmail = detectedEmail;
+            if (detectedName.isNotEmpty) {
+              widget.config.userName = detectedName;
+            } else if (widget.config.userName.isEmpty) {
+              widget.config.userName = detectedEmail.split('@').first;
+            }
+            widget.config.syncEnabled = true;
+          });
+          await widget.config.save();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.account_circle, color: Color(0xFF81C995), size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Sesión sincronizada: $detectedEmail',
+                        style: const TextStyle(color: Colors.white, fontSize: 13.5),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF202124),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _showGoogleAccountBottomSheet() {
+    final hasUser = widget.config.userEmail.isNotEmpty;
+    final userEmail = widget.config.userEmail;
+    final userName = widget.config.userName.isNotEmpty 
+        ? widget.config.userName 
+        : (hasUser ? userEmail.split('@').first : '');
+    final initial = hasUser 
+        ? (userName.isNotEmpty ? userName[0].toUpperCase() : userEmail[0].toUpperCase())
+        : 'G';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF202124),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5F6368),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                if (hasUser) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF282A2D),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF3C4043), width: 0.8),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF1A73E8), Color(0xFF4285F4)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              initial,
+                              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                userName,
+                                style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 16, fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                userEmail,
+                                style: const TextStyle(color: Color(0xFF9AA0A6), fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: const [
+                                  Icon(Icons.sync_rounded, color: Color(0xFF81C995), size: 14),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Sincronización activa',
+                                    style: TextStyle(color: Color(0xFF81C995), fontSize: 11.5, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  _buildAccountActionTile(
+                    icon: Icons.manage_accounts_outlined,
+                    title: 'Administrar tu Cuenta de Google',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _navigateToUrl('https://myaccount.google.com');
+                    },
+                  ),
+                  _buildAccountActionTile(
+                    icon: Icons.person_add_alt_1_outlined,
+                    title: 'Agregar o cambiar de cuenta de Google',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _navigateToUrl('https://accounts.google.com/AddSession?hl=es');
+                    },
+                  ),
+                  _buildAccountActionTile(
+                    icon: Icons.settings_outlined,
+                    title: 'Configuración de Chrome',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openChromeSettings();
+                    },
+                  ),
+                  const Divider(color: Color(0xFF3C4043), height: 20),
+                  _buildAccountActionTile(
+                    icon: Icons.logout_rounded,
+                    title: 'Cerrar sesión en este dispositivo',
+                    textColor: const Color(0xFFF28B82),
+                    iconColor: const Color(0xFFF28B82),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      setState(() {
+                        widget.config.userEmail = '';
+                        widget.config.userName = '';
+                        widget.config.syncEnabled = false;
+                      });
+                      await widget.config.save();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Has cerrado la sesión de Google.'),
+                            backgroundColor: Color(0xFF282A2D),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ] else ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildGoogleLetter('G', const Color(0xFF4285F4)),
+                      _buildGoogleLetter('o', const Color(0xFFEA4335)),
+                      _buildGoogleLetter('o', const Color(0xFFFBBC05)),
+                      _buildGoogleLetter('g', const Color(0xFF4285F4)),
+                      _buildGoogleLetter('l', const Color(0xFF34A853)),
+                      _buildGoogleLetter('e', const Color(0xFFEA4335)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Acceder a Google Chrome',
+                    style: TextStyle(color: Color(0xFFE8EAED), fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Inicia sesión con tu cuenta de Google (Gmail) para sincronizar tus marcadores, historial y contraseñas.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13.5, height: 1.4),
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1A73E8),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.login_rounded, size: 20),
+                      label: const Text(
+                        'Iniciar sesión con Google (Gmail)',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _navigateToUrl('https://accounts.google.com/ServiceLogin?hl=es');
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF8AB4F8),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _openChromeSettings();
+                      },
+                      child: const Text('Configuración de perfil y ajustes'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAccountActionTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? textColor,
+    Color? iconColor,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      leading: Icon(icon, color: iconColor ?? const Color(0xFF8AB4F8), size: 22),
+      title: Text(
+        title,
+        style: TextStyle(color: textColor ?? const Color(0xFFE8EAED), fontSize: 14.5),
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF5F6368), size: 18),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildGoogleLetter(String char, Color color) {
+    return Text(
+      char,
+      style: TextStyle(
+        fontSize: 32,
+        fontWeight: FontWeight.bold,
+        color: color,
+        letterSpacing: -1.0,
+      ),
     );
   }
 }
