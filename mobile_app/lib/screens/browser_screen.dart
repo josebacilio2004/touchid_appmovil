@@ -2354,61 +2354,7 @@ Responde estrictamente en formato JSON:
                               ],
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 2),
-
-                        // BOTÓN DE ACCEDER PARA INICIAR SESIÓN CON GMAIL (O AVATAR SI YA ACCEDIÓ)
-                        GestureDetector(
-                          onTap: _showGoogleAccountBottomSheet,
-                          child: widget.config.userEmail.isNotEmpty
-                              ? Container(
-                                  width: 32,
-                                  height: 32,
-                                  margin: const EdgeInsets.only(right: 4),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: const Color(0xFF1A73E8),
-                                    border: Border.all(color: const Color(0xFF5F6368), width: 1.2),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      widget.config.userName.isNotEmpty
-                                          ? widget.config.userName[0].toUpperCase()
-                                          : widget.config.userEmail[0].toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  margin: const EdgeInsets.only(right: 4),
-                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF282A2D),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFF3C4043), width: 0.8),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.account_circle_outlined, color: Color(0xFF8AB4F8), size: 16),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Acceder',
-                                        style: TextStyle(
-                                          color: Color(0xFF8AB4F8),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(width: 2),
+                        const SizedBox(width: 4),
 
                         // Contador de pestañas
                         GestureDetector(
