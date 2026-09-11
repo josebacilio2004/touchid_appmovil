@@ -2354,6 +2354,7 @@ Responde estrictamente en formato JSON:
                               ],
                             ),
                           ),
+                        ),
                         const SizedBox(width: 4),
 
                         // Contador de pestañas
