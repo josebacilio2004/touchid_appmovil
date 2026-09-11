@@ -283,20 +283,20 @@ app.post('/solve', async (req, res) => {
 
     let prompt = '';
     if (options && options.length > 0) {
-      prompt = `Pregunta: "${question}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nResponde en JSON estructurado: { "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
+      prompt = `Pregunta: "${question}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
     } else {
-      prompt = `Pregunta/Contenido: "${question}"\n\nResponde en JSON estructurado: { "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
+      prompt = `Pregunta/Contenido: "${question}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
     }
 
     const isMtcQuery = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(question);
-    const isRomanOrMedical = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco/i.test(`${question} ${(options || []).join(' ')}`);
+    const isRomanOrMedical = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|androstenodiona|testosterona|estr[óo]geno|aromatasa|hormon|enzim|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco/i.test(`${question} ${(options || []).join(' ')}`);
 
     let systemInstructionText = systemPrompt;
     if (!systemInstructionText || systemInstructionText.trim() === '') {
       if (isMtcQuery) {
         systemInstructionText = 'Actúa como evaluador oficial del Examen Nacional de Conducir del MTC (Perú). Responde con el 100% de precisión según el Texto Único Ordenado del Reglamento Nacional de Tránsito (D.S. 016-2009-MTC, D.S. 025-2021-MTC y modificatorias) y el Balotario Oficial de Preguntas del MTC. Presta extrema atención a límites de velocidad vigentes en calles/avenidas, reglas de preferencia de paso y preguntas trampa.';
       } else if (isRomanOrMedical) {
-        systemInstructionText = 'Actúa como evaluador experto de exámenes médicos de alta exigencia (ENAM, MIR, USMLE). Para preguntas con premisas numeradas (I, II, III, IV) o correspondencia múltiple: 1) Evalúa rigurosamente cada ítem por separado determinando si es Verdadero o Falso según la evidencia médica y fisiopatológica de referencia. 2) Agrupa los ítems que responden fielmente a lo solicitado. 3) Compara minuciosamente con las alternativas combinadas (A, B, C, D, E) y descarta distractores engañosos. 4) Retorna el índice exacto de la alternativa correcta en formato JSON.';
+        systemInstructionText = 'Actúa como evaluador experto de exámenes médicos y fisiológicos de alta exigencia (Fisiología I/II, Medicina Interna, ENAM, MIR). Para cada pregunta: 1) Identifica el concepto fisiológico/farmacológico exacto. 2) Analiza rigurosamente cada alternativa descartando distractores engañosos. 3) Selecciona con 100% de precisión científica la alternativa correcta y su índice exacto.';
       } else {
         systemInstructionText = 'Actúa como un evaluador académico de élite y responde con el 100% de precisión analizando rigurosamente todas las alternativas y descartando distractores.';
       }
@@ -311,6 +311,7 @@ app.post('/solve', async (req, res) => {
         responseSchema: {
           type: 'OBJECT',
           properties: {
+            thought: { type: 'STRING' },
             correct_option_index: { type: 'INTEGER' },
             correct_option_text: { type: 'STRING' },
             explanation: { type: 'STRING' },
@@ -322,11 +323,11 @@ app.post('/solve', async (req, res) => {
     };
 
     const models = [
-      'gemini-2.5-flash-lite',
       'gemini-2.5-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-flash-lite-latest',
       'gemini-2.0-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-flash-latest',
+      'gemini-3.1-flash-lite',
       'gemini-1.5-flash'
     ];
 
