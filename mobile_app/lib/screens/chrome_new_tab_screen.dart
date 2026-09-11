@@ -62,13 +62,20 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
   }
 
   void _submitSearch(String query) {
-    final trimmed = query.trim();
+    var trimmed = query.trim().replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '').trim();
     if (trimmed.isEmpty) return;
-    final target = (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
-        ? trimmed
-        : (trimmed.contains('.') && !trimmed.contains(' '))
-            ? 'https://' + trimmed
-            : 'https://www.google.com/search?q=' + Uri.encodeComponent(trimmed);
+
+    final lower = trimmed.toLowerCase();
+    final String target;
+    if (lower == 'udabol' || lower.contains('virtual.udabol') || lower.contains('carpetaverde') || lower.contains('udabol.edu.bo')) {
+      target = 'https://virtual.udabol.edu.bo/carpetaverde/general/modulos';
+    } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      target = trimmed;
+    } else if (trimmed.contains('.') && !trimmed.contains(' ')) {
+      target = 'https://' + trimmed;
+    } else {
+      target = 'https://www.google.com/search?q=' + Uri.encodeComponent(trimmed);
+    }
     widget.onOpenUrl(target);
   }
 
