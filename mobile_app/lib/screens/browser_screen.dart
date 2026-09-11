@@ -318,6 +318,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
             _detectGoogleSession(controller);
           }
         },
+        onWebResourceError: (WebResourceError error) {
+          debugPrint('WebView error: [${error.errorCode}] ${error.description} on ${error.url}');
+          if (mounted) {
+            setState(() {
+              _loadingProgress = 100;
+            });
+          }
+        },
       ),
     );
       
@@ -2306,6 +2314,10 @@ Responde estrictamente en formato JSON:
                                   child: TextField(
                                     controller: _urlController,
                                     focusNode: _urlFocusNode,
+                                    keyboardType: TextInputType.url,
+                                    textInputAction: TextInputAction.go,
+                                    autocorrect: false,
+                                    enableSuggestions: false,
                                     style: const TextStyle(
                                       color: Color(0xFFE8EAED),
                                       fontSize: 14.5,

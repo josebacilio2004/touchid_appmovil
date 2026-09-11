@@ -120,6 +120,10 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
                   child: TextField(
                     controller: _searchCtrl,
                     focusNode: _searchFocus,
+                    keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.go,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     style: const TextStyle(
                       color: Color(0xFFE8EAED),
                       fontSize: 15,
