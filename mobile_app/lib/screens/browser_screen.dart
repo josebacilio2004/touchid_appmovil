@@ -2340,19 +2340,35 @@ Responde estrictamente en formato JSON:
                                         extentOffset: _urlController.text.length,
                                       );
                                     },
+                                    onChanged: (_) => setState(() {}),
                                     onSubmitted: (_) => _loadUrl(),
                                   ),
                                 ),
-                                if (_urlFocusNode.hasFocus && _urlController.text.isNotEmpty)
-                                  IconButton(
-                                    icon: const Icon(Icons.close_rounded, color: Color(0xFFC4C7C5), size: 20),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    splashRadius: 18,
-                                    onPressed: () {
-                                      _urlController.clear();
-                                      setState(() {});
-                                    },
+                                if (_urlController.text.isNotEmpty && (_urlFocusNode.hasFocus || _currentTab.url == 'chrome://newtab' || _currentTab.url == 'chrome://incognito'))
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (_urlFocusNode.hasFocus)
+                                        IconButton(
+                                          icon: const Icon(Icons.close_rounded, color: Color(0xFFC4C7C5), size: 19),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          splashRadius: 18,
+                                          onPressed: () {
+                                            _urlController.clear();
+                                            setState(() {});
+                                          },
+                                        ),
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        icon: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF8AB4F8), size: 20),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        splashRadius: 18,
+                                        tooltip: 'Ir',
+                                        onPressed: _loadUrl,
+                                      ),
+                                    ],
                                   )
                                 else if (_currentTab.url != 'chrome://newtab' && _currentTab.url != 'chrome://incognito')
                                   IconButton(
