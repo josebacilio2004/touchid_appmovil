@@ -525,105 +525,163 @@ class _BrowserScreenState extends State<BrowserScreen> {
     });
 
     try {
-      // Inyectar script para extraer pregunta y opciones
+      // Inyectar script especializado para UDABOL y plataformas universitarias
       const jsScript = '''
         (function() {
-          var radioInputs = document.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+          function clean(str) {
+            if (!str) return '';
+            return str.replace(/\\s+/g, ' ').trim();
+          }
+
+          // Patrones de ruido administrativos y de paginación
+          var noisePatterns = [
+            /\\b(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-\\d+)[^\\n\\r]*/gi,
+            /\\b(Respondidas|Sin responder|Respondida)\\b/gi,
+            /\\bPregunta\\s+nro\\.?\\s*\\d+\\b/gi,
+            /\\bTIEMPO\\s+RESTANTE\\b[\\s\\S]*?(?=(?:Pregunta|Siguiente|\$))/gi,
+            /\\b(Minutos|Segundos)\\b/gi,
+            /\\b(Punt[uú]a\\s+como|Puntaje|Sobre\\s+\\d+|Se[ñn]alar\\s+con\\s+bandera|Marcar\\s+con\\s+bandera)\\b[^\\n\\r]*/gi,
+            /\\b(Enunciado\\s+de\\s+la\\s+pregunta)\\b/gi
+          ];
+
+          function stripNoise(text) {
+            var t = text || '';
+            noisePatterns.forEach(function(p) {
+              t = t.replace(p, ' ');
+            });
+            // Eliminar números sueltos de paginación (1 al 20)
+            t = t.replace(/(?:^|\\s)\\d{1,2}(?=\\s|\$)/g, ' ');
+            return clean(t);
+          }
+
+          var doc = document;
+          var radioInputs = Array.from(doc.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
+
+          // Si no hay inputs directos, buscar dentro de posibles iframes
+          if (radioInputs.length === 0) {
+            var iframes = doc.querySelectorAll('iframe');
+            for (var f = 0; f < iframes.length; f++) {
+              try {
+                var idoc = iframes[f].contentDocument || iframes[f].contentWindow.document;
+                if (idoc) {
+                  var ifRadios = Array.from(idoc.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
+                  if (ifRadios.length > 0) {
+                    radioInputs = ifRadios;
+                    doc = idoc;
+                    break;
+                  }
+                }
+              } catch(e) {}
+            }
+          }
+
           var questionText = '';
           var options = [];
-          
+
+          // Resolver texto de la alternativa asociado a un input
+          function getOptionText(input) {
+            if (input.id) {
+              var lbl = doc.querySelector('label[for="' + input.id + '"]');
+              if (lbl) {
+                var lt = clean(lbl.innerText || lbl.textContent);
+                if (lt) return lt;
+              }
+            }
+            var parentLbl = input.closest('label');
+            if (parentLbl) {
+              var pt = clean(parentLbl.innerText || parentLbl.textContent);
+              if (pt) return pt;
+            }
+            var sib = input.nextElementSibling;
+            if (sib) {
+              var st = clean(sib.innerText || sib.textContent);
+              if (st) return st;
+            }
+            if (input.nextSibling && input.nextSibling.textContent) {
+              var nst = clean(input.nextSibling.textContent);
+              if (nst) return nst;
+            }
+            var parentBox = input.closest('.answer, .r0, .r1, .opcion, .option, li, div, p');
+            if (parentBox) {
+              var clone = parentBox.cloneNode(true);
+              var inputs = clone.querySelectorAll('input, button');
+              inputs.forEach(function(i) { i.remove(); });
+              var cText = clean(clone.innerText || clone.textContent);
+              if (cText) return cText;
+            }
+            return '';
+          }
+
+          // --- ESTRATEGIA 1: Extracción basada en Radio Buttons / Checkboxes ---
           if (radioInputs.length > 0) {
-            var name = radioInputs[0].name || radioInputs[0].id;
-            var inputs = document.querySelectorAll('input[type="radio"]');
-            var matchingInputs = Array.from(inputs).filter(function(i) {
-              return i.name === name || i.id === name;
+            var visibleRadios = radioInputs.filter(function(r) {
+              var rect = r.getBoundingClientRect();
+              return (rect.width > 0 || rect.height > 0 || r.offsetParent !== null);
             });
-            if (matchingInputs.length === 0) matchingInputs = radioInputs;
-            
-            var container = radioInputs[0].closest('fieldset, .question, .question-card, [class*="question"], [class*="cuestion"]') || 
-                            radioInputs[0].parentElement?.parentElement;
-            
-            if (container) {
-              questionText = container.innerText || container.textContent || '';
+            if (visibleRadios.length === 0) visibleRadios = radioInputs;
+
+            var targetName = visibleRadios[0].name;
+            var currentGroup = visibleRadios.filter(function(r) {
+              return !targetName || r.name === targetName;
+            });
+            if (currentGroup.length < 2) currentGroup = visibleRadios;
+
+            currentGroup.forEach(function(input) {
+              var txt = getOptionText(input);
+              txt = txt.replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
+              if (txt && options.indexOf(txt) === -1) {
+                options.push(txt);
+              }
+            });
+
+            var qContainer = currentGroup[0].closest('.que, .multichoice, fieldset, .question, .question-card, [class*="question"], [class*="cuestion"], form, .card') ||
+                             currentGroup[0].parentElement?.parentElement?.parentElement;
+
+            var qTextEl = qContainer ? qContainer.querySelector('.qtext, .formulation, [class*="question-text"], [class*="enunciado"], [class*="pregunta"]') : null;
+            if (qTextEl) {
+              questionText = clean(qTextEl.innerText || qTextEl.textContent);
+            } else if (qContainer) {
+              var raw = qContainer.innerText || qContainer.textContent || '';
+              options.forEach(function(opt) {
+                raw = raw.split(opt).join('');
+              });
+              questionText = stripNoise(raw);
             }
-            
-            matchingInputs.forEach(function(input, index) {
-              var label = document.querySelector('label[for="' + input.id + '"]') || input.closest('label');
-              if (label) {
-                var txt = (label.innerText || label.textContent || '').trim();
-                if (txt) {
-                  options.push(txt);
-                  questionText = questionText.replace(txt, '');
-                }
-              }
-            });
-            
-            questionText = questionText.trim().replace(/^[A-Za-z0-9]+\\.\\s+/, '').replace(/\\s+/g, ' ');
           }
-          
-          if (options.length === 0) {
-            var allElements = document.querySelectorAll('div, button, span, li, p, label');
-            var matchesByLetter = {A: [], B: [], C: [], D: [], E: [], F: []};
-            var letterPatterns = [
-              /^\\s*A[\\.\\)]\\s+/i,
-              /^\\s*B[\\.\\)]\\s+/i,
-              /^\\s*C[\\.\\)]\\s+/i,
-              /^\\s*D[\\.\\)]\\s+/i,
-              /^\\s*E[\\.\\)]\\s+/i,
-              /^\\s*F[\\.\\)]\\s+/i
-            ];
-            
-            allElements.forEach(function(el) {
-              if (el.children.length > 2) return;
-              var text = (el.innerText || el.textContent || '').trim();
-              if (!text) return;
-              
-              if (letterPatterns[0].test(text)) matchesByLetter.A.push({el: el, text: text});
-              else if (letterPatterns[1].test(text)) matchesByLetter.B.push({el: el, text: text});
-              else if (letterPatterns[2].test(text)) matchesByLetter.C.push({el: el, text: text});
-              else if (letterPatterns[3].test(text)) matchesByLetter.D.push({el: el, text: text});
-              else if (letterPatterns[4].test(text)) matchesByLetter.E.push({el: el, text: text});
-              else if (letterPatterns[5].test(text)) matchesByLetter.F.push({el: el, text: text});
-            });
-            
-            if (matchesByLetter.A.length > 0 && matchesByLetter.B.length > 0) {
-              var candidateA = matchesByLetter.A[0];
-              var candidateB = matchesByLetter.B[0];
-              var candidateC = matchesByLetter.C.length > 0 ? matchesByLetter.C[0] : null;
-              var candidateD = matchesByLetter.D.length > 0 ? matchesByLetter.D[0] : null;
-              var candidateE = matchesByLetter.E.length > 0 ? matchesByLetter.E[0] : null;
-              var candidateF = matchesByLetter.F.length > 0 ? matchesByLetter.F[0] : null;
-              
-              options.push(candidateA.text);
-              options.push(candidateB.text);
-              if (candidateC) options.push(candidateC.text);
-              if (candidateD) options.push(candidateD.text);
-              if (candidateE) options.push(candidateE.text);
-              if (candidateF) options.push(candidateF.text);
-              
-              var parent = candidateA.el.parentElement;
-              while (parent && parent !== document.body) {
-                if (parent.contains(candidateB.el)) {
-                  break;
+
+          // --- ESTRATEGIA 2: Respaldo Semántico Estructural (UDABOL con o sin inputs) ---
+          if (options.length < 2 || questionText.length < 5) {
+            var bodyText = doc.body.innerText || doc.body.textContent || '';
+            var lines = bodyText.split(/[\\r\\n]+/).map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
+            var cleanLines = [];
+
+            for (var i = 0; i < lines.length; i++) {
+              var line = lines[i];
+              if (/^\\d{1,2}\$/.test(line)) continue;
+              if (/^(Respondidas|Sin responder|Respondida)\$/i.test(line)) continue;
+              if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
+              if (/^(TIEMPO RESTANTE|Minutos|Segundos|Pregunta nro)/i.test(line)) break;
+              if (/^(Siguiente|Anterior|Finalizar)\$/i.test(line)) break;
+              cleanLines.push(line);
+            }
+
+            if (cleanLines.length >= 3) {
+              questionText = cleanLines[0];
+              var parsedOpts = [];
+              for (var j = 1; j < cleanLines.length; j++) {
+                var optCandidate = cleanLines[j].replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
+                if (optCandidate && parsedOpts.indexOf(optCandidate) === -1) {
+                  parsedOpts.push(optCandidate);
                 }
-                parent = parent.parentElement;
               }
-              
-              if (parent) {
-                var parentText = parent.innerText || parent.textContent || '';
-                options.forEach(function(opt) {
-                  parentText = parentText.replace(opt, '');
-                });
-                questionText = parentText.trim().replace(/\\s+/g, ' ');
+              if (parsedOpts.length >= 2) {
+                options = parsedOpts;
               }
             }
           }
-          
-          if (questionText.length < 5) {
-            questionText = document.body.innerText || '';
-            questionText = questionText.trim().substring(0, 1000);
-          }
-          
+
+          questionText = stripNoise(questionText);
+
           return JSON.stringify({
             question: questionText,
             options: options
@@ -631,18 +689,39 @@ class _BrowserScreenState extends State<BrowserScreen> {
         })()
       ''';
 
-      final result = await _tabs[_currentTabIndex].controller.runJavaScriptReturningResult(jsScript);
-      
-      // Decodificar el resultado de JS (en Android a veces viene entre comillas extras)
-      String cleanResult = result.toString();
-      if (cleanResult.startsWith('"') && cleanResult.endsWith('"')) {
-        cleanResult = cleanResult.substring(1, cleanResult.length - 1);
-        cleanResult = cleanResult.replaceAll('\\"', '"').replaceAll('\\\\', '\\');
-      }
+      // Reintentos automáticos para tolerar transiciones AJAX entre preguntas ("Siguiente")
+      String question = '';
+      List<String> options = [];
 
-      final Map<String, dynamic> data = jsonDecode(cleanResult);
-      final String question = data['question'] ?? '';
-      final List<String> options = List<String>.from(data['options'] ?? []);
+      for (int attempt = 0; attempt < 4; attempt++) {
+        final result = await _tabs[_currentTabIndex].controller.runJavaScriptReturningResult(jsScript);
+        
+        String cleanResult = result.toString();
+        if (cleanResult.startsWith('"') && cleanResult.endsWith('"')) {
+          cleanResult = cleanResult.substring(1, cleanResult.length - 1);
+          cleanResult = cleanResult.replaceAll('\\"', '"').replaceAll('\\\\', '\\');
+        }
+
+        try {
+          final Map<String, dynamic> data = jsonDecode(cleanResult);
+          final String q = (data['question'] ?? '').toString().trim();
+          final List<String> opts = List<String>.from(data['options'] ?? []);
+
+          if (q.length >= 8 && opts.length >= 2) {
+            question = q;
+            options = opts;
+            break; // Pregunta y alternativas listas
+          } else if (q.length >= 8 && attempt == 3) {
+            question = q;
+            options = opts;
+          }
+        } catch (_) {}
+
+        // Si la página aún está renderizando la transición, esperar 250ms antes del próximo reintento
+        if (attempt < 3) {
+          await Future.delayed(const Duration(milliseconds: 250));
+        }
+      }
 
       if (question.length < 5) {
         throw Exception('No se detectó suficiente contenido para formular una pregunta.');
@@ -690,13 +769,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
         caseSensitive: false,
       ).hasMatch('$question ${options.join(' ')}');
       final isRomanOrMedical = RegExp(
-        r'\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco',
+        r'\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|androstenodiona|testosterona|estr[óo]geno|aromatasa|hormon|enzim|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco',
         caseSensitive: false,
       ).hasMatch('$question ${options.join(' ')}');
       if (isMtc) {
         systemPrompt = 'Eres el evaluador oficial y perito experto del examen de reglas de tránsito del MTC (Ministerio de Transportes y Comunicaciones del Perú). Tu objetivo es responder con 100% de precisión y exactitud jurídica basándote estrictamente en el TUO del Reglamento Nacional de Tránsito (D.S. N° 016-2009-MTC y sus modificatorias como D.S. N° 025-2021-MTC sobre límites de velocidad de 30 km/h en calles/jirones y 50 km/h en avenidas) y el Balotario Oficial de Preguntas del MTC. Responde de forma rigurosa seleccionando la alternativa oficial correcta.';
       } else if (isRomanOrMedical) {
-        systemPrompt = 'Actúa como evaluador experto de exámenes médicos de alta exigencia (ENAM, MIR, USMLE). Para preguntas con premisas numeradas (I, II, III, IV) o correspondencia múltiple: 1) Evalúa rigurosamente cada ítem por separado determinando si es Verdadero o Falso según la evidencia médica y fisiopatológica de referencia. 2) Agrupa los ítems que responden fielmente a lo solicitado. 3) Compara minuciosamente con las alternativas combinadas (A, B, C, D, E) y descarta distractores engañosos. 4) Retorna el índice exacto de la alternativa correcta en formato JSON.';
+        systemPrompt = 'Actúa como evaluador experto de exámenes médicos y fisiológicos de alta exigencia (Fisiología I/II, Medicina Interna, ENAM, MIR). Para cada pregunta: 1) Identifica el concepto fisiológico/farmacológico exacto. 2) Analiza rigurosamente cada alternativa descartando distractores engañosos. 3) Selecciona con 100% de precisión científica la alternativa correcta y su índice exacto.';
       } else {
         systemPrompt = 'Actúa como un experto académico de élite y responde con el 100% de precisión analizando rigurosamente todas las alternativas y descartando distractores.';
       }
@@ -747,24 +826,29 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
 
     final models = [
-      'gemini-2.5-flash-lite',
       'gemini-2.5-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-flash-lite-latest',
       'gemini-2.0-flash',
+      'gemini-2.5-flash-lite',
       'gemini-flash-latest',
+      'gemini-3.1-flash-lite',
+      'gemini-1.5-flash',
     ];
 
     String prompt = '';
     if (options.isNotEmpty) {
       prompt = '''
-Selecciona la opción correcta.
+Responde con máxima precisión a esta pregunta de examen.
 Pregunta: "$question"
 Opciones:
 ${options.asMap().entries.map((e) => '${e.key}) ${e.value}').join('\n')}
 
+INSTRUCCIONES:
+1. Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.
+2. Identifica con certeza absoluta la alternativa correcta y su índice exacto (0-indexed).
+
 Responde estrictamente en formato JSON:
 {
+  "thought": "análisis breve y descarte en 1 oración",
   "correct_option_index": int_indice_comenzando_en_0,
   "correct_option_text": "texto exacto de la opcion",
   "explanation": "explicación max 5 palabras",
@@ -778,6 +862,7 @@ Contenido: "$question"
 
 Responde estrictamente en formato JSON:
 {
+  "thought": "análisis breve",
   "correct_option_index": -1,
   "correct_option_text": "respuesta sintetizada",
   "explanation": "explicación max 5 palabras",
@@ -805,6 +890,7 @@ Responde estrictamente en formato JSON:
         'responseSchema': {
           'type': 'OBJECT',
           'properties': {
+            'thought': {'type': 'STRING'},
             'correct_option_index': {'type': 'INTEGER'},
             'correct_option_text': {'type': 'STRING'},
             'explanation': {'type': 'STRING'},
