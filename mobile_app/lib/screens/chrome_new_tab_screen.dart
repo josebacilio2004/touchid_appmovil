@@ -140,6 +140,7 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(vertical: 12),
                     ),
+                    onChanged: (_) => setState(() {}),
                     onSubmitted: _submitSearch,
                   ),
                 ),
@@ -151,7 +152,11 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
                       _searchFocus.requestFocus();
                     }
                   },
-                  child: const Icon(Icons.mic_rounded, color: Color(0xFFE8EAED), size: 23),
+                  child: Icon(
+                    _searchCtrl.text.trim().isNotEmpty ? Icons.arrow_forward_rounded : Icons.mic_rounded,
+                    color: _searchCtrl.text.trim().isNotEmpty ? const Color(0xFF8AB4F8) : const Color(0xFFE8EAED),
+                    size: 23,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 GestureDetector(
