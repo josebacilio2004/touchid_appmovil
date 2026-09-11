@@ -253,11 +253,14 @@ app.post('/solve', async (req, res) => {
     }
 
     const isMtcQuery = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(question);
+    const isRomanOrMedical = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco/i.test(`${question} ${(options || []).join(' ')}`);
 
     let systemInstructionText = systemPrompt;
     if (!systemInstructionText || systemInstructionText.trim() === '') {
       if (isMtcQuery) {
         systemInstructionText = 'Actúa como evaluador oficial del Examen Nacional de Conducir del MTC (Perú). Responde con el 100% de precisión según el Texto Único Ordenado del Reglamento Nacional de Tránsito (D.S. 016-2009-MTC, D.S. 025-2021-MTC y modificatorias) y el Balotario Oficial de Preguntas del MTC. Presta extrema atención a límites de velocidad vigentes en calles/avenidas, reglas de preferencia de paso y preguntas trampa.';
+      } else if (isRomanOrMedical) {
+        systemInstructionText = 'Actúa como evaluador experto de exámenes médicos de alta exigencia (ENAM, MIR, USMLE). Para preguntas con premisas numeradas (I, II, III, IV) o correspondencia múltiple: 1) Evalúa rigurosamente cada ítem por separado determinando si es Verdadero o Falso según la evidencia médica y fisiopatológica de referencia. 2) Agrupa los ítems que responden fielmente a lo solicitado. 3) Compara minuciosamente con las alternativas combinadas (A, B, C, D, E) y descarta distractores engañosos. 4) Retorna el índice exacto de la alternativa correcta en formato JSON.';
       } else {
         systemInstructionText = 'Actúa como un evaluador académico de élite y responde con el 100% de precisión analizando rigurosamente todas las alternativas y descartando distractores.';
       }

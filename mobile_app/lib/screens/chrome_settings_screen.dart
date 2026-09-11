@@ -3,8 +3,9 @@ import '../models/app_config.dart';
 
 class ChromeSettingsScreen extends StatefulWidget {
   final AppConfig? config;
+  final Function(String url)? onOpenUrl;
 
-  const ChromeSettingsScreen({super.key, this.config});
+  const ChromeSettingsScreen({super.key, this.config, this.onOpenUrl});
 
   @override
   State<ChromeSettingsScreen> createState() => _ChromeSettingsScreenState();
@@ -365,7 +366,7 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
           ],
 
           // Sección: Avanzada
-          if (_matchesQuery('Avanzada') || _matchesQuery('Página principal') || _matchesQuery('Accesibilidad') || _matchesQuery('Configuración de sitios') || _matchesQuery('Idiomas') || _matchesQuery('Descargas') || _matchesQuery('Acerca de Chrome')) ...[
+          if (_matchesQuery('Avanzada') || _matchesQuery('Página principal') || _matchesQuery('Accesibilidad') || _matchesQuery('Configuración de sitios') || _matchesQuery('Idiomas') || _matchesQuery('Descargas') || _matchesQuery('Motor de IA') || _matchesQuery('Prompt') || _matchesQuery('Acerca de Chrome')) ...[
             _buildSectionHeader('Avanzada'),
             const SizedBox(height: 8),
             Container(
@@ -403,6 +404,12 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                     title: 'Descargas',
                     subtitle: '/storage/emulated/0/Download',
                     onTap: () => _showDownloadsDialog(),
+                  ),
+                  _buildDivider(),
+                  _buildSettingTile(
+                    title: 'Motor de IA & Prompts Especializados',
+                    subtitle: 'Configurar prompts para casos clínicos (I-IV), MTC y API',
+                    onTap: () => _showAiPromptsDialog(),
                   ),
                   _buildDivider(),
                   _buildSettingTile(
@@ -484,6 +491,61 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+
+                  if (widget.onOpenUrl != null) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A73E8),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.login_rounded, size: 18),
+                        label: const Text('Iniciar sesión con Google (Gmail)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Navigator.pop(context);
+                          widget.onOpenUrl!('https://accounts.google.com/ServiceLogin?hl=es');
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_config.userEmail.isNotEmpty) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF8AB4F8),
+                            side: const BorderSide(color: Color(0xFF3C4043)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: const Icon(Icons.manage_accounts_outlined, size: 18),
+                          label: const Text('Administrar Cuenta de Google en la web'),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            Navigator.pop(context);
+                            widget.onOpenUrl!('https://myaccount.google.com');
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    const Row(
+                      children: [
+                        Expanded(child: Divider(color: Color(0xFF3C4043))),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 10),
+                          child: Text('o editar datos manualmente', style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 12)),
+                        ),
+                        Expanded(child: Divider(color: Color(0xFF3C4043))),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                  ],
 
                   const Text('Nombre de Usuario', style: TextStyle(color: Color(0xFF8AB4F8), fontSize: 13)),
                   const SizedBox(height: 6),
@@ -1132,6 +1194,213 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
               _buildSwitchRow('Preguntar dónde guardar cada archivo', 'Muestra un aviso antes de iniciar la descarga.', false),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showAiPromptsDialog() {
+    final promptCtrl = TextEditingController(text: _config.systemPrompt);
+    final keyCtrl = TextEditingController(text: _config.geminiApiKey);
+    final backendCtrl = TextEditingController(text: _config.backendUrl);
+
+    const medicalPrompt = 'Actúa como evaluador experto de exámenes médicos de alta exigencia (ENAM, MIR, USMLE). Para preguntas con premisas numeradas (I, II, III, IV) o correspondencia múltiple: 1) Evalúa rigurosamente cada ítem por separado determinando si es Verdadero o Falso según la evidencia médica y fisiopatológica de referencia. 2) Agrupa los ítems que responden fielmente a lo solicitado. 3) Compara minuciosamente con las alternativas combinadas (A, B, C, D, E) y descarta distractores engañosos. 4) Retorna el índice exacto de la alternativa correcta en formato JSON.';
+    const mtcPrompt = 'Actúa como evaluador oficial del Examen Nacional de Conducir del MTC (Perú). Responde con el 100% de precisión según el Texto Único Ordenado del Reglamento Nacional de Tránsito (D.S. 016-2009-MTC, D.S. 025-2021-MTC y modificatorias) y el Balotario Oficial de Preguntas del MTC. Presta extrema atención a límites de velocidad vigentes en calles/avenidas, reglas de preferencia de paso y preguntas trampa.';
+    const academicPrompt = 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto analizando exhaustivamente cada alternativa.';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF202124),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E3A5F),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.psychology_rounded, color: Color(0xFF8AB4F8), size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Motor de IA & Prompts',
+                                style: TextStyle(color: Color(0xFFE8EAED), fontSize: 17, fontWeight: FontWeight.w600),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Instrucciones del sistema y claves de API',
+                                style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    const Text('Plantillas de Prompt Recomendadas', style: TextStyle(color: Color(0xFF8AB4F8), fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ActionChip(
+                          avatar: const Icon(Icons.medical_services_outlined, size: 16, color: Color(0xFF8AB4F8)),
+                          label: const Text('Médico (Casos I-IV & ENAM/MIR)', style: TextStyle(fontSize: 12, color: Color(0xFFE8EAED))),
+                          backgroundColor: const Color(0xFF282A2D),
+                          side: const BorderSide(color: Color(0xFF3C4043)),
+                          onPressed: () {
+                            setModalState(() {
+                              promptCtrl.text = medicalPrompt;
+                            });
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.directions_car_outlined, size: 16, color: Color(0xFF81C995)),
+                          label: const Text('MTC Tránsito Perú', style: TextStyle(fontSize: 12, color: Color(0xFFE8EAED))),
+                          backgroundColor: const Color(0xFF282A2D),
+                          side: const BorderSide(color: Color(0xFF3C4043)),
+                          onPressed: () {
+                            setModalState(() {
+                              promptCtrl.text = mtcPrompt;
+                            });
+                          },
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.school_outlined, size: 16, color: Color(0xFFFDD663)),
+                          label: const Text('Académico General', style: TextStyle(fontSize: 12, color: Color(0xFFE8EAED))),
+                          backgroundColor: const Color(0xFF282A2D),
+                          side: const BorderSide(color: Color(0xFF3C4043)),
+                          onPressed: () {
+                            setModalState(() {
+                              promptCtrl.text = academicPrompt;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text('System Prompt Personalizado', style: TextStyle(color: Color(0xFF8AB4F8), fontSize: 13)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: promptCtrl,
+                      maxLines: 5,
+                      style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 13),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFF282A2D),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        hintText: 'Ingresa las instrucciones para el evaluador de IA...',
+                        hintStyle: const TextStyle(color: Color(0xFF5F6368)),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    const Text('Gemini API Key (Opcional - Resolución Directa)', style: TextStyle(color: Color(0xFF8AB4F8), fontSize: 13)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: keyCtrl,
+                      obscureText: true,
+                      style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 13),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFF282A2D),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        hintText: 'AIzaSy...',
+                        hintStyle: const TextStyle(color: Color(0xFF5F6368)),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    const Text('Servidor Backend Gateway', style: TextStyle(color: Color(0xFF8AB4F8), fontSize: 13)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: backendCtrl,
+                      style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 13),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFF282A2D),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        hintText: 'https://touchid-backend.onrender.com',
+                        hintStyle: const TextStyle(color: Color(0xFF5F6368)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFE8EAED),
+                              side: const BorderSide(color: Color(0xFF5F6368)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancelar'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8AB4F8),
+                              foregroundColor: const Color(0xFF202124),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                            ),
+                            onPressed: () async {
+                              _config.systemPrompt = promptCtrl.text.trim();
+                              _config.geminiApiKey = keyCtrl.text.trim();
+                              _config.backendUrl = backendCtrl.text.trim();
+                              await _config.save();
+                              if (mounted) {
+                                setState(() {});
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Configuración del motor de IA guardada con éxito.'),
+                                    backgroundColor: Color(0xFF1E3A5F),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Guardar', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

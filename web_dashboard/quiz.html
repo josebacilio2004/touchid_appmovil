@@ -170,8 +170,9 @@
       font-size: 1.25rem;
       font-weight: 600;
       color: #f8fafc;
-      line-height: 1.5;
+      line-height: 1.6;
       margin-bottom: 26px;
+      white-space: pre-line;
     }
     .options-list {
       display: flex;
@@ -684,14 +685,14 @@
         const isCorrect = userChoice === q.correctIndex;
         if (isCorrect) correctCount++;
 
-        const letters = ['A', 'B', 'C', 'D'];
+        const letters = ['A', 'B', 'C', 'D', 'E'];
         const userChoiceText = userChoice !== undefined ? `${letters[userChoice]}) ${q.options[userChoice]}` : 'Sin responder';
         const correctChoiceText = `${letters[q.correctIndex]}) ${q.options[q.correctIndex]}`;
 
         const item = document.createElement('div');
         item.className = `review-item ${isCorrect ? 'is-correct' : 'is-wrong'}`;
         item.innerHTML = `
-          <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem; margin-bottom: 6px;">
+          <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem; margin-bottom: 6px; white-space: pre-line;">
             ${idx + 1}. ${q.question}
           </div>
           <div style="font-size: 0.88rem; margin-bottom: 4px; color: ${isCorrect ? '#10b981' : '#ef4444'};">
