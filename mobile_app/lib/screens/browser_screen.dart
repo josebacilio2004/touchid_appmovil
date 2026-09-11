@@ -140,6 +140,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
     if (widget.config.userEmail.isNotEmpty) {
       list.addAll([
         const ChromeShortcutItem(
+          label: 'UDABOL',
+          url: 'https://virtual.udabol.edu.bo/carpetaverde/general/modulos',
+          iconWidget: Icon(Icons.school_rounded, color: Color(0xFF34A853), size: 22),
+        ),
+        const ChromeShortcutItem(
           label: 'Gmail',
           url: 'https://mail.google.com',
           iconWidget: Icon(Icons.mail_outline_rounded, color: Color(0xFFEA4335), size: 22),
@@ -167,6 +172,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
       ]);
     } else {
       list.addAll([
+        const ChromeShortcutItem(
+          label: 'UDABOL',
+          url: 'https://virtual.udabol.edu.bo/carpetaverde/general/modulos',
+          iconWidget: Icon(Icons.school_rounded, color: Color(0xFF34A853), size: 22),
+        ),
         const ChromeShortcutItem(
           label: 'Google',
           url: 'https://www.google.com',
@@ -246,10 +256,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
       controller.setUserAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36");
     }
     
-    // Habilitar gestos de navegación atrás/adelante en iOS
+    // Habilitar gestos de navegación atrás/adelante en iOS o Android
     if (controller.platform is WebKitWebViewController) {
       (controller.platform as WebKitWebViewController)
           .setAllowsBackForwardNavigationGestures(true);
+    } else if (controller.platform is AndroidWebViewController) {
+      (controller.platform as AndroidWebViewController)
+          .setMediaPlaybackRequiresUserGesture(false);
     }
 
     controller.setNavigationDelegate(
@@ -313,6 +326,28 @@ class _BrowserScreenState extends State<BrowserScreen> {
             }
           });
 
+          // Inyectar script para que enlaces con target="_blank" o window.open abran en la misma pestaña
+          try {
+            await controller.runJavaScript('''
+              (function() {
+                function fixLinks() {
+                  var links = document.querySelectorAll('a[target="_blank"]');
+                  for (var i = 0; i < links.length; i++) {
+                    links[i].target = '_self';
+                  }
+                }
+                fixLinks();
+                try {
+                  new MutationObserver(fixLinks).observe(document.documentElement, { childList: true, subtree: true });
+                } catch(e) {}
+                window.open = function(url) {
+                  if (url) window.location.href = url;
+                  return window;
+                };
+              })();
+            ''');
+          } catch (_) {}
+
           // Detección automática y extracción de sesión real de Google / Gmail
           if (!isIncognito && (pageUrl.contains('google.') || pageUrl.contains('accounts.google') || pageUrl.contains('mail.google'))) {
             _detectGoogleSession(controller);
@@ -324,6 +359,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
             setState(() {
               _loadingProgress = 100;
             });
+            if (error.isForMainFrame ?? true) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error de conexión (${error.errorCode}): ${error.description}'),
+                  backgroundColor: Colors.red.shade800,
+                  duration: const Duration(seconds: 6),
+                  action: SnackBarAction(
+                    label: 'Reintentar',
+                    textColor: Colors.white,
+                    onPressed: () => controller.reload(),
+                  ),
+                ),
+              );
+            }
           }
         },
       ),
@@ -384,8 +433,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
     String input = _urlController.text.trim();
     if (input.isEmpty) return;
 
+    // Limpiar caracteres invisibles o de control (zero-width spaces de WhatsApp, etc.)
+    input = input.replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '').trim();
+
     String finalUrl;
-    if (input.startsWith('http://') || input.startsWith('https://')) {
+    final lower = input.toLowerCase();
+    if (lower == 'udabol' || lower.contains('virtual.udabol') || lower.contains('carpetaverde') || lower.contains('udabol.edu.bo')) {
+      finalUrl = 'https://virtual.udabol.edu.bo/carpetaverde/general/modulos';
+    } else if (input.startsWith('http://') || input.startsWith('https://')) {
       finalUrl = input;
     } else {
       // Detección inteligente estilo Google Chrome:
@@ -401,12 +456,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
       }
     }
 
-    final currentTab = _tabs[_currentTabIndex];
-    currentTab.url = finalUrl;
-    _urlController.text = finalUrl;
-    currentTab.controller.loadRequest(Uri.parse(finalUrl));
-    FocusScope.of(context).unfocus();
-    setState(() {});
+    try {
+      final uri = Uri.parse(finalUrl);
+      final currentTab = _tabs[_currentTabIndex];
+      currentTab.url = finalUrl;
+      _urlController.text = finalUrl;
+      currentTab.controller.loadRequest(uri);
+      FocusScope.of(context).unfocus();
+      setState(() {});
+    } catch (e) {
+      debugPrint('Error loading URL: $e');
+    }
   }
 
   // Raspado del cuestionario e invocación a la API (Backend o Gemini)
@@ -2435,13 +2495,13 @@ Responde estrictamente en formato JSON:
                       children: _tabs.isEmpty
                           ? [const SizedBox()]
                           : _tabs.map((tab) {
-                              if (tab.isIncognito && (tab.url == 'chrome://incognito' || tab.url.isEmpty || tab.url == 'about:blank')) {
+                              if (tab.isIncognito && tab.url == 'chrome://incognito') {
                                 return ChromeIncognitoScreen(
                                   onSearchTap: () {
                                     _urlFocusNode.requestFocus();
                                   },
                                 );
-                              } else if (!tab.isIncognito && (tab.url == 'chrome://newtab' || tab.url.isEmpty || tab.url == 'about:blank')) {
+                              } else if (!tab.isIncognito && tab.url == 'chrome://newtab') {
                                 return ChromeNewTabScreen(
                                   onOpenUrl: (targetUrl) {
                                     tab.url = targetUrl;
