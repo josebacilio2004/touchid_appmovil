@@ -2062,6 +2062,173 @@ Responde estrictamente en formato JSON:
     );
   }
 
+    bool get _isCurrentTabNewTab {
+    if (_tabs.isEmpty) return false;
+    final cur = _tabs[_currentTabIndex.clamp(0, _tabs.length - 1)];
+    return !cur.isIncognito && (cur.url == 'chrome://newtab' || cur.url.isEmpty || cur.url == 'about:blank');
+  }
+
+  void _redirectToGemini() {
+    const target = 'https://gemini.google.com/app?hl=es';
+    final cur = _tabs[_currentTabIndex];
+    cur.url = target;
+    _urlController.text = target;
+    cur.controller.loadRequest(Uri.parse(target));
+    setState(() {});
+  }
+
+  void _openGeminiSearchModal() {
+    final queryCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF202124),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A73E8).withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.auto_awesome, color: Color(0xFF8AB4F8), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Modo IA con Gemini',
+                        style: TextStyle(color: Color(0xFFE8EAED), fontSize: 17, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Chatea o busca cualquier cosa con Gemini',
+                        style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Color(0xFF9AA0A6), size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: queryCtrl,
+                autofocus: true,
+                style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: '¿Qué quieres preguntarle a Gemini?',
+                  hintStyle: const TextStyle(color: Color(0xFF8E918F), fontSize: 14),
+                  filled: true,
+                  fillColor: const Color(0xFF2B2D30),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFF3C4043)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFF8AB4F8), width: 1.5),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send_rounded, color: Color(0xFF8AB4F8)),
+                    onPressed: () {
+                      final q = queryCtrl.text.trim();
+                      Navigator.pop(ctx);
+                      _navigateToGemini(q);
+                    },
+                  ),
+                ),
+                onSubmitted: (q) {
+                  Navigator.pop(ctx);
+                  _navigateToGemini(q.trim());
+                },
+              ),
+              const SizedBox(height: 14),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildGeminiChip('🔍 Investigar tema', () {
+                      Navigator.pop(ctx);
+                      _navigateToGemini('Investigar');
+                    }),
+                    const SizedBox(width: 8),
+                    _buildGeminiChip('💡 Explicar concepto', () {
+                      Navigator.pop(ctx);
+                      _navigateToGemini('Explicar concepto');
+                    }),
+                    const SizedBox(width: 8),
+                    _buildGeminiChip('📝 Redactar texto', () {
+                      Navigator.pop(ctx);
+                      _navigateToGemini('Redactar');
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1A73E8),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                  label: const Text('Abrir Chat de Google Gemini', style: TextStyle(fontWeight: FontWeight.w600)),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _navigateToGemini('');
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _navigateToGemini(String query) {
+    final target = query.isNotEmpty
+        ? 'https://www.google.com/search?q=${Uri.encodeComponent(query)}&udm=24'
+        : 'https://gemini.google.com';
+    final cur = _tabs[_currentTabIndex];
+    cur.url = target;
+    _urlController.text = target;
+    cur.controller.loadRequest(Uri.parse(target));
+    setState(() {});
+  }
+
+  Widget _buildGeminiChip(String label, VoidCallback onTap) {
+    return ActionChip(
+      backgroundColor: const Color(0xFF2B2D30),
+      side: const BorderSide(color: Color(0xFF3C4043)),
+      label: Text(label, style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 12.5)),
+      onPressed: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -2088,7 +2255,7 @@ Responde estrictamente en formato JSON:
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1F1F1F), // Color de la barra de Chrome en modo oscuro
+                      color: Color(0xFF1F1F1F),
                       border: Border(
                         bottom: BorderSide(
                           color: Color(0xFF282A2D),
@@ -2110,15 +2277,15 @@ Responde estrictamente en formato JSON:
                         ),
                         if (_currentTab.isIncognito)
                           const Padding(
-                            padding: EdgeInsets.only(left: 4, right: 2),
+                            padding: EdgeInsets.only(left: 2, right: 2),
                             child: IncognitoIcon(size: 20, color: Color(0xFFC4C7C5)),
                           ),
                         Expanded(
                           child: Container(
-                            height: 44, // Altura estándar del omnibox de Chrome
+                            height: 44,
                             margin: const EdgeInsets.symmetric(horizontal: 4),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2B2D30), // Fondo exacto del omnibox de Chrome
+                              color: const Color(0xFF2B2D30),
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: Row(
@@ -2183,13 +2350,14 @@ Responde estrictamente en formato JSON:
                                     splashRadius: 18,
                                     onPressed: () => _tabs[_currentTabIndex].controller.reload(),
                                   ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 8),
                               ],
                             ),
                           ),
                         ),
                         const SizedBox(width: 4),
-                        // Icono del número de pestañas de Chrome (Interactivo)
+
+                        // Contador de pestañas
                         GestureDetector(
                           onTap: _showTabSwitcher,
                           child: Container(
@@ -2211,8 +2379,9 @@ Responde estrictamente en formato JSON:
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        // Menú de tres puntos de Chrome
+                        const SizedBox(width: 2),
+
+                        // Menú de tres puntos
                         IconButton(
                           icon: const Icon(Icons.more_vert_rounded, color: Color(0xFFC4C7C5), size: 23),
                           splashRadius: 20,
@@ -2255,9 +2424,7 @@ Responde estrictamente en formato JSON:
                                   onSearchTap: () {
                                     _urlFocusNode.requestFocus();
                                   },
-                                  onModoIA: () {
-                                    _solveQuestionnaire();
-                                  },
+                                  onModoIA: _redirectToGemini,
                                   onOpenIncognito: () {
                                     _addNewTab('chrome://incognito', true);
                                   },

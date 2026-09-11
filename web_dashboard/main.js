@@ -42,7 +42,7 @@ const logoutBtn = document.getElementById('logout-btn');
 
 // Formulario de Licencias
 const licenseForm = document.getElementById('license-form');
-const licCreditsSelect = document.getElementById('lic-credits');
+const licCreditsInput = document.getElementById('lic-credits');
 const newLicenseDisplay = document.getElementById('new-license-display');
 const newLicenseCode = document.getElementById('new-license-code');
 const copyNewLicBtn = document.getElementById('copy-new-lic-btn');
@@ -323,7 +323,7 @@ function renderLiveFeed(history) {
 // --- 4. Generación de Nuevas Licencias ---
 licenseForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const credits = Number(licCreditsSelect.value);
+  const credits = Math.max(1, parseInt(licCreditsInput.value, 10));
 
   try {
     const response = await fetch(`${backendUrl}/admin/licenses`, {
@@ -439,3 +439,66 @@ initDashboard().then(() => {
   checkHashRoute();
 });
 window.addEventListener('hashchange', checkHashRoute);
+
+// --- Manejador de Chips de Créditos Rápidos ---
+document.querySelectorAll('.btn-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const targetId = chip.getAttribute('data-target');
+    const val = chip.getAttribute('data-val');
+    const input = document.getElementById(targetId);
+    if (input) {
+      input.value = val;
+    }
+  });
+});
+
+// --- Formulario de Recarga Directa a Usuario ---
+const directCreditForm = document.getElementById('direct-credit-form');
+const directUserIdInput = document.getElementById('direct-user-id');
+const directCreditsInput = document.getElementById('direct-credits');
+const directCreditMsg = document.getElementById('direct-credit-msg');
+
+if (directCreditForm) {
+  directCreditForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const userId = directUserIdInput.value.trim();
+    const credits = Math.max(0, parseInt(directCreditsInput.value, 10));
+    if (!userId) return;
+
+    directCreditMsg.style.display = 'block';
+    directCreditMsg.style.background = 'rgba(59, 130, 246, 0.15)';
+    directCreditMsg.style.border = '1px solid rgba(59, 130, 246, 0.3)';
+    directCreditMsg.style.color = '#93c5fd';
+    directCreditMsg.textContent = 'Asignando créditos a ' + userId + '...';
+
+    try {
+      const response = await fetch(`${backendUrl}/credits/set`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': adminToken
+        },
+        body: JSON.stringify({ userId, credits, adminKey: adminToken })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        directCreditMsg.style.background = 'rgba(16, 185, 129, 0.15)';
+        directCreditMsg.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+        directCreditMsg.style.color = '#6ee7b7';
+        directCreditMsg.textContent = `✅ Éxito: Se asignaron ${credits.toLocaleString()} créditos a ${userId}`;
+        loadStats();
+      } else {
+        directCreditMsg.style.background = 'rgba(239, 68, 68, 0.15)';
+        directCreditMsg.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        directCreditMsg.style.color = '#fca5a5';
+        directCreditMsg.textContent = `❌ Error: ${data.error || 'No se pudo actualizar los créditos'}`;
+      }
+    } catch (err) {
+      directCreditMsg.style.background = 'rgba(239, 68, 68, 0.15)';
+      directCreditMsg.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+      directCreditMsg.style.color = '#fca5a5';
+      directCreditMsg.textContent = `❌ Error de red: ${err.message}`;
+    }
+  });
+}

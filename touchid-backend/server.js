@@ -199,6 +199,42 @@ app.get('/credits/:userId', async (req, res) => {
   }
 });
 
+// 2.1 Endpoint directo para que el admin establezca o recargue créditos a cualquier usuario
+app.post('/credits/set', async (req, res) => {
+  const { userId, credits, adminKey } = req.body;
+  if (!userId || credits === undefined || isNaN(Number(credits))) {
+    return res.status(400).json({ error: 'userId y credits numérico son obligatorios.' });
+  }
+
+  const numCredits = Math.max(0, parseInt(credits, 10));
+
+  try {
+    const database = await getDb();
+    await database.collection('users').updateOne(
+      { _id: userId },
+      { 
+        $set: { 
+          credits: numCredits, 
+          isUnlimited: numCredits >= 999999,
+          updatedAt: new Date() 
+        } 
+      },
+      { upsert: true }
+    );
+
+    res.json({
+      success: true,
+      userId,
+      credits: numCredits,
+      isUnlimited: numCredits >= 999999,
+      message: `Se asignaron exitosamente ${numCredits.toLocaleString()} créditos a ${userId}`
+    });
+  } catch (e) {
+    console.error('Error al actualizar créditos:', e.message);
+    res.status(500).json({ error: 'Error al actualizar créditos en la base de datos.' });
+  }
+});
+
 // 3. Endpoint para resolver preguntas (Gemini API Gateway)
 app.post('/solve', async (req, res) => {
   const { userId, question, options, systemPrompt } = req.body;

@@ -130,14 +130,18 @@
               
               <form id="license-form" class="dashboard-form">
                 <div class="form-group">
-                  <label for="lic-credits">Créditos de la Licencia</label>
-                  <select id="lic-credits" required style="padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: #fff; font-family: inherit;">
-                    <option value="10">10 Créditos</option>
-                    <option value="50" selected>50 Créditos</option>
-                    <option value="100">100 Créditos</option>
-                    <option value="200">200 Créditos</option>
-                    <option value="500">500 Créditos</option>
-                  </select>
+                  <label for="lic-credits">Cantidad de Créditos Personalizada</label>
+                  <input type="number" id="lic-credits" min="1" step="1" value="50" placeholder="Escribe cualquier cantidad (ej: 50, 250, 1000)" required style="padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: #fff; font-family: inherit; font-size: 15px; width: 100%; box-sizing: border-box;">
+                  <div class="credit-chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
+                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="10">10</button>
+                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="50">50</button>
+                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="100">100</button>
+                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="250">250</button>
+                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="500">500</button>
+                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="1000">1,000</button>
+                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="5000">5,000</button>
+                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="999999">999,999 (Ilimitado)</button>
+                  </div>
                 </div>
                 
                 <button type="submit" class="btn btn-primary" id="generate-lic-btn" style="width: 100%; height: 45px; margin-top: 10px;">Generar Licencia</button>
@@ -150,6 +154,35 @@
                   <button class="btn btn-primary" id="copy-new-lic-btn" style="padding: 6px 12px; font-size: 12px; margin: 0; height: auto;">Copiar Código</button>
                 </div>
               </div>
+            </div>
+
+            <!-- Recarga Directa de Créditos a Usuario -->
+            <div class="card config-card">
+              <h2>Recargar Créditos Directamente a Usuario</h2>
+              <p class="card-subtitle">Asigna créditos en tiempo real a cualquier cuenta o correo sin necesidad de canjear código.</p>
+              
+              <form id="direct-credit-form" class="dashboard-form">
+                <div class="form-group">
+                  <label for="direct-user-id">ID de Usuario o Correo Electrónico</label>
+                  <input type="text" id="direct-user-id" placeholder="ej: 74934503@continental.edu.pe o ID" required style="padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: #fff; font-family: inherit; font-size: 14px; width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group">
+                  <label for="direct-credits">Cantidad de Créditos</label>
+                  <input type="number" id="direct-credits" min="0" step="1" value="100" placeholder="Ingresa la cantidad exacta" required style="padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: #fff; font-family: inherit; font-size: 15px; width: 100%; box-sizing: border-box;">
+                  <div class="credit-chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
+                    <button type="button" class="btn-chip" data-target="direct-credits" data-val="50">50</button>
+                    <button type="button" class="btn-chip" data-target="direct-credits" data-val="100">100</button>
+                    <button type="button" class="btn-chip" data-target="direct-credits" data-val="500">500</button>
+                    <button type="button" class="btn-chip" data-target="direct-credits" data-val="1000">1,000</button>
+                    <button type="button" class="btn-chip" data-target="direct-credits" data-val="10000">10,000</button>
+                    <button type="button" class="btn-chip" data-target="direct-credits" data-val="999999">999,999 (Ilimitado)</button>
+                  </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="direct-credit-btn" style="width: 100%; height: 45px; margin-top: 10px;">Asignar Créditos</button>
+              </form>
+              
+              <div id="direct-credit-msg" style="margin-top: 16px; display: none; padding: 14px; border-radius: 8px; font-size: 13.5px; font-weight: 500;"></div>
             </div>
 
             <!-- Resumen Informativo de Licencias -->
