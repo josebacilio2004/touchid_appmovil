@@ -2443,38 +2443,6 @@ Responde estrictamente en formato JSON:
                       ],
                     ),
                   ),
-                              ),
-                              const SizedBox(width: 4),
-                              GestureDetector(
-                                onTap: _showTabSwitcher,
-                                child: Container(
-                                  width: 22,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: const Color(0xFFC4C7C5), width: 1.8),
-                                    borderRadius: BorderRadius.circular(6.5),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${_currentTab.isIncognito ? _incognitoTabs.length : _regularTabs.length}',
-                                      style: const TextStyle(
-                                        color: Color(0xFFC4C7C5),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                icon: const Icon(Icons.more_vert_rounded, color: Color(0xFFC4C7C5), size: 23),
-                                splashRadius: 20,
-                                onPressed: () => _showChromeMenu(context),
-                              ),
-                            ],
-                          ),
-                  ),
                   if (_isSearchingInPage)
                     _buildInPageSearchBar(),
                   if (_loadingProgress < 100)
