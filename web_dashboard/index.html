@@ -122,7 +122,7 @@
 
         <!-- SECCIÓN 4: LICENCIAS PREPAGO -->
         <section id="tab-licenses" class="tab-content">
-          <div class="config-grid">
+          <div class="config-grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));">
             <!-- Generador de Licencias -->
             <div class="card config-card">
               <h2>Generar Códigos Prepago (Tokens de Créditos)</h2>
@@ -131,8 +131,8 @@
               <form id="license-form" class="dashboard-form">
                 <div class="form-group">
                   <label for="lic-credits">Cantidad de Créditos Personalizada</label>
-                  <input type="number" id="lic-credits" min="1" step="1" value="50" placeholder="Escribe cualquier cantidad (ej: 50, 250, 1000)" required style="padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: #fff; font-family: inherit; font-size: 15px; width: 100%; box-sizing: border-box;">
-                  <div class="credit-chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
+                  <input type="number" id="lic-credits" min="1" step="1" value="50" placeholder="Escribe cualquier cantidad (ej: 50, 250, 1000)" required style="width: 100%; box-sizing: border-box;">
+                  <div class="credit-chips">
                     <button type="button" class="btn-chip" data-target="lic-credits" data-val="10">10</button>
                     <button type="button" class="btn-chip" data-target="lic-credits" data-val="50">50</button>
                     <button type="button" class="btn-chip" data-target="lic-credits" data-val="100">100</button>
@@ -140,7 +140,7 @@
                     <button type="button" class="btn-chip" data-target="lic-credits" data-val="500">500</button>
                     <button type="button" class="btn-chip" data-target="lic-credits" data-val="1000">1,000</button>
                     <button type="button" class="btn-chip" data-target="lic-credits" data-val="5000">5,000</button>
-                    <button type="button" class="btn-chip" data-target="lic-credits" data-val="999999">999,999 (Ilimitado)</button>
+                    <button type="button" class="btn-chip chip-gold" data-target="lic-credits" data-val="999999">✨ 999,999 (Ilimitado)</button>
                   </div>
                 </div>
                 
@@ -164,18 +164,18 @@
               <form id="direct-credit-form" class="dashboard-form">
                 <div class="form-group">
                   <label for="direct-user-id">ID de Usuario o Correo Electrónico</label>
-                  <input type="text" id="direct-user-id" placeholder="ej: 74934503@continental.edu.pe o ID" required style="padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: #fff; font-family: inherit; font-size: 14px; width: 100%; box-sizing: border-box;">
+                  <input type="text" id="direct-user-id" placeholder="ej: 74934503@continental.edu.pe o ID" required style="width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="form-group">
                   <label for="direct-credits">Cantidad de Créditos</label>
-                  <input type="number" id="direct-credits" min="0" step="1" value="100" placeholder="Ingresa la cantidad exacta" required style="padding: 12px 16px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; color: #fff; font-family: inherit; font-size: 15px; width: 100%; box-sizing: border-box;">
-                  <div class="credit-chips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
+                  <input type="number" id="direct-credits" min="0" step="1" value="100" placeholder="Ingresa la cantidad exacta" required style="width: 100%; box-sizing: border-box;">
+                  <div class="credit-chips">
                     <button type="button" class="btn-chip" data-target="direct-credits" data-val="50">50</button>
                     <button type="button" class="btn-chip" data-target="direct-credits" data-val="100">100</button>
                     <button type="button" class="btn-chip" data-target="direct-credits" data-val="500">500</button>
                     <button type="button" class="btn-chip" data-target="direct-credits" data-val="1000">1,000</button>
                     <button type="button" class="btn-chip" data-target="direct-credits" data-val="10000">10,000</button>
-                    <button type="button" class="btn-chip" data-target="direct-credits" data-val="999999">999,999 (Ilimitado)</button>
+                    <button type="button" class="btn-chip chip-gold" data-target="direct-credits" data-val="999999">✨ 999,999 (Ilimitado)</button>
                   </div>
                 </div>
                 
