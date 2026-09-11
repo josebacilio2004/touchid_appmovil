@@ -470,29 +470,53 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
+  // Feedback táctil sutil para errores / sin contenido / timeout (Modo Cero Pantalla - 100% indetectable)
+  Future<void> _hapticErrorFeedback() async {
+    try {
+      await HapticFeedback.mediumImpact();
+      await Future.delayed(const Duration(milliseconds: 160));
+      await HapticFeedback.mediumImpact();
+    } catch (_) {}
+  }
+
   // Raspado del cuestionario e invocación a la API (Backend o Gemini)
   Future<void> _solveQuestionnaire() async {
+    // 1. Anti-spam / Debounce: Si ya está procesando, ignorar pulsaciones y emitir micro-clic táctil
+    if (_isLoading) {
+      HapticFeedback.selectionClick();
+      return;
+    }
+
+    // 2. Feedback háptico instantáneo en el dedo al presionar por primera vez
+    HapticFeedback.lightImpact();
+
     final hasBackend = widget.config.backendUrl.trim().isNotEmpty;
     final hasUserId = widget.config.userId.trim().isNotEmpty;
     final hasGeminiKey = widget.config.geminiApiKey.trim().isNotEmpty;
 
     if (!hasBackend && !hasGeminiKey) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, configura tu cuenta/servidor o ingresa tu API Key en Configuración.'),
-          backgroundColor: Colors.amber,
-        ),
-      );
+      _hapticErrorFeedback();
+      if (!_isStealthMode) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor, configura tu cuenta/servidor o ingresa tu API Key en Configuración.'),
+            backgroundColor: Colors.amber,
+          ),
+        );
+      }
       return;
     }
 
     if (hasBackend && !hasUserId && !hasGeminiKey) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, ingresa tu ID de Cliente en Configuración.'),
-          backgroundColor: Colors.amber,
-        ),
-      );
+      _hapticErrorFeedback();
+      if (!_isStealthMode) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor, ingresa tu ID de Cliente en Configuración.'),
+            backgroundColor: Colors.amber,
+          ),
+        );
+      }
       return;
     }
 
@@ -627,6 +651,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
       // Llamar a Gemini
       final responseData = await _queryGemini(question, options);
 
+      // Confirmación háptica suave cuando la respuesta está lista
+      HapticFeedback.mediumImpact();
+
       // Mostrar el bottom sheet con la respuesta
       _showAnswerBottomSheet(question, options, responseData);
 
@@ -636,16 +663,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
       }
 
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al resolver: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Opción A: Modo táctil cero pantalla (100% discreto e indetectable a terceros)
+      // CERO avisos en pantalla. CERO recuadros rojos.
+      // Notificación táctil secreta de 2 toques cortos (tac-tac) en el teléfono.
+      _hapticErrorFeedback();
+      debugPrint('Error al resolver cuestionario (modo sigiloso): $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -2481,9 +2509,9 @@ Responde estrictamente en formato JSON:
                   ),
                   if (_isSearchingInPage)
                     _buildInPageSearchBar(),
-                  if (_loadingProgress < 100)
+                  if (_loadingProgress < 100 || _isLoading)
                     LinearProgressIndicator(
-                      value: _loadingProgress / 100.0,
+                      value: _isLoading ? null : (_loadingProgress / 100.0),
                       minHeight: 2.5,
                       backgroundColor: const Color(0xFF1F1F1F),
                       valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8AB4F8)),
