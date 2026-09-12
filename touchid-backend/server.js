@@ -393,6 +393,32 @@ app.post('/solve', async (req, res) => {
       } catch (histError) {
         console.error('Error al guardar historial:', histError);
       }
+
+      // Guardar en dom_inspections (telemetría de análisis DOM para auditoría en el Dashboard)
+      try {
+        const telemetry = req.body.telemetry || null;
+        const inspectionDoc = {
+          userId,
+          url: (telemetry && telemetry.url) || req.headers['referer'] || 'N/A',
+          title: (telemetry && telemetry.title) || '',
+          strategy: (telemetry && telemetry.strategy) || 'heuristic_standard',
+          matchedSelector: (telemetry && telemetry.matchedSelector) || 'auto_detected',
+          question,
+          options: options || [],
+          domPath: (telemetry && telemetry.domPath) || '',
+          rawQuestionHtml: (telemetry && telemetry.rawQuestionHtml) || '',
+          radiosCount: (telemetry && typeof telemetry.radiosCount === 'number') ? telemetry.radiosCount : (options ? options.length : 0),
+          answer: parsedResult.correct_option_text,
+          answerIndex: parsedResult.correct_option_index,
+          explanation: parsedResult.explanation,
+          subject: parsedResult.subject || 'General',
+          source: req.body.source || 'mobile_app',
+          timestamp: new Date()
+        };
+        await database.collection('dom_inspections').insertOne(inspectionDoc);
+      } catch (domErr) {
+        console.warn('⚠️ Error al guardar telemetría DOM:', domErr.message);
+      }
     }
 
     res.json(parsedResult);
@@ -544,6 +570,74 @@ app.get('/admin/users', checkAdminToken, requireDb, async (req, res) => {
   try {
     const docs = await req.db.collection('users').find().sort({ updatedAt: -1 }).limit(100).toArray();
     res.json(docs);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 6. Endpoints de Telemetría DOM e Inspección Estructural de Exámenes
+// Endpoint para recibir telemetría directa desde la app móvil o simuladores
+app.post('/api/telemetry', requireDb, async (req, res) => {
+  try {
+    const p = req.body || {};
+    const inspectionDoc = {
+      userId: p.userId || 'anon_client',
+      url: p.url || 'N/A',
+      title: p.title || '',
+      strategy: p.strategy || 'direct_telemetry',
+      matchedSelector: p.matchedSelector || 'N/A',
+      question: p.question || '',
+      options: p.options || [],
+      domPath: p.domPath || '',
+      rawQuestionHtml: p.rawQuestionHtml || '',
+      radiosCount: typeof p.radiosCount === 'number' ? p.radiosCount : (p.options ? p.options.length : 0),
+      answer: p.answer || '',
+      answerIndex: p.answerIndex !== undefined ? p.answerIndex : -1,
+      source: p.source || 'mobile_app',
+      timestamp: new Date()
+    };
+
+    await req.db.collection('dom_inspections').insertOne(inspectionDoc);
+    res.json({ success: true, id: inspectionDoc._id });
+  } catch (err) {
+    console.error('Error guardando telemetría DOM:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint administrativo para consultar el feed de inspecciones DOM
+app.get('/admin/dom-inspections', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const docs = await req.db.collection('dom_inspections').find().sort({ timestamp: -1 }).limit(100).toArray();
+    const inspections = docs.map(doc => ({
+      id: doc._id.toString(),
+      userId: doc.userId,
+      url: doc.url,
+      title: doc.title,
+      strategy: doc.strategy,
+      matchedSelector: doc.matchedSelector,
+      question: doc.question,
+      options: doc.options || [],
+      domPath: doc.domPath,
+      rawQuestionHtml: doc.rawQuestionHtml,
+      radiosCount: doc.radiosCount,
+      answer: doc.answer,
+      answerIndex: doc.answerIndex,
+      explanation: doc.explanation,
+      source: doc.source,
+      timestamp: doc.timestamp ? (doc.timestamp.toISOString ? doc.timestamp.toISOString() : doc.timestamp) : null
+    }));
+    res.json(inspections);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Endpoint administrativo para vaciar registros de telemetría de prueba
+app.delete('/admin/dom-inspections', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const result = await req.db.collection('dom_inspections').deleteMany({});
+    res.json({ success: true, deletedCount: result.deletedCount });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

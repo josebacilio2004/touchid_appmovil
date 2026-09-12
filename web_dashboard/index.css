@@ -198,6 +198,47 @@ body {
   margin-bottom: 36px;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+  color: #fff;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 150;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-backdrop.active {
+  display: block;
+  opacity: 1;
+}
+
 .page-title {
   font-size: 28px;
   font-weight: 800;
@@ -719,34 +760,427 @@ body {
   line-height: 1.5;
 }
 
-/* Responsive Design */
+/* --- ESTILOS DEL MÓDULO INSPECTOR DOM --- */
+.dom-card {
+  background: rgba(22, 32, 58, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 20px 22px;
+  transition: var(--transition-smooth);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.dom-card:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.dom-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.dom-portal-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-udabol {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-moodle {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-simulator {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-generic {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.dom-strategy-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-weight: 600;
+}
+
+.dom-meta-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dom-question-box {
+  margin: 12px 0 10px;
+  padding: 12px 16px;
+  background: rgba(15, 23, 42, 0.6);
+  border-left: 3px solid var(--color-blue);
+  border-radius: 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #f8fafc;
+  line-height: 1.5;
+}
+
+.dom-breadcrumb-path {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11.5px;
+  color: #38bdf8;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border-left: 2px solid #38bdf8;
+  margin: 8px 0 12px;
+  word-break: break-all;
+}
+
+.dom-options-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.dom-opt-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dom-opt-pill.is-answer {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  font-weight: 700;
+}
+
+.accordion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.2s;
+}
+
+.accordion-toggle:hover {
+  color: #fff;
+}
+
+.accordion-content {
+  margin-top: 10px;
+  display: none;
+}
+
+.accordion-content.open {
+  display: block;
+}
+
+.dom-code-box {
+  background: #060913;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: 'Consolas', 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: #a5f3fc;
+  overflow-x: auto;
+  max-height: 240px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+.copy-cell-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  cursor: pointer;
+  margin-left: 8px;
+  transition: var(--transition-smooth);
+}
+
+.copy-cell-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* --- RESPONSIVE DESIGN TOTAL PARA CELULARES Y TABLETS --- */
 @media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+
+  /* Sidebar como Cajón Deslizable */
   .sidebar {
-    width: 70px;
-    padding: 20px 10px;
-    align-items: center;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    height: 100vh !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 200 !important;
+    box-shadow: 0 0 35px rgba(0, 0, 0, 0.85) !important;
+    padding: 24px 20px !important;
+    align-items: stretch !important;
   }
-  
-  .brand-name, .nav-item {
-    font-size: 0;
+
+  .sidebar.open {
+    transform: translateX(0) !important;
   }
-  
+
+  .brand-name {
+    font-size: 20px !important;
+    display: inline-block !important;
+  }
+
   .nav-item {
-    padding: 12px;
-    justify-content: center;
+    font-size: 14px !important;
+    padding: 12px 16px !important;
+    justify-content: flex-start !important;
   }
-  
+
   .connection-status {
-    padding: 8px;
+    padding: 8px 12px !important;
+    width: 100% !important;
   }
-  
+
   .connection-status span:not(.status-dot) {
-    display: none;
+    display: inline-block !important;
   }
-  
+
+  /* Contenedor Principal en Móvil */
   .main-container {
-    margin-left: 70px;
-    padding: 20px;
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 16px 12px 30px !important;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    margin-bottom: 20px !important;
+  }
+
+  .page-title {
+    font-size: 20px !important;
+  }
+
+  .api-status {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+  }
+
+  /* Stats Grid Adaptable en 2 Columnas */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .stat-card {
+    padding: 14px !important;
+  }
+
+  .stat-label {
+    font-size: 11px !important;
+  }
+
+  .stat-value {
+    font-size: 22px !important;
+  }
+
+  /* Formularios y Ajustes en Columna */
+  .config-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .credit-chips {
+    gap: 6px !important;
+  }
+
+  .btn-chip {
+    flex: 1 1 calc(33.33% - 6px) !important;
+    min-width: 50px !important;
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+    text-align: center !important;
+  }
+
+  /* --- TRANSFORMACIÓN RESPONSIVA DE TABLAS A TARJETAS MÓVILES --- */
+  .table-container {
+    overflow-x: visible !important;
+    background: transparent !important;
+  }
+
+  table.history-table {
+    display: block !important;
+    width: 100% !important;
+    border: none !important;
+  }
+
+  table.history-table thead {
+    display: none !important;
+  }
+
+  table.history-table tbody {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  table.history-table tr {
+    display: block !important;
+    background: rgba(22, 32, 58, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 14px !important;
+    padding: 14px 16px !important;
+    margin-bottom: 14px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  table.history-table td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 0 !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    font-size: 13px !important;
+    text-align: right !important;
+    word-break: break-word !important;
+  }
+
+  table.history-table td:last-child {
+    border-bottom: none !important;
+  }
+
+  table.history-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: left;
+    padding-right: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Casos especiales para Pregunta y Respuesta en Móvil */
+  table.history-table td.row-question {
+    display: block !important;
+    text-align: left !important;
+    padding: 10px 0 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #f8fafc !important;
+    line-height: 1.4 !important;
+  }
+
+  table.history-table td.row-question::before {
+    display: block !important;
+    margin-bottom: 4px !important;
+  }
+
+  table.history-table td.row-answer {
+    display: block !important;
+    text-align: left !important;
+    padding: 10px 12px !important;
+    font-size: 13.5px !important;
+    color: #34d399 !important;
+    font-weight: 600 !important;
+    background: rgba(16, 185, 129, 0.08) !important;
+    border-radius: 8px !important;
+    margin: 6px 0 !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  }
+
+  table.history-table td.row-answer::before {
+    display: block !important;
+    margin-bottom: 4px !important;
+    color: #94a3b8 !important;
+  }
+
+  /* Buscadores y Acciones Móviles */
+  .search-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .search-box input {
+    width: 100% !important;
+  }
+
+  .dom-actions-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+
+  .dom-actions-bar input {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  .sandbox-buttons {
+    flex-direction: column !important;
+  }
+
+  .sandbox-buttons button {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-title {
+    font-size: 18px !important;
   }
 }
 

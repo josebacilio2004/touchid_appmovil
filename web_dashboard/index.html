@@ -30,8 +30,11 @@
 
   <div class="app-layout" id="main-layout" style="display: none;">
     
+    <!-- Backdrop para cerrar sidebar en móviles -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
     <!-- Sidebar Navegación -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-logo"></div>
         <span class="brand-name">TouchID Admin</span>
@@ -48,6 +51,10 @@
         <a href="#history" class="nav-item" id="nav-history">
           <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 1 1 7 7 7.07 7.07 0 0 1-6-3H4.26a8.99 8.99 0 1 0 8.74-16zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
           Historial
+        </a>
+        <a href="#inspector" class="nav-item" id="nav-inspector">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5m-1 2h2v2h2v1h-2v2h-2v-2h-2V9h2V7z"/></svg>
+          Inspector DOM
         </a>
         <a href="#quizzes" class="nav-item" id="nav-quizzes">
           <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm4-4H6v-2h10v2zm0-4H6V7h10v2z"/></svg>
@@ -71,7 +78,12 @@
       
       <!-- Topbar Header -->
       <header class="topbar">
-        <h1 class="page-title" id="current-tab-title">Panel General</h1>
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Abrir Menú Lateral">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+          </button>
+          <h1 class="page-title" id="current-tab-title">Panel General</h1>
+        </div>
         <div class="user-profile">
           <div class="api-status active" id="server-status-badge">Servidor Conectado</div>
         </div>
@@ -347,7 +359,97 @@
           </div>
         </section>
 
-        <!-- SECCIÓN 5: CONFIGURACIÓN -->
+        <!-- SECCIÓN 5: INSPECTOR DOM & TELEMETRÍA DE EXÁMENES -->
+        <section id="tab-inspector" class="tab-content">
+          <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Capturas DOM Registradas</span>
+              <span class="stat-value" id="dom-stat-total" style="font-size: 24px;">0</span>
+              <span class="stat-trend info">Telemetría de la App</span>
+            </div>
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Plataformas Auditadas</span>
+              <span class="stat-value" id="dom-stat-portals" style="font-size: 24px; color: #10b981;">0</span>
+              <span class="stat-trend positive">UDABOL, Moodle, etc.</span>
+            </div>
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Estrategia Dominante</span>
+              <span class="stat-value" id="dom-stat-strategy" style="font-size: 15px; color: #38bdf8; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">—</span>
+              <span class="stat-trend neutral">Detección automática</span>
+            </div>
+          </div>
+
+          <!-- Cabecera de Acciones y Filtros -->
+          <div class="card" style="margin-bottom: 20px; padding: 18px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+              <div>
+                <h2 style="font-size: 1.25rem; color: #f8fafc;">Estructura Interna de Exámenes Capturada por la App</h2>
+                <p style="color: #94a3b8; font-size: 0.88rem; margin-top: 2px;">
+                  Auditoría forense del DOM: inspecciona en qué etiquetas se encuentran los enunciados y alternativas en cada examen.
+                </p>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;" class="dom-actions-bar">
+                <input type="text" id="dom-search-input" placeholder="Filtrar por portal, selector o enunciado..." style="padding: 9px 14px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 8px; color: #fff; font-size: 13px; min-width: 220px; flex: 1;">
+                <button class="btn btn-primary" id="dom-refresh-btn" style="height: 38px; padding: 0 16px; font-size: 13px;">Actualizar</button>
+                <button class="btn" id="dom-clear-btn" style="height: 38px; padding: 0 14px; font-size: 13px; background: rgba(239, 68, 68, 0.15); color: var(--color-red); border: 1px solid rgba(239, 68, 68, 0.3);">Vaciar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feed de Tarjetas de Inspección DOM -->
+          <div id="dom-inspections-feed" style="display: flex; flex-direction: column; gap: 18px; margin-bottom: 28px;">
+            <div class="card" style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+              <p>Cargando capturas del Inspector DOM...</p>
+            </div>
+          </div>
+
+          <!-- Sandbox DOM: Simulador Interactivo de Extracción -->
+          <div class="card" style="border: 1px solid rgba(59, 130, 246, 0.3);">
+            <div class="card-header">
+              <div>
+                <h2 style="color: #f8fafc; font-size: 1.2rem;">🧪 Laboratorio / Sandbox DOM (Prueba de HTML en Vivo)</h2>
+                <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">
+                  Pega aquí el código HTML de cualquier pregunta de un examen (UDABOL, Moodle, Canvas) para simular cómo el algoritmo extrae el enunciado y las alternativas.
+                </p>
+              </div>
+            </div>
+            <div style="margin-top: 14px;">
+              <textarea id="sandbox-html-input" rows="5" placeholder="Pega aquí el fragmento HTML del examen (ej: <div class='pregunta'>...</div> o <form>...<input type='radio'>...)" style="width: 100%; box-sizing: border-box; background: rgba(10, 15, 30, 0.8); border: 1px solid var(--card-border); border-radius: 8px; color: #a5f3fc; font-family: monospace; font-size: 12.5px; padding: 12px; resize: vertical;"></textarea>
+              <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;" class="sandbox-buttons">
+                <button class="btn btn-primary" id="sandbox-parse-btn" style="height: 40px; padding: 0 20px; font-weight: 600;">Analizar con Algoritmo Móvil</button>
+                <button class="btn" id="sandbox-load-udabol-btn" style="height: 40px; padding: 0 16px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">Cargar Ejemplo UDABOL</button>
+                <button class="btn" id="sandbox-load-moodle-btn" style="height: 40px; padding: 0 16px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">Cargar Ejemplo Moodle</button>
+              </div>
+            </div>
+
+            <!-- Resultado del Sandbox -->
+            <div id="sandbox-result-box" style="display: none; margin-top: 20px; padding: 18px; border-radius: 10px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(16, 185, 129, 0.3);">
+              <h3 style="color: #34d399; font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <span>✅ Diagnóstico del Algoritmo de Extracción</span>
+              </h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                <div style="background: rgba(0,0,0,0.25); padding: 10px 14px; border-radius: 8px;">
+                  <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block;">Estrategia Detectada:</span>
+                  <span id="sbx-strategy" style="color: #38bdf8; font-weight: 600; font-size: 13.5px;">—</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 10px 14px; border-radius: 8px;">
+                  <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block;">Ruta en el DOM:</span>
+                  <span id="sbx-dompath" style="color: #fbbf24; font-family: monospace; font-size: 12px; word-break: break-all;">—</span>
+                </div>
+              </div>
+              <div style="margin-bottom: 12px;">
+                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Enunciado de la Pregunta Extraído:</span>
+                <div id="sbx-question" style="color: #fff; font-weight: 600; font-size: 14px; background: rgba(0,0,0,0.3); padding: 10px 14px; border-radius: 8px; border-left: 3px solid #10b981;"></div>
+              </div>
+              <div>
+                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 6px;">Alternativas / Opciones Identificadas:</span>
+                <div id="sbx-options" style="display: flex; flex-direction: column; gap: 6px;"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECCIÓN 6: CONFIGURACIÓN -->
         <section id="tab-config" class="tab-content">
           <div class="config-grid">
             <div class="card config-card">
