@@ -586,12 +586,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
           var matchedSelector = '';
           var targetEl = null;
 
-          // 1. PRIORIDAD MÁXIMA PARA PREGUNTA: Selectores dedicados de pregunta
+          // 1. PRIORIDAD MÁXIMA PARA PREGUNTA: Selectores dedicados de pregunta VISIBLES
           var qSelectors = [
             '#question-text',
             '.question-box',
             '.qtext',
             '.formulation .qtext',
+            '.udabol-question-statement',
+            '[class*="question-statement"]',
             '[class*="question-text"]',
             '[class*="enunciado"]',
             '[class*="pregunta-texto"]',
@@ -600,20 +602,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
             '.freebirdFormviewerViewNumberedItemHeader'
           ];
           for (var qs = 0; qs < qSelectors.length; qs++) {
-            var qEl = doc.querySelector(qSelectors[qs]);
-            if (qEl) {
+            var qEls = doc.querySelectorAll(qSelectors[qs]);
+            for (var qi = 0; qi < qEls.length; qi++) {
+              var qEl = qEls[qi];
+              var isHidden = !!qEl.closest('[style*="display: none"], [style*="display:none"], [hidden], .hidden, [aria-hidden="true"]');
+              if (isHidden) continue;
+              var rect = qEl.getBoundingClientRect();
+              if (rect.width === 0 && rect.height === 0 && qEl.offsetParent === null) continue;
               var qCandidate = clean(qEl.innerText || qEl.textContent);
-              if (qCandidate.length > 5) {
+              if (qCandidate.length > 8 && !/CARPETA\s+PEDAG|Simulaci[óo]n|Banco\s+de/i.test(qCandidate)) {
                 var stripped = stripNoise(qCandidate);
-                if (stripped.length > 5 && !/CARPETA\\s+PEDAG/i.test(stripped)) {
+                if (stripped.length > 8) {
                   questionText = stripped;
-                  strategyUsed = 'selector_dedicado (' + qSelectors[qs] + ')';
+                  strategyUsed = 'selector_dedicado_visible (' + qSelectors[qs] + ')';
                   matchedSelector = qSelectors[qs];
                   targetEl = qEl;
                   break;
                 }
               }
             }
+            if (questionText.length >= 8) break;
           }
 
           // 2. PRIORIDAD MÁXIMA PARA OPCIONES: Selectores de tarjetas/elementos de opción (Simulador, Custom Divs)
@@ -748,91 +756,96 @@ class _BrowserScreenState extends State<BrowserScreen> {
             }
 
             // Búsqueda del enunciado real para UDABOL, Moodle y simulador
-            if (questionText.length < 5) {
-              // 1. Limpieza estructural de HTML ignorando cabeceras institucionales, navegación y perfiles
-              var cleanedHtml = '';
-              try {
-                var rawBody = doc.body ? doc.body.innerHTML : '';
-                cleanedHtml = rawBody
-                  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')
-                  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')
-                  .replace(/<header[\\s\\S]*?<\\/header>/gi, '')
-                  .replace(/<nav[\\s\\S]*?<\\/nav>/gi, '')
-                  .replace(/<footer[\\s\\S]*?<\\/footer>/gi, '')
-                  .replace(/<div[^>]*class=["'][^"']*(header|user_header|logo|exit_button)[^"']*["'][\\s\\S]*?<\\/div>/gi, '')
-                  .replace(/<table[^>]*class=["'][^"']*(header|user_header)[^"']*["'][\\s\\S]*?<\\/table>/gi, '')
-                  .replace(/<[^>]+>/g, '\\n');
-              } catch(e) {
-                cleanedHtml = doc.body ? (doc.body.innerText || '') : '';
-              }
+            if (questionText.length < 5 && visibleRadios.length > 0) {
+              var firstRadio = visibleRadios[0];
 
-              var rawLines = cleanedHtml.split(/[\\r\\n]+/).map(function(l) { return clean(l); }).filter(function(l) { return l.length > 0; });
-              var filteredLines = [];
-              for (var i = 0; i < rawLines.length; i++) {
-                var line = rawLines[i];
-                if (/^\\d{1,2}\$/.test(line)) continue;
-                if (/^\\d{1,2}:\\d{2}\$/.test(line)) continue;
-                if (/^(CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION)/i.test(line)) continue;
-                if (/^(TouchID|Quiz\\s+Simulator|Banco|Modo:|Ir\\s+al|Categoría|Pregunta\\s+\\d+|Respondidas|Sin responder|Respondida)/i.test(line)) continue;
-                if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
-                if (/^(TIEMPO\\s+RESTANTE|Minutos|Segundos|Pregunta\\s+nro|Terminar\\s+intento)/i.test(line)) continue;
-                if (/^(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar)\$/i.test(line)) continue;
-                // Excluir nombres de estudiantes en mayúsculas
-                if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(line) && line.split(' ').length >= 3 && /CALLE|JOSE|BERNARDO|SUVIA|ESTUDIANTE|ALUMNO/i.test(line)) continue;
-                filteredLines.push(line);
-              }
-
-              // 2. BÚSQUEDA INVERSA: Localizar la primera opción y extraer el texto inmediatamente previo
-              if (options.length >= 2) {
-                var firstOptIdx = -1;
-                for (var li = 0; li < filteredLines.length; li++) {
-                  var cLine = filteredLines[li].toLowerCase();
-                  for (var oi = 0; oi < options.length; oi++) {
-                    var opt = options[oi].toLowerCase();
-                    if (cLine === opt || (opt.length > 3 && cLine.indexOf(opt) !== -1) || (cLine.length > 3 && opt.indexOf(cLine) !== -1)) {
-                      firstOptIdx = li;
-                      break;
-                    }
-                  }
-                  if (firstOptIdx !== -1) break;
-                }
-
-                if (firstOptIdx > 0) {
-                  var qParts = [];
-                  for (var bi = firstOptIdx - 1; bi >= 0; bi--) {
-                    var cand = filteredLines[bi];
-                    if (/^(CARPETA|UDABOL|MED-|1P|2P|3P|FINAL|PARCIAL|EXAMEN|TIEMPO|MINUTOS|SEGUNDOS|CERRAR)/i.test(cand)) break;
-                    if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(cand) && cand.split(' ').length >= 3) break;
-                    if (cand.length >= 4) {
-                      qParts.unshift(cand);
-                      if (qParts.length >= 2 || cand.endsWith('?') || cand.endsWith(':')) break;
-                    }
-                  }
-                  if (qParts.length > 0) {
-                    questionText = qParts.join(' ');
-                    strategyUsed = 'busqueda_inversa_previa_opciones (UDABOL)';
-                    matchedSelector = 'filteredLines (inmediatamente antes de primera opción)';
-                    targetEl = currentGroup[0] ? currentGroup[0].parentElement : null;
-                  }
+              // 1. HERMANO PREVIO DEL CONTENEDOR DE OPCIONES (Estructura estándar de UDABOL y Simuladores)
+              var optsBox = firstRadio.closest('.udabol-options-container, #udabol-options-box, .options-list, #options-container, [class*="options"], table, ul, ol');
+              if (optsBox && optsBox.previousElementSibling) {
+                var prevBoxSib = optsBox.previousElementSibling;
+                var candBox = stripNoise(clean(prevBoxSib.innerText || prevBoxSib.textContent));
+                if (candBox.length > 6 && !/CARPETA\\s+PEDAG|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION/i.test(candBox)) {
+                  questionText = candBox;
+                  strategyUsed = 'contenedor_opciones_hermano_previo (UDABOL/Web)';
+                  matchedSelector = (optsBox.className || optsBox.tagName) + ' -> previousElementSibling';
+                  targetEl = prevBoxSib;
                 }
               }
 
-              // 3. Respaldo por árbol DOM si la búsqueda inversa no obtuvo texto
+              // 2. HERMANO PREVIO DEL BLOQUE DE LA PRIMERA OPCIÓN (Moodle / Tablas simples)
               if (questionText.length < 5) {
-                var firstRadio = currentGroup[0];
-                var parentBlock = firstRadio.closest('.form-group, .opcion, .option, li, tr, div, p');
-                if (parentBlock && parentBlock.parentElement) {
-                  var prevSib = parentBlock.previousElementSibling;
-                  while (prevSib) {
-                    var pCand = stripNoise(clean(prevSib.innerText || prevSib.textContent));
-                    if (pCand.length > 5 && options.indexOf(pCand) === -1 && !/CARPETA\\s+PEDAG|CERRAR\\s+SESION/i.test(pCand)) {
-                      questionText = pCand;
-                      strategyUsed = 'radio_hermano_previo (UDABOL/Moodle)';
-                      matchedSelector = 'input[type=radio] -> previousElementSibling';
-                      targetEl = prevSib;
-                      break;
+                var parentBlock = firstRadio.closest('.form-group, .opcion, .option, tr, li, div, p');
+                var prevSib = parentBlock ? parentBlock.previousElementSibling : null;
+                while (prevSib) {
+                  var pCand = stripNoise(clean(prevSib.innerText || prevSib.textContent));
+                  if (pCand.length > 6 && options.indexOf(pCand) === -1 && !/CARPETA\\s+PEDAG|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION/i.test(pCand)) {
+                    questionText = pCand;
+                    strategyUsed = 'radio_hermano_previo (UDABOL/Moodle)';
+                    matchedSelector = 'input[type=radio] -> previousElementSibling';
+                    targetEl = prevSib;
+                    break;
+                  }
+                  prevSib = prevSib.previousElementSibling;
+                }
+              }
+
+              // 3. BÚSQUEDA INVERSA ESTRICTA USANDO innerText VISIBLE (Excluye display:none por diseño)
+              if (questionText.length < 5) {
+                var bodyVisibleText = doc.body ? (doc.body.innerText || '') : '';
+                var rawLines = bodyVisibleText.split(/[\\r\\n]+/).map(function(l) { return clean(l); }).filter(function(l) { return l.length > 0; });
+                var filteredLines = [];
+                for (var i = 0; i < rawLines.length; i++) {
+                  var line = rawLines[i];
+                  if (/^\\d{1,2}\$/.test(line)) continue;
+                  if (/^\\d{1,2}:\\d{2}\$/.test(line)) continue;
+                  if (/^(CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION)/i.test(line)) continue;
+                  if (/^(TouchID|Quiz\\s+Simulator|Banco|Modo:|Ir\\s+al|Categoría|Pregunta\\s+\\d+|Respondidas|Sin responder|Respondida)/i.test(line)) continue;
+                  if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
+                  if (/^(TIEMPO\\s+RESTANTE|Minutos|Segundos|Pregunta\\s+nro|Terminar\\s+intento)/i.test(line)) continue;
+                  if (/^(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar)\$/i.test(line)) continue;
+                  // Excluir nombres de estudiantes en mayúsculas
+                  if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(line) && line.split(' ').length >= 3 && /CALLE|JOSE|BERNARDO|SUVIA|ESTUDIANTE|ALUMNO/i.test(line)) continue;
+                  filteredLines.push(line);
+                }
+
+                function isStrictOptionMatch(line, opt) {
+                  var l = clean(line).toLowerCase().replace(/^[a-z0-9][\\.\\)\\-]\\s*/i, '');
+                  var o = clean(opt).toLowerCase().replace(/^[a-z0-9][\\.\\)\\-]\\s*/i, '');
+                  if (l === o) return true;
+                  // Si tiene 8 o más caracteres puede ser substring, pero nunca para palabras cortas como "TODOS"
+                  if (o.length >= 8 && l.indexOf(o) !== -1) return true;
+                  return false;
+                }
+
+                if (options.length >= 2) {
+                  var firstOptIdx = -1;
+                  for (var li = 0; li < filteredLines.length; li++) {
+                    for (var oi = 0; oi < options.length; oi++) {
+                      if (isStrictOptionMatch(filteredLines[li], options[oi])) {
+                        firstOptIdx = li;
+                        break;
+                      }
                     }
-                    prevSib = prevSib.previousElementSibling;
+                    if (firstOptIdx !== -1) break;
+                  }
+
+                  if (firstOptIdx > 0) {
+                    var qParts = [];
+                    for (var bi = firstOptIdx - 1; bi >= 0; bi--) {
+                      var cand = filteredLines[bi];
+                      if (/^(CARPETA|UDABOL|MED-|1P|2P|3P|FINAL|PARCIAL|EXAMEN|TIEMPO|MINUTOS|SEGUNDOS|CERRAR)/i.test(cand)) break;
+                      if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(cand) && cand.split(' ').length >= 3) break;
+                      if (cand.length >= 4) {
+                        qParts.unshift(cand);
+                        if (qParts.length >= 2 || cand.endsWith('?') || cand.endsWith(':')) break;
+                      }
+                    }
+                    if (qParts.length > 0) {
+                      questionText = qParts.join(' ');
+                      strategyUsed = 'busqueda_inversa_previa_opciones_visible (UDABOL)';
+                      matchedSelector = 'filteredLines (inmediatamente antes de primera opción)';
+                      targetEl = currentGroup[0] ? currentGroup[0].parentElement : null;
+                    }
                   }
                 }
               }
@@ -862,7 +875,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               if (questionText.length < 5) {
                 for (var k = cleanLines.length - 1; k >= 0; k--) {
                   var cand = cleanLines[k];
-                  if (options.indexOf(cand) === -1 && cand.length > 5 && !/CARPETA\\s+PEDAG|CERRAR/i.test(cand)) {
+                  if (options.indexOf(cand) === -1 && cand.length > 5 && !/CARPETA\\s+PEDAG|UDABOL|UNIVERSIDAD|CERRAR|Simulador|TouchID/i.test(cand)) {
                     questionText = cand;
                     strategyUsed = 'respaldo_semantico_lineas';
                     matchedSelector = 'cleanLines[' + k + ']';
