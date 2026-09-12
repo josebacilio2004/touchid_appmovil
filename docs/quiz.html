@@ -3,42 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Banco Oficial de Preguntas de Opción Múltiple y Simulador de Exámenes TouchID - MTC, Medicina, Razonamiento y Tecnología.">
+  <meta name="description" content="Banco Oficial de Preguntas de Opción Múltiple y Simulador de Exámenes TouchID - Simulador Oficial UDABOL, MTC, Medicina y Tecnología.">
   <title>Simulador de Exámenes & Banco de Preguntas - TouchID</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <style>
     /* Estilos específicos para el simulador interactivo */
     .quiz-hero {
       text-align: center;
-      padding: 40px 20px 20px;
+      padding: 36px 20px 16px;
       max-width: 900px;
       margin: 0 auto;
     }
     .quiz-title {
-      font-size: 2.4rem;
+      font-size: 2.3rem;
       font-weight: 800;
       background: linear-gradient(135deg, #60a5fa, #a78bfa, #38bdf8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       letter-spacing: -0.02em;
     }
     .quiz-subtitle {
       color: #94a3b8;
-      font-size: 1.05rem;
-      line-height: 1.6;
-      margin-bottom: 24px;
+      font-size: 1rem;
+      line-height: 1.55;
+      margin-bottom: 20px;
     }
+
+    /* Tabs de Filtrado de Temarios */
+    .filter-tabs-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 26px;
+      flex-wrap: wrap;
+      padding: 0 20px;
+    }
+    .filter-tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #94a3b8;
+      padding: 9px 18px;
+      border-radius: 30px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .filter-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+    }
+    .filter-tab-btn.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.35);
+    }
+    .filter-tab-btn.tab-udabol.active {
+      background: #7cb305;
+      border-color: #7cb305;
+      box-shadow: 0 4px 15px rgba(124, 179, 5, 0.35);
+    }
+
     .quiz-categories-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
       max-width: 1100px;
-      margin: 20px auto 40px;
+      margin: 10px auto 40px;
       padding: 0 20px;
     }
     .category-card {
@@ -60,6 +100,14 @@
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
       background: rgba(30, 41, 59, 0.95);
     }
+    .category-card.card-udabol {
+      border-left: 4px solid #7cb305;
+      background: rgba(26, 38, 57, 0.85);
+    }
+    .category-card.card-udabol:hover {
+      border-color: #7cb305;
+      box-shadow: 0 12px 30px rgba(124, 179, 5, 0.25);
+    }
     .category-badge {
       align-self: flex-start;
       font-size: 0.75rem;
@@ -71,7 +119,7 @@
       letter-spacing: 0.05em;
     }
     .category-card h3 {
-      font-size: 1.25rem;
+      font-size: 1.22rem;
       color: #f8fafc;
       margin-bottom: 8px;
       font-weight: 700;
@@ -110,8 +158,14 @@
       background: #2563eb;
       transform: scale(1.03);
     }
+    .btn-start-udabol {
+      background: #7cb305;
+    }
+    .btn-start-udabol:hover {
+      background: #689f38;
+    }
 
-    /* Área del Cuestionario Activo */
+    /* Área del Cuestionario Estándar */
     .quiz-active-container {
       max-width: 840px;
       margin: 20px auto;
@@ -318,6 +372,175 @@
       background: rgba(255, 255, 255, 0.15);
     }
 
+    /* ESTILOS 1:1 CLON PLATAFORMA UDABOL (virtual.udabol.edu.bo) */
+    .udabol-portal-wrapper {
+      background: #ffffff;
+      color: #333333;
+      max-width: 580px;
+      margin: 0 auto;
+      padding: 20px 20px 60px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      box-sizing: border-box;
+    }
+    .udabol-portal-title {
+      font-size: 1.18rem;
+      font-weight: 800;
+      color: #1e293b;
+      text-align: center;
+      margin: 0 0 6px;
+      letter-spacing: 0.02em;
+    }
+    .udabol-session-title {
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: #334155;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .udabol-subject-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #475569;
+      text-align: center;
+      margin-bottom: 24px;
+      line-height: 1.35;
+    }
+    .udabol-question-statement {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.45;
+      margin: 20px 0 20px;
+      text-transform: uppercase;
+      user-select: text;
+    }
+    .udabol-options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 26px;
+    }
+    .udabol-option-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      cursor: pointer;
+      font-size: 0.96rem;
+      color: #1e293b;
+      line-height: 1.4;
+      user-select: text;
+    }
+    .udabol-option-row input[type="radio"] {
+      width: 20px;
+      height: 20px;
+      margin-top: 1px;
+      accent-color: #2563eb;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .udabol-btn-siguiente {
+      background: #7cb305;
+      color: #ffffff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+      transition: background 0.15s ease;
+    }
+    .udabol-btn-siguiente:hover {
+      background: #689f38;
+    }
+    .udabol-divider {
+      border: 0;
+      border-top: 1px solid #e2e8f0;
+      margin: 24px 0 16px;
+    }
+    .udabol-q-meta {
+      font-style: italic;
+      font-size: 0.88rem;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+    .udabol-timer-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 14px 18px;
+      max-width: 320px;
+      background: #fafafa;
+      margin-bottom: 24px;
+    }
+    .udabol-timer-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: #334155;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    .udabol-clock-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .udabol-clock-col {
+      text-align: center;
+    }
+    .udabol-clock-lbl {
+      font-size: 0.72rem;
+      color: #64748b;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .udabol-clock-tiles {
+      display: flex;
+      gap: 4px;
+    }
+    .udabol-tile {
+      background: #27272a;
+      color: #ffffff;
+      font-size: 1.45rem;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 6px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+      min-width: 32px;
+      text-align: center;
+      display: inline-block;
+    }
+    .udabol-colon {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #334155;
+      margin-top: 16px;
+    }
+    .udabol-btn-finish {
+      background: #337ab7;
+      color: #ffffff;
+      border: none;
+      padding: 9px 20px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+    }
+    .udabol-btn-finish:hover {
+      background: #286090;
+    }
+
     /* Pantalla de Resultados */
     .results-card {
       text-align: center;
@@ -386,14 +609,14 @@
       to { opacity: 1; transform: translateY(0); }
     }
   </style>
-  <script type="module" crossorigin src="./assets/quiz-ZGFATf_-.js"></script>
+  <script type="module" crossorigin src="./assets/quiz-CJqMqAQr.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/web_dashboard-B3KD5YTM.js">
   <link rel="stylesheet" crossorigin href="./assets/web_dashboard-K41SXrbA.css">
 </head>
 <body style="background: #080b13; color: #f8fafc; min-height: 100vh;">
 
-  <!-- Barra Superior del Simulador -->
-  <header style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 22, 42, 0.85); backdrop-filter: blur(15px); padding: 14px 24px; position: sticky; top: 0; z-index: 100;">
+  <!-- Barra Superior Global -->
+  <header id="global-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: rgba(15, 22, 42, 0.85); backdrop-filter: blur(15px); padding: 14px 24px; position: sticky; top: 0; z-index: 100;">
     <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
       <div style="display: flex; align-items: center; gap: 14px;">
         <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #06b6d4); box-shadow: 0 0 12px rgba(59,130,246,0.6);"></div>
@@ -418,8 +641,24 @@
       </div>
       <h1 class="quiz-title">Simulador de Exámenes con Opción Múltiple</h1>
       <p class="quiz-subtitle">
-        Pon a prueba tus conocimientos en distintas áreas con preguntas estructuradas, cronómetro de evaluación y explicaciones fundamentadas. Compatible con el Asistente IA de TouchID.
+        Pon a prueba tus conocimientos con preguntas estructuradas, formato oficial universitario y cronómetro en tiempo real. 100% compatible con el Asistente IA de TouchID.
       </p>
+    </div>
+
+    <!-- Pestañas de Filtro -->
+    <div class="filter-tabs-container">
+      <button class="filter-tab-btn tab-udabol active" id="tab-udabol" data-filter="udabol">
+        <span style="font-size: 1.1rem;">🏥</span> Simulador Oficial UDABOL (Carpeta Pedagógica)
+      </button>
+      <button class="filter-tab-btn" id="tab-medicina" data-filter="medicina">
+        <span style="font-size: 1.1rem;">🩺</span> Ciencias Médicas & Salud
+      </button>
+      <button class="filter-tab-btn" id="tab-general" data-filter="general">
+        <span style="font-size: 1.1rem;">📚</span> Banco General (MTC, Tech, Psiquiatría)
+      </button>
+      <button class="filter-tab-btn" id="tab-all" data-filter="all">
+        <span style="font-size: 1.1rem;">🌐</span> Ver Todos los Temarios
+      </button>
     </div>
 
     <!-- Rejilla de Categorías Dinámicas -->
@@ -428,7 +667,7 @@
     </div>
   </main>
 
-  <!-- SECCIÓN 2: VISTA DEL CUESTIONARIO ACTIVO -->
+  <!-- SECCIÓN 2: VISTA CUESTIONARIO ESTÁNDAR (TOUCHID DARK) -->
   <section class="quiz-active-container" id="view-quiz">
     <div class="quiz-card">
       <div class="quiz-header-bar">
@@ -446,7 +685,7 @@
         <div class="progress-bar-fill" id="progress-bar"></div>
       </div>
 
-      <div class="question-box" id="question-text">
+      <div class="question-box question-text enunciado" id="question-text">
         <!-- Texto de la pregunta -->
       </div>
 
@@ -474,18 +713,93 @@
     </div>
   </section>
 
-  <!-- SECCIÓN 3: PANTALLA DE RESULTADOS -->
+  <!-- SECCIÓN 3: VISTA 1:1 CLON PLATAFORMA UDABOL (virtual.udabol.edu.bo) -->
+  <section id="view-udabol" style="display: none; background: #ffffff; min-height: 100vh;">
+    <!-- Barra discreta de navegación hacia menú -->
+    <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; max-width: 580px; margin: 0 auto;">
+      <span style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Simulación 1:1 de Examen UDABOL</span>
+      <button id="btn-udabol-exit" style="background: #ffffff; border: 1px solid #cbd5e1; color: #334155; font-size: 0.8rem; font-weight: 600; padding: 4px 12px; border-radius: 6px; cursor: pointer;">
+        ✕ Salir del Examen
+      </button>
+    </div>
+
+    <div class="udabol-portal-wrapper">
+      <!-- PORTAL REAL UDABOL: CARPETA PEDAGÓGICA DIGITAL -->
+      <div class="udabol-portal-title">CARPETA PEDAGÓGICA DIGITAL</div>
+      <div class="udabol-session-title" id="udabol-session-title">Examen 2-2025</div>
+      <div class="udabol-subject-title" id="udabol-subject-title">MED-202-11390: Embriología II - NM - A</div>
+
+      <!-- PREGUNTA REAL ENUNCIADO -->
+      <div class="udabol-question-statement question-text enunciado" id="udabol-q-statement">
+        ANTES DEL NACIMIENTO LOS PULMONES ESTAN LLENOS DE
+      </div>
+
+      <!-- OPCIONES CON RADIO BUTTONS NATIVOS -->
+      <div class="udabol-options-container" id="udabol-options-box">
+        <!-- Generado dinámicamente -->
+      </div>
+
+      <!-- BOTÓN VERDE SIGUIENTE -->
+      <div style="margin-bottom: 24px;">
+        <button id="udabol-btn-next" type="button" class="udabol-btn-siguiente">
+          <span>✔</span> Siguiente
+        </button>
+      </div>
+
+      <!-- LÍNEA DIVISORIA -->
+      <div class="udabol-divider"></div>
+
+      <!-- METADATO DE PREGUNTA -->
+      <div class="udabol-q-meta" id="udabol-q-code">
+        Pregunta nro. 157124896
+      </div>
+
+      <!-- FLIP CLOCK DE TIEMPO RESTANTE -->
+      <div class="udabol-timer-card">
+        <div class="udabol-timer-header">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #334155; font-size: 11px; font-style: normal; font-weight: 800;">i</span>
+          TIEMPO RESTANTE
+        </div>
+        <div class="udabol-clock-container">
+          <div class="udabol-clock-col">
+            <span class="udabol-clock-lbl">Minutos</span>
+            <div class="udabol-clock-tiles">
+              <span class="udabol-tile" id="udabol-m1">3</span>
+              <span class="udabol-tile" id="udabol-m2">6</span>
+            </div>
+          </div>
+          <span class="udabol-colon">:</span>
+          <div class="udabol-clock-col">
+            <span class="udabol-clock-lbl">Segundos</span>
+            <div class="udabol-clock-tiles">
+              <span class="udabol-tile" id="udabol-s1">5</span>
+              <span class="udabol-tile" id="udabol-s2">1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTÓN AZUL TERMINAR INTENTO -->
+      <div>
+        <button id="udabol-btn-finish" type="button" class="udabol-btn-finish">
+          <span>✔</span> Terminar intento
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 4: PANTALLA DE RESULTADOS -->
   <section class="results-card" id="view-results">
     <div style="max-width: 760px; margin: 0 auto;">
       <div class="results-score-circle">
         <span class="score-number" id="res-score">0</span>
-        <span class="score-total" id="res-max">de 10</span>
+        <span class="score-total" id="res-max">de 20</span>
       </div>
       <h2 class="results-status" id="res-status">¡Evaluación Finalizada!</h2>
       <p id="res-msg" style="color: #94a3b8; font-size: 1.05rem; margin-bottom: 24px;"></p>
 
       <div style="display: flex; justify-content: center; gap: 14px; margin-bottom: 30px;">
-        <button class="btn-start" id="btn-retry" style="padding: 12px 28px; font-size: 1rem;">Reintentar Cuestionario</button>
+        <button class="btn-start" id="btn-retry" style="padding: 12px 28px; font-size: 1rem;">Reintentar Examen</button>
         <button class="btn-prev" id="btn-change-category" style="padding: 12px 24px; font-size: 1rem;">Elegir otro Temario</button>
       </div>
 
@@ -499,6 +813,6 @@
       </div>
     </div>
   </section>
-
+
 </body>
 </html>

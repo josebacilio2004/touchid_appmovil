@@ -525,7 +525,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     });
 
     try {
-      // Inyectar script especializado para UDABOL y plataformas universitarias
+      // Inyectar script universal para UDABOL, Simulador TouchID y plataformas universitarias
       const jsScript = '''
         (function() {
           function clean(str) {
@@ -535,13 +535,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
           // Patrones de ruido administrativos y de paginación
           var noisePatterns = [
-            /\\b(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-\\d+)[^\\n\\r]*/gi,
+            /\\b(TouchID|Quiz\\s+Simulator|Banco\\s+de\\s+Preguntas|Simulador\\s+de\\s+Ex[áa]menes)[^\\n\\r]*/gi,
+            /\\b(Modo:\\s*[^\\n\\r]*|Ir\\s+al\\s+Dashboard[^\\n\\r]*)/gi,
+            /\\b(CARPETA\\s+PEDAG[OÓ]GICA\\s+DIGITAL|CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD\\s+DE\\s+AQUINO)[^\\n\\r]*/gi,
+            /\\b(1P|2P|3P|FINAL|EXAMEN\\s*\\d*|PARCIAL|MED-\\d+)[^\\n\\r]*/gi,
             /\\b(Respondidas|Sin responder|Respondida)\\b/gi,
             /\\bPregunta\\s+nro\\.?\\s*\\d+\\b/gi,
+            /\\bPregunta\\s+\\d+\\s+de\\s+\\d+\\b/gi,
             /\\bTIEMPO\\s+RESTANTE\\b[\\s\\S]*?(?=(?:Pregunta|Siguiente|\$))/gi,
             /\\b(Minutos|Segundos)\\b/gi,
             /\\b(Punt[uú]a\\s+como|Puntaje|Sobre\\s+\\d+|Se[ñn]alar\\s+con\\s+bandera|Marcar\\s+con\\s+bandera)\\b[^\\n\\r]*/gi,
-            /\\b(Enunciado\\s+de\\s+la\\s+pregunta)\\b/gi
+            /\\b(Enunciado\\s+de\\s+la\\s+pregunta)\\b/gi,
+            /\\b(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar|Terminar\\s+intento)\\b/gi
           ];
 
           function stripNoise(text) {
@@ -549,15 +554,76 @@ class _BrowserScreenState extends State<BrowserScreen> {
             noisePatterns.forEach(function(p) {
               t = t.replace(p, ' ');
             });
-            // Eliminar números sueltos de paginación (1 al 20)
+            // Eliminar números sueltos de paginación (1 al 20) y timestamps tipo 01:39
+            t = t.replace(/\\b\\d{1,2}:\\d{2}\\b/g, ' ');
             t = t.replace(/(?:^|\\s)\\d{1,2}(?=\\s|\$)/g, ' ');
             return clean(t);
           }
 
           var doc = document;
-          var radioInputs = Array.from(doc.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
+          var questionText = '';
+          var options = [];
 
-          // Si no hay inputs directos, buscar dentro de posibles iframes
+          // 1. PRIORIDAD MÁXIMA PARA PREGUNTA: Selectores dedicados de pregunta
+          var qSelectors = [
+            '#question-text',
+            '.question-box',
+            '.qtext',
+            '.formulation .qtext',
+            '[class*="question-text"]',
+            '[class*="enunciado"]',
+            '[class*="pregunta-texto"]',
+            '.que .content .qtext',
+            '.question_content',
+            '.freebirdFormviewerViewNumberedItemHeader'
+          ];
+          for (var qs = 0; qs < qSelectors.length; qs++) {
+            var qEl = doc.querySelector(qSelectors[qs]);
+            if (qEl) {
+              var qCandidate = clean(qEl.innerText || qEl.textContent);
+              if (qCandidate.length > 5) {
+                var stripped = stripNoise(qCandidate);
+                if (stripped.length > 5 && !/CARPETA\s+PEDAG/i.test(stripped)) {
+                  questionText = stripped;
+                  break;
+                }
+              }
+            }
+          }
+
+          // 2. PRIORIDAD MÁXIMA PARA OPCIONES: Selectores de tarjetas/elementos de opción (Simulador, Custom Divs)
+          var optCardSelectors = [
+            '#options-container .option-item',
+            '.options-list .option-item',
+            '.option-item',
+            '.option-card',
+            '[class*="option-item"]',
+            '[class*="option-card"]',
+            '[role="radio"]'
+          ];
+          for (var os = 0; os < optCardSelectors.length; os++) {
+            var optNodes = doc.querySelectorAll(optCardSelectors[os]);
+            if (optNodes && optNodes.length >= 2) {
+              var list = [];
+              optNodes.forEach(function(node) {
+                var clone = node.cloneNode(true);
+                var idx = clone.querySelector('.option-index, [class*="index"], [class*="letter"]');
+                if (idx) idx.remove();
+                var t = clean(clone.innerText || clone.textContent);
+                t = t.replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
+                if (t && list.indexOf(t) === -1) {
+                  list.push(t);
+                }
+              });
+              if (list.length >= 2) {
+                options = list;
+                break;
+              }
+            }
+          }
+
+          // 3. ESTRATEGIA DE RADIO BUTTONS (UDABOL Carpeta Pedagógica, Moodle, Google Forms)
+          var radioInputs = Array.from(doc.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
           if (radioInputs.length === 0) {
             var iframes = doc.querySelectorAll('iframe');
             for (var f = 0; f < iframes.length; f++) {
@@ -575,11 +641,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             }
           }
 
-          var questionText = '';
-          var options = [];
-
-          // Resolver texto de la alternativa asociado a un input
-          function getOptionText(input) {
+          function getOptionTextFromInput(input) {
             if (input.id) {
               var lbl = doc.querySelector('label[for="' + input.id + '"]');
               if (lbl) {
@@ -612,8 +674,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             return '';
           }
 
-          // --- ESTRATEGIA 1: Extracción basada en Radio Buttons / Checkboxes ---
-          if (radioInputs.length > 0) {
+          if (options.length < 2 && radioInputs.length > 0) {
             var visibleRadios = radioInputs.filter(function(r) {
               var rect = r.getBoundingClientRect();
               return (rect.width > 0 || rect.height > 0 || r.offsetParent !== null);
@@ -627,29 +688,44 @@ class _BrowserScreenState extends State<BrowserScreen> {
             if (currentGroup.length < 2) currentGroup = visibleRadios;
 
             currentGroup.forEach(function(input) {
-              var txt = getOptionText(input);
+              var txt = getOptionTextFromInput(input);
               txt = txt.replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
               if (txt && options.indexOf(txt) === -1) {
                 options.push(txt);
               }
             });
 
-            var qContainer = currentGroup[0].closest('.que, .multichoice, fieldset, .question, .question-card, [class*="question"], [class*="cuestion"], form, .card') ||
-                             currentGroup[0].parentElement?.parentElement?.parentElement;
+            // En UDABOL: Buscar el enunciado real ubicado inmediatamente antes de los radio buttons
+            if (questionText.length < 5) {
+              var firstRadio = currentGroup[0];
+              var parentBlock = firstRadio.closest('.form-group, .opcion, .option, li, tr, div, p');
+              if (parentBlock && parentBlock.parentElement) {
+                var prevSib = parentBlock.previousElementSibling;
+                while (prevSib) {
+                  var pCand = stripNoise(clean(prevSib.innerText || prevSib.textContent));
+                  if (pCand.length > 5 && options.indexOf(pCand) === -1 && !/CARPETA\s+PEDAG/i.test(pCand)) {
+                    questionText = pCand;
+                    break;
+                  }
+                  prevSib = prevSib.previousElementSibling;
+                }
+              }
 
-            var qTextEl = qContainer ? qContainer.querySelector('.qtext, .formulation, [class*="question-text"], [class*="enunciado"], [class*="pregunta"]') : null;
-            if (qTextEl) {
-              questionText = clean(qTextEl.innerText || qTextEl.textContent);
-            } else if (qContainer) {
-              var raw = qContainer.innerText || qContainer.textContent || '';
-              options.forEach(function(opt) {
-                raw = raw.split(opt).join('');
-              });
-              questionText = stripNoise(raw);
+              if (questionText.length < 5) {
+                var qContainer = currentGroup[0].closest('.que, .multichoice, fieldset, .question, .question-card, [class*="question"], [class*="cuestion"], form, .card') ||
+                                 currentGroup[0].parentElement?.parentElement?.parentElement;
+                if (qContainer) {
+                  var raw = qContainer.innerText || qContainer.textContent || '';
+                  options.forEach(function(opt) {
+                    raw = raw.split(opt).join('');
+                  });
+                  questionText = stripNoise(raw);
+                }
+              }
             }
           }
 
-          // --- ESTRATEGIA 2: Respaldo Semántico Estructural (UDABOL con o sin inputs) ---
+          // 4. RESPALDO SEMÁNTICO (Especialmente diseñado para UDABOL y exámenes secuenciales)
           if (options.length < 2 || questionText.length < 5) {
             var bodyText = doc.body.innerText || doc.body.textContent || '';
             var lines = bodyText.split(/[\\r\\n]+/).map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
@@ -658,23 +734,35 @@ class _BrowserScreenState extends State<BrowserScreen> {
             for (var i = 0; i < lines.length; i++) {
               var line = lines[i];
               if (/^\\d{1,2}\$/.test(line)) continue;
-              if (/^(Respondidas|Sin responder|Respondida)\$/i.test(line)) continue;
+              if (/^\\d{1,2}:\\d{2}\$/.test(line)) continue;
+              if (/^(CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD)/i.test(line)) continue;
+              if (/^(TouchID|Quiz\\s+Simulator|Banco|Modo:|Ir\\s+al|Categoría|Pregunta\\s+\\d+|Respondidas|Sin responder|Respondida)/i.test(line)) continue;
               if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
-              if (/^(TIEMPO RESTANTE|Minutos|Segundos|Pregunta nro)/i.test(line)) break;
-              if (/^(Siguiente|Anterior|Finalizar)\$/i.test(line)) break;
+              if (/^(TIEMPO\\s+RESTANTE|Minutos|Segundos|Pregunta\\s+nro|Terminar\\s+intento)/i.test(line)) break;
+              if (/^(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar)\$/i.test(line)) break;
               cleanLines.push(line);
             }
 
-            if (cleanLines.length >= 3) {
-              questionText = cleanLines[0];
+            if (cleanLines.length >= 2) {
+              // Si aún no tenemos questionText, tomar la primera línea limpia que NO esté en options
+              if (questionText.length < 5) {
+                for (var k = 0; k < cleanLines.length; k++) {
+                  var cand = cleanLines[k];
+                  if (options.indexOf(cand) === -1 && cand.length > 5 && !/CARPETA\s+PEDAG/i.test(cand)) {
+                    questionText = cand;
+                    break;
+                  }
+                }
+              }
               var parsedOpts = [];
-              for (var j = 1; j < cleanLines.length; j++) {
+              var startIdx = (questionText === cleanLines[0]) ? 1 : 0;
+              for (var j = startIdx; j < cleanLines.length; j++) {
                 var optCandidate = cleanLines[j].replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
-                if (optCandidate && parsedOpts.indexOf(optCandidate) === -1) {
+                if (optCandidate && optCandidate !== questionText && parsedOpts.indexOf(optCandidate) === -1) {
                   parsedOpts.push(optCandidate);
                 }
               }
-              if (parsedOpts.length >= 2) {
+              if (parsedOpts.length >= 2 && options.length < 2) {
                 options = parsedOpts;
               }
             }
@@ -797,7 +885,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             'options': options,
             'systemPrompt': systemPrompt,
           }),
-        ).timeout(const Duration(seconds: 25));
+        ).timeout(const Duration(seconds: 45));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -959,21 +1047,43 @@ Responde estrictamente en formato JSON:
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.02),
+      barrierColor: Colors.black.withOpacity(0.04),
       builder: (context) {
         final explanation = (resData['explanation'] ?? '').toString();
         final subject = (resData['subject'] ?? 'General').toString();
 
+        final rawIndex = resData['correct_option_index'];
+        int? optionIndex;
+        if (rawIndex is int) {
+          optionIndex = rawIndex;
+        } else if (rawIndex != null) {
+          optionIndex = int.tryParse(rawIndex.toString());
+        }
+
+        String letterPrefix = '';
+        if (optionIndex != null && optionIndex >= 0 && optionIndex < 26) {
+          letterPrefix = '[${String.fromCharCode(65 + optionIndex)}] ';
+        }
+        final answerText = (resData['correct_option_text'] ?? '').toString();
+
         return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.65),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            color: const Color(0xFF1E1F22).withOpacity(0.95),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Colors.white.withOpacity(0.04),
+              color: Colors.white.withOpacity(0.12),
               width: 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -981,46 +1091,57 @@ Responde estrictamente en formato JSON:
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    subject.toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.2),
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8AB4F8).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      subject.toUpperCase(),
+                      style: const TextStyle(
+                        color: Color(0xFF8AB4F8),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: Icon(
-                      Icons.close,
-                      color: Colors.white.withOpacity(0.15),
-                      size: 14,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.close,
+                        color: Colors.white.withOpacity(0.4),
+                        size: 16,
+                      ),
                     ),
                   )
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
-                'R: ${resData['correct_option_text']}',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.55),
-                  fontSize: 13,
+                '$letterPrefix$answerText',
+                style: const TextStyle(
+                  color: Color(0xFFE8EAED),
+                  fontSize: 14.5,
                   fontWeight: FontWeight.bold,
+                  height: 1.3,
                 ),
               ),
               if (explanation.isNotEmpty && explanation != 'N/A' && explanation != 'none') ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   explanation,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.35),
-                    fontSize: 10.5,
-                    height: 1.3,
+                    color: Colors.white.withOpacity(0.55),
+                    fontSize: 11,
+                    height: 1.35,
                   ),
                 ),
               ],
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
             ],
           ),
         );

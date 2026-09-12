@@ -1,5 +1,824 @@
 // Banco de Preguntas Multidisciplinario para el Simulador Web TouchID
 export const QUIZ_CATEGORIES = [
+{
+    "id": "udabol_embrio",
+    "isUdabol": true,
+    "title": "🏥 UDABOL: Embriología II (MED-202-11390)",
+    "subtitle": "Examen 2-2025 • Carpeta Pedagógica Digital",
+    "badge": "UDABOL Oficial",
+    "badgeColor": "#7cb305",
+    "subjectCode": "MED-202-11390: Embriología II - NM - A",
+    "sessionName": "Examen 2-2025",
+    "description": "Simulador 1:1 de evaluación oficial en la Carpeta Pedagógica Digital de la Universidad de Aquino Bolivia (UDABOL). Banco oficial de 20 preguntas con el formato exacto del portal.",
+    "questions": [
+      {
+        "id": "udabol_embrio_1",
+        "question": "ANTES DEL NACIMIENTO LOS PULMONES ESTAN LLENOS DE",
+        "options": [
+          "PROTEINAS ESCASAS",
+          "TODOS",
+          "LIQUIDO CON ALTO CONTENIDO DE CLORO",
+          "NINGUNO",
+          "CIERTA CANTIDAD DE MOCO"
+        ],
+        "correctIndex": 2,
+        "explanation": "Antes del nacimiento, los pulmones fetales están distendidos y llenos de un líquido rico en cloro, con escasas proteínas, algo de moco y surfactante sintetizado por los neumocitos tipo II."
+      },
+      {
+        "id": "udabol_embrio_2",
+        "question": "¿EN QUE SEMANA DEL DESARROLLO EMBRIONARIO COMIENZA A PRODUCIRSE SURFACTANTE PULMONAR EN CANTIDAD SIGNIFICATIVA POR LOS NEUMOCITOS TIPO II?",
+        "options": [
+          "SEMANA 12 A 16",
+          "SEMANA 24 A 28",
+          "SEMANA 34 A 36",
+          "SEMANA 18 A 20",
+          "SEMANA 8 A 10"
+        ],
+        "correctIndex": 1,
+        "explanation": "Hacia la semana 24-28 (periodo canalicular/sacular), los neumocitos tipo II inician la secreción de surfactante pulmonar, alcanzando niveles óptimos hacia la semana 34."
+      },
+      {
+        "id": "udabol_embrio_3",
+        "question": "EL TABIQUE INTERAURICULAR PRIMARIO (SEPTUM PRIMUM) PRESENTA UNA PERFORACION ANTES DE CERRARSE POR COMPLETO DENOMINADA:",
+        "options": [
+          "FORAMEN OVAL",
+          "OSTIUM SECUNDUM",
+          "CONDUCTO ARTERIOSO",
+          "OSTIUM PRIMUM",
+          "SENO VENOSO"
+        ],
+        "correctIndex": 1,
+        "explanation": "Antes de que el septum primum se una a las almohadillas endocárdicas, se producen perforaciones apoptóticas en su porción superior que confluyen formando el ostium secundum."
+      },
+      {
+        "id": "udabol_embrio_4",
+        "question": "¿CUAL DE LAS SIGUIENTES ESTRUCTURAS EMBRIONARIAS DA ORIGEN AL LIGAMENTO REDONDO DEL HIGADO EN EL ADULTO TRAS EL NACIMIENTO?",
+        "options": [
+          "CONDUCTO VENOSO DE ARANCIO",
+          "VENA UMBILICAL IZQUIERDA",
+          "ARTERIA UMBILICAL DERECHA",
+          "ALANTOIDES",
+          "CONDUCTO ARTERIOSO"
+        ],
+        "correctIndex": 1,
+        "explanation": "La vena umbilical izquierda se oblitera tras el nacimiento para formar el ligamento redondo del hígado (ligamentum teres hepatis)."
+      },
+      {
+        "id": "udabol_embrio_5",
+        "question": "LA HERNIACION FISIOLOGICA DEL ASA INTESTINAL MEDIA HACIA EL CORDON UMBILICAL OCURRE NORMALMENTE DURANTE:",
+        "options": [
+          "LA 4TA A 6TA SEMANA",
+          "LA 6TA A 10MA SEMANA",
+          "LA 12VA A 16TA SEMANA",
+          "LA 2DA A 4TA SEMANA",
+          "EL TERCER TRIMESTRE"
+        ],
+        "correctIndex": 1,
+        "explanation": "El asa intestinal primitiva se hernia hacia el celoma del cordón umbilical en la 6ta semana debido al gran volumen hepático y mesonéfrico, retornando al abdomen en la 10ma semana."
+      },
+      {
+        "id": "udabol_embrio_6",
+        "question": "EL PRIMER ARCO FARINGEO (MANDIBULAR) RECIBE SU INERVACION MOTORA Y SENSITIVA PRINCIPAL A TRAVES DEL PAR CRANEAL:",
+        "options": [
+          "VII (FACIAL)",
+          "V (TRIGEMINO - RAMA V3)",
+          "IX (GLOSOFARINGEO)",
+          "X (VAGO)",
+          "XII (HIPOGLOSO)"
+        ],
+        "correctIndex": 1,
+        "explanation": "El primer arco faríngeo origina los músculos de la masticación (temporal, masetero, pterigoideos) inervados por el nervio mandibular (V3 del trigémino)."
+      },
+      {
+        "id": "udabol_embrio_7",
+        "question": "¿CUAL DE LOS SIGUIENTES COMPONENTES DEL SISTEMA RENAL METANEFRICO PROVIENE DIRECTAMENTE DE LA YEMA URETERAL?",
+        "options": [
+          "CAPSULA DE BOWMAN",
+          "TUBULO CONTORNEADO PROXIMAL",
+          "ASA DE HENLE",
+          "TUBULOS COLECTORES Y CALICES RENALES",
+          "GLOMERULO RENAL"
+        ],
+        "correctIndex": 3,
+        "explanation": "La yema ureteral origina el uréter, pelvis renal, cálices mayores, cálices menores y túbulos colectores. El blastema metanéfrico origina las nefronas secretoras."
+      },
+      {
+        "id": "udabol_embrio_8",
+        "question": "EL DIVERTICULO DE MECKEL ES UNA ANOMALIA CONGENITA QUE CORRESPONDE A LA PERSISTENCIA DE:",
+        "options": [
+          "CONDUCTO ONFALOMESENTERICO (VITELINO)",
+          "URACO",
+          "CONDUCTO PARAMESONEFRICO DE MULLER",
+          "CONDUCTO MESONEFRICO DE WOLFF",
+          "SACO VITELINO SECUNDARIO"
+        ],
+        "correctIndex": 0,
+        "explanation": "El divertículo de Meckel se produce por la falta de obliteración de la porción ileal proximal del conducto onfalomesentérico (vitelino)."
+      },
+      {
+        "id": "udabol_embrio_9",
+        "question": "LAS CELULAS DE LA CRESTA NEURAL CONTRIBUYEN AL DESARROLLO DE LAS SIGUIENTES ESTRUCTURAS, EXCEPTO:",
+        "options": [
+          "GANGLIOS DE LA RAIZ DORSAL",
+          "MEDULA SUPRARRENAL",
+          "MELANOCITOS DE LA PIEL",
+          "CELULAS DE SCHWANN",
+          "CORTEZA SUPRARRENAL"
+        ],
+        "correctIndex": 4,
+        "explanation": "La corteza suprarrenal deriva del mesodermo intermedio celómico, mientras que la médula suprarrenal deriva de las células de la cresta neural."
+      },
+      {
+        "id": "udabol_embrio_10",
+        "question": "EL TIMO Y LAS GLANDULAS PARATIROIDES INFERIORES SE DESARROLLAN EMBRIOLOGICAMENTE A PARTIR DE:",
+        "options": [
+          "PRIMERA BOLSA FARINGEA",
+          "SEGUNDA BOLSA FARINGEA",
+          "TERCERA BOLSA FARINGEA",
+          "CUARTA BOLSA FARINGEA",
+          "SEXTO ARCO AORTICO"
+        ],
+        "correctIndex": 2,
+        "explanation": "La tercera bolsa faríngea origina en su porción dorsal las paratiroides inferiores y en su porción ventral el timo."
+      },
+      {
+        "id": "udabol_embrio_11",
+        "question": "EL ESBOZO LARINGOTRAQUEAL RESPIRATORIO APARECE INICIALMENTE EN LA CUARTA SEMANA COMO UNA EVAGINACION DE:",
+        "options": [
+          "ECTODERMO NEURAL",
+          "PARED VENTRAL DEL INTESTINO ANTERIOR",
+          "MESODERMO SOMATICO LATERAL",
+          "INTESTINO MEDIO",
+          "ENDODERMO DEL ALANTOIDES"
+        ],
+        "correctIndex": 1,
+        "explanation": "El primordio respiratorio o divertículo laringotraqueal surge como una excrecencia en la pared ventral del intestino anterior."
+      },
+      {
+        "id": "udabol_embrio_12",
+        "question": "EL CUARTO ARCO AORTICO IZQUIERDO PERSISTE EN EL ADULTO DANDO ORIGEN A:",
+        "options": [
+          "ARTERIA SUBCLAVIA DERECHA",
+          "SEGMENTO DEL CAYADO DE LA AORTA",
+          "ARTERIAS CAROTIDAS COMUNES",
+          "CONDUCTO ARTERIOSO",
+          "ARTERIA PULMONAR IZQUIERDA"
+        ],
+        "correctIndex": 1,
+        "explanation": "El cuarto arco aórtico izquierdo contribuye al segmento proximal del cayado aórtico definitivo."
+      },
+      {
+        "id": "udabol_embrio_13",
+        "question": "EL CONDUCTO ARTERIOSO DE BOTAL DERIVA EMBRIOLOGICAMENTE DEL:",
+        "options": [
+          "SEXTO ARCO AORTICO IZQUIERDO (PORCION DISTAL)",
+          "CUARTO ARCO AORTICO DERECHO",
+          "TERCER ARCO AORTICO IZQUIERDO",
+          "QUINTO ARCO AORTICO",
+          "TRONCO BRAQUIOCEFALICO"
+        ],
+        "correctIndex": 0,
+        "explanation": "La porción distal del sexto arco aórtico izquierdo conecta la arteria pulmonar con la aorta formando el conducto arterioso fetal."
+      },
+      {
+        "id": "udabol_embrio_14",
+        "question": "LA AUSENCIA CONGENITA DE MIGRACION DE CELULAS DE LA CRESTA NEURAL AL PLEXO MIENTERICO DEL COLON OCASIONA:",
+        "options": [
+          "ATRESIA DUODENAL",
+          "MEGACOLON AGANGLIONICO CONGENITO (HIRSCHSPRUNG)",
+          "ESTENOSIS PILORICA",
+          "VOLVULO INTESTINAL",
+          "INTUSUSCEPCION"
+        ],
+        "correctIndex": 1,
+        "explanation": "La falla de migración cráneo-caudal de las células ganglionares parasimpáticas entéricas origina aganglionosis colónica (enfermedad de Hirschsprung)."
+      },
+      {
+        "id": "udabol_embrio_15",
+        "question": "LOS CONDUCTOS PARAMESONEFRICOS DE MULLER EN EL EMBRION FEMENINO SE FUSIONAN PARA ORIGINAR:",
+        "options": [
+          "URETERES Y TRIGONO VESICAL",
+          "TROMPAS UTERINAS, UTERO Y CUPULA VAGINAL",
+          "OVARIOS Y FOLICULOS PRIMORDIALES",
+          "LABIOS MAYORES Y CLITORIS",
+          "URETRA FEMENINA"
+        ],
+        "correctIndex": 1,
+        "explanation": "En ausencia de hormona antimülleriana (AMH), los conductos de Müller dan lugar a las trompas de Falopio, el cuerpo y cuello uterino y el tercio superior de la vagina."
+      },
+      {
+        "id": "udabol_embrio_16",
+        "question": "LA HERNIA DIAFRAGMATICA CONGENITA POSTEROLATERAL MAS COMUN (DE BOCHDALEK) SE DEBE A UNA FALLA EN EL CIERRE DE:",
+        "options": [
+          "MEMBRANA PLEUROPERITONEAL",
+          "TABIQUE TRANSVERSO ANTERIOR",
+          "MESENTERIO DORSAL DEL ESOFAGO",
+          "PAREDES CORPORALES LATERALES",
+          "FORAMEN DE MORGAGNI"
+        ],
+        "correctIndex": 0,
+        "explanation": "La hernia de Bochdalek se produce por el cierre incompleto de las membranas pleuroperitoneales (predominantemente izquierda, 85-90%)."
+      },
+      {
+        "id": "udabol_embrio_17",
+        "question": "EL LIGAMENTO REDONDO DEL UTERO Y EL LIGAMENTO PROPIO DEL OVARIO DERIVAN DEL:",
+        "options": [
+          "GUBERNACULUM",
+          "MESONEFROS",
+          "CONDUCTO DE GARTNER",
+          "EPIOOFORO",
+          "ALANTOIDES"
+        ],
+        "correctIndex": 0,
+        "explanation": "El gubernaculum en el feto femenino persiste como el ligamento útero-ovárico y el ligamento redondo del útero."
+      },
+      {
+        "id": "udabol_embrio_18",
+        "question": "LAS CELULAS GERMINALES PRIMORDIALES SE OBSERVAN INICIALMENTE EN LA CUARTA SEMANA EN:",
+        "options": [
+          "PARED DEL SACO VITELINO CERCA DEL ALANTOIDES",
+          "MESODERMO SOMITICO",
+          "PLACA NEURAL ECTODERMICA",
+          "INTESTINO MEDIO",
+          "CAVIDAD AMNIOTICA"
+        ],
+        "correctIndex": 0,
+        "explanation": "Las células germinales primordiales se observan en el endodermo de la pared posterior del saco vitelino antes de migrar a las crestas gonadales."
+      },
+      {
+        "id": "udabol_embrio_19",
+        "question": "EL LIGAMENTO UMBILICAL MEDIO DEL ADULTO ES EL REMANENTE OBLITERADO DE LA SIGUIENTE ESTRUCTURA EMBRIONARIA:",
+        "options": [
+          "URACO (DERIVADO DEL ALANTOIDES)",
+          "CONDUCTO VITELINO",
+          "ARTERIA UMBILICAL",
+          "VENA VITELINA",
+          "MEMBRANA CLOACAL"
+        ],
+        "correctIndex": 0,
+        "explanation": "El uraco conecta la cúpula de la vejiga con el ombligo y se fibrosa tras el nacimiento para formar el ligamento umbilical medio."
+      },
+      {
+        "id": "udabol_embrio_20",
+        "question": "EL PERIODO DEL DESARROLLO PRENATAL CON MAYOR SENSIBILIDAD A MALFORMACIONES ANATOMICAS MAYORES POR TERATOGENOS ES:",
+        "options": [
+          "SEMANAS 1 Y 2 (PREIMPLANTACION)",
+          "SEMANAS 3 A 8 (PERIODO EMBRIONARIO DE ORGANOGENESIS)",
+          "SEMANAS 9 A 12 (FETAL TEMPRANO)",
+          "SEMANAS 20 A 24",
+          "TERCER TRIMESTRE"
+        ],
+        "correctIndex": 1,
+        "explanation": "El periodo de organogénesis embrionaria (semanas 3 a 8) es la fase crítica donde la exposición a teratógenos induce anomalías congénitas mayores."
+      }
+    ]
+  },
+  {
+    "id": "udabol_cardio",
+    "isUdabol": true,
+    "title": "🏥 UDABOL: Cardiología & Cardiopatías Congénitas (MED-301-14210)",
+    "subtitle": "Examen 2-2025 • Carpeta Pedagógica Digital",
+    "badge": "UDABOL Oficial",
+    "badgeColor": "#ef4444",
+    "subjectCode": "MED-301-14210: Cardiología Pediátrica & Adultos - NM - B",
+    "sessionName": "Examen 2-2025",
+    "description": "Evaluación oficial con casos clínicos de cardiopatías congénitas y cardiología clínica. Reproducción exacta del examen de la plataforma UDABOL.",
+    "questions": [
+      {
+        "id": "udabol_cardio_1",
+        "question": "LACTANTE DE 3 MESES CON TAQUIPNEA, DIFICULTAD PARA LA ALIMENTACION Y SOPLO CONTINUO EN MAQUINARIA DE GIBSON EN 2DO ESPACIO INTERCOSTAL IZQUIERDO. EL DIAGNOSTICO MAS PROBABLE ES:",
+        "options": [
+          "TETRALOGIA DE FALLOT",
+          "COARTACION DE AORTA",
+          "COMUNICACION INTERAURICULAR (CIA)",
+          "PERSISTENCIA DEL CONDUCTO ARTERIOSO (PCA)",
+          "TRANSPOSICION DE GRANDES VASOS"
+        ],
+        "correctIndex": 3,
+        "explanation": "El soplo continuo sistodiastólico \"en maquinaria\" de Gibson en foco pulmonar con pulsos saltones es patognomónico de PCA."
+      },
+      {
+        "id": "udabol_cardio_2",
+        "question": "EN UN PREMATURO CON PERSISTENCIA DEL CONDUCTO ARTERIOSO (PCA) HEMODINAMICAMENTE SIGNIFICATIVO, EL FARMACO DE ELECCION PARA EL CIERRE FARMACOLOGICO ES:",
+        "options": [
+          "PROSTAGLANDINA E1 (ALPROSTADIL)",
+          "IBUPROFENO O INDOMETACINA IV",
+          "FUROSEMIDA EN BOLOS",
+          "DIGOXINA ORAL",
+          "EPINEFRINA"
+        ],
+        "correctIndex": 1,
+        "explanation": "Los inhibidores de la ciclooxigenasa (ibuprofeno o indometacina) suprimen las prostaglandinas vasodilatadoras, favoreciendo la constricción del ductus."
+      },
+      {
+        "id": "udabol_cardio_3",
+        "question": "LA CARDIOPATIA CONGENITA CIANOGENA MAS FRECUENTE AL NACIMIENTO EN EL RECIEN NACIDO INMEDIATO ES:",
+        "options": [
+          "TETRALOGIA DE FALLOT",
+          "TRANSPOSICION DE GRANDES ARTERIAS (TGA)",
+          "ATRESIA TRICUSPIDEA",
+          "TRONCO ARTERIOSO COMUN",
+          "ANOMALIA TOTAL DEL RETORNO VENOSO PULMONAR"
+        ],
+        "correctIndex": 1,
+        "explanation": "La TGA es la cardiopatía cianógena más común en el recién nacido (<1 año). La Tetralogía de Fallot es la más frecuente después del año de edad."
+      },
+      {
+        "id": "udabol_cardio_4",
+        "question": "LA TETRALOGIA DE FALLOT CLASICA SE CARACTERIZA ANATOMICAMENTE POR LA ASOCIACION DE:",
+        "options": [
+          "CIV, ESTENOSIS PULMONAR, CABALGAMIENTO AORTICO E HIPERTROFIA VENTRICULAR DERECHA",
+          "CIA, ESTENOSIS AORTICA, DEXTROCARDIA E HIPERTROFIA AURICULAR",
+          "CIV, PCA, ATRESIA TRICUSPIDEA E HIPERTENSION PULMONAR",
+          "ESTENOSIS MITRAL, CIA, COARTACION AORTICA E HIPERTROFIA IZQUIERDA",
+          "TGA, CIV, HIPOPLASIA VENTRICULAR E INSUFICIENCIA AORTICA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La tétrada incluye: CIV subaórtica, estenosis infundibular/valvular pulmonar, cabalgamiento de la aorta sobre el tabique e hipertrofia del ventrículo derecho."
+      },
+      {
+        "id": "udabol_cardio_5",
+        "question": "ADOLESCENTE CON HIPERTENSION EN BRAZOS, PULSOS FEMORALES DEBILES O RETARDADOS Y EROSIONES COSTALES RADIOLOGICAS (SIGNO DE ROESLER). EL DIAGNOSTICO ES:",
+        "options": [
+          "ESTENOSIS MITRAL",
+          "COARTACION DE AORTA",
+          "TETRALOGIA DE FALLOT",
+          "COMUNICACION INTERAURICULAR TIPO OSTIUM PRIMUM",
+          "ANEURISMA DISECANTE"
+        ],
+        "correctIndex": 1,
+        "explanation": "La coartación aórtica provoca hipertensión en extremidades superiores e hipotensión en miembros inferiores, con circulación colateral intercostal que erosiona las costillas (signo de Roesler)."
+      },
+      {
+        "id": "udabol_cardio_6",
+        "question": "EL TIPO DE COMUNICACION INTERAURICULAR (CIA) MAS FRECUENTE, QUE SUPERA EL 70% DE LOS CASOS, CORRESPONDE A:",
+        "options": [
+          "OSTIUM PRIMUM",
+          "OSTIUM SECUNDUM (FOSA OVAL)",
+          "SENO VENOSO SUPERIOR",
+          "SENO CORONARIO",
+          "CANAL AURICULOVENTRICULAR"
+        ],
+        "correctIndex": 1,
+        "explanation": "La CIA tipo ostium secundum en la región de la fosa oval representa el 70-75% de las comunicaciones interauriculares."
+      },
+      {
+        "id": "udabol_cardio_7",
+        "question": "A LA AUSCULTACION CARDIACA EN UN PACIENTE CON COMUNICACION INTERAURICULAR (CIA) NO COMPLICADA, EL HALLAZGO PATOGNOMONICO EN EL R2 ES:",
+        "options": [
+          "R2 UNICO E INTENSO",
+          "DESDOBLAMIENTO AMPLIO Y FIJO DEL SEGUNDO RUIDO (R2)",
+          "DESDOBLAMIENTO PARADOJICO DEL R2",
+          "AUSENCIA DEL COMPONENTE PULMONAR",
+          "TERCER RUIDO OBLIGATORIO"
+        ],
+        "correctIndex": 1,
+        "explanation": "El desdoblamiento amplio y fijo de R2 no varía con los ciclos respiratorios debido a la sobrecarga constante de volumen en las cavidades derechas."
+      },
+      {
+        "id": "udabol_cardio_8",
+        "question": "EN UN RECIEN NACIDO CIANOTICO CON CARDIOPATIA CONGENITA DUCTUS-DEPENDIENTE, LA MEDIDA TERAPEUTICA URGENTE PARA MANTENER ABIERTO EL DUCTUS ES:",
+        "options": [
+          "INFUSION CONTINUA DE PROSTAGLANDINA E1 (ALPROSTADIL)",
+          "OXIGENOTERAPIA AL 100% EN MASCARILLA",
+          "INDOMETACINA EN BOLO INTRAVENOSO",
+          "CARDIOVERSION ELECTRICA",
+          "DIGOXINA INTRAVENOSA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La prostaglandina E1 (alprostadil) endovenosa dilata y mantiene permeable el conducto arterioso, asegurando la sobrevida inmediata."
+      },
+      {
+        "id": "udabol_cardio_9",
+        "question": "LA ANOMALIA DE EBSTEIN (DESPLAZAMIENTO APICAL DE LA VALVULA TRICUSPIDE) SE ASOCIA EN LA GESTACION AL CONSUMO MATERNO DE:",
+        "options": [
+          "ACIDO VALPROICO",
+          "CARBONATO DE LITIO",
+          "WARFARINA",
+          "TALIDOMIDA",
+          "FENITOINA"
+        ],
+        "correctIndex": 1,
+        "explanation": "La exposición intrauterina al litio en el primer trimestre se asocia clásicamente con anomalía de Ebstein y atrialización ventricular."
+      },
+      {
+        "id": "udabol_cardio_10",
+        "question": "EN LA RADIOGRAFIA DE TORAX, EL SIGNO DE SILUETA CARDIACA EN \"ZAPATO SUECO\" O \"BOTA\" CON HIPOCAPTACION PULMONAR ES CARACTERISTICO DE:",
+        "options": [
+          "TETRALOGIA DE FALLOT",
+          "TRANSPOSICION DE GRANDES ARTERIAS",
+          "PERICARDITIS CONSTRICTIVA",
+          "COARTACION AORTICA",
+          "DRENAJE VENOSO ANOMALO"
+        ],
+        "correctIndex": 0,
+        "explanation": "La silueta en \"bota\" o \"zueco\" refleja la hipertrofia ventricular derecha con concavidad del tronco de la arteria pulmonar e hipoflujo pulmonar."
+      },
+      {
+        "id": "udabol_cardio_11",
+        "question": "EN UNA CRISIS DE HIPOXIA POR TETRALOGIA DE FALLOT, LA MANIOBRA INICIAL QUE AUMENTA LA RESISTENCIA VASCULAR SISTEMICA ES:",
+        "options": [
+          "COLOCAR AL NINO EN POSICION GENUPECTORAL (RODILLAS AL PECHO)",
+          "POSICION DE TRENDELENBURG INVERTIDO",
+          "MANIOBRA DE VALSALVA",
+          "MASAJE DEL SENO CAROTIDEO",
+          "DECUBITO PRONO"
+        ],
+        "correctIndex": 0,
+        "explanation": "La posición genupectoral incrementa las resistencias vasculares periféricas al acodar las femorales, reduciendo el cortocircuito derecha-izquierda."
+      },
+      {
+        "id": "udabol_cardio_12",
+        "question": "EL SINDROME DE EISENMENGER EN UNA CARDIOPATIA CON SHUNT IZQUIERDA-DERECHA APARECE TRAS EL DESARROLLO DE:",
+        "options": [
+          "HIPERTENSION PULMONAR GRAVE CON INVERSION DEL FLUJO A DERECHA-IZQUIERDA Y CIANOSIS",
+          "INSUFICIENCIA MITRAL AGUDA CON CHOQUE CARDIOGENICO",
+          "FIBRILACION VENTRICULAR",
+          "HIPOTENSION SISTEMICA SOSTENIDA",
+          "ESTENOSIS SUBVALVULAR AORTICA"
+        ],
+        "correctIndex": 0,
+        "explanation": "El síndrome de Eisenmenger implica cambios vasculares obstructivos pulmonares que elevan las presiones derechas e invierten el shunt, produciendo cianosis."
+      },
+      {
+        "id": "udabol_cardio_13",
+        "question": "EL DEFECTO DEL TABIQUE INTERVENTRICULAR (CIV) MAS FRECUENTE CORRESPONDE A LA VARIEDAD:",
+        "options": [
+          "PERIMEMBRANOSA (MEMBRANOSA)",
+          "MUSCULAR (TRABECULAR)",
+          "INFUNDIBULAR (SUBCRISTAL)",
+          "DE ENTRADA",
+          "APICAL"
+        ],
+        "correctIndex": 0,
+        "explanation": "La CIV perimembranosa es la más habitual, constituyendo el 75-80% de todas las comunicaciones interventriculares."
+      },
+      {
+        "id": "udabol_cardio_14",
+        "question": "EL SIGNO AUSCULTATORIO TIPICO DE UNA COMUNICACION INTERVENTRICULAR (CIV) RESTRICTIVA (ENFERMEDAD DE ROGER) ES:",
+        "options": [
+          "SOPLO HOLOSISTOLICO REGURGITANTE RUDO EN MESOCARDIO CON FREMITO",
+          "SOPLO DIASTOLICO EN FOCO AORTICO",
+          "SOPLO CONTINUO EN MAQUINARIA",
+          "CHASQUIDO DE APERTURA MITRAL",
+          "SOPLO MESOSISTOLICO SUAVE EN FOCO PULMONAR"
+        ],
+        "correctIndex": 0,
+        "explanation": "La CIV pequeña o enfermedad de Roger genera un soplo holosistólico áspero y rudo en mesocardio con frémito palpable."
+      },
+      {
+        "id": "udabol_cardio_15",
+        "question": "LA CARDIOPATIA CONGENITA MAS FRECUENTEMENTE ASOCIADA AL SINDROME DE TURNER (45, X0) ES:",
+        "options": [
+          "COARTACION DE AORTA Y VALVULA AORTICA BICUSPIDE",
+          "TETRALOGIA DE FALLOT",
+          "TRANSPOSICION DE GRANDES ARTERIAS",
+          "TRONCO ARTERIOSO",
+          "CANAL AURICULOVENTRICULAR COMPLETO"
+        ],
+        "correctIndex": 0,
+        "explanation": "El síndrome de Turner se asocia de forma cardinal con válvula aórtica bicúspide (hasta 50%) y coartación aórtica (15-20%)."
+      },
+      {
+        "id": "udabol_cardio_16",
+        "question": "LA MALFORMACION CARDIACA CONGENITA MAS HABITUAL EN PACIENTES CON SINDROME DE DOWN (TRISOMIA 21) ES:",
+        "options": [
+          "DEFECTO DEL CANAL AURICULOVENTRICULAR COMUN (ALMOHADILLAS ENDOCARDICAS)",
+          "ESTENOSIS PULMONAR VALVULAR PURA",
+          "COARTACION AORTICA SEVERA",
+          "ANOMALIA DE EBSTEIN",
+          "CORAZON UNIVENTRICULAR"
+        ],
+        "correctIndex": 0,
+        "explanation": "El defecto del tabique auriculoventricular común (canal AV) representa más del 40-50% de las cardiopatías congénitas en la trisomía 21."
+      },
+      {
+        "id": "udabol_cardio_17",
+        "question": "EN LA TRANSPOSICION DE GRANDES ARTERIAS (TGA), LA IMAGEN RADIOLOGICA CARACTERISTICA DEL MEDIASTINO Y SILUETA CARDIACA SE DEFINE COMO:",
+        "options": [
+          "CORAZON EN FORMA DE \"HUEVO ACOSTADO SOBRE UN HILO\"",
+          "SILUETA EN BOTA SUIZA",
+          "CORAZON EN MATRAZ O CANTIMPLORA",
+          "DEXTROCARDIA CON SITUS INVERSUS",
+          "SIGNO DEL TRES INVERTIDO"
+        ],
+        "correctIndex": 0,
+        "explanation": "En la TGA la disposición anteroposterior de los grandes vasos estrecha el pedículo superior, proyectando la clásica silueta en huevo colgado de un hilo."
+      },
+      {
+        "id": "udabol_cardio_18",
+        "question": "PROCEDIMIENTO PERCUTANEO PALIATIVO DE URGENCIA EN EL NEONATO CON TGA PARA FAVORECER LA MEZCLA SANGUINEA A NIVEL AURICULAR:",
+        "options": [
+          "SEPTOSTOMIA AURICULAR CON BALON DE RASHKIND",
+          "CIRUGIA DE JATENE (SWITCH ARTERIAL)",
+          "PROCEDIMIENTO DE NORWOOD",
+          "FISTULA DE BLALOCK-TAUSSIG",
+          "CERCLAJE DE LA ARTERIA PULMONAR"
+        ],
+        "correctIndex": 0,
+        "explanation": "La septostomía con balón de Rashkind rasga el tabique interauricular aumentando el flujo bidireccional oxigenado."
+      },
+      {
+        "id": "udabol_cardio_19",
+        "question": "EL SIGNO RADIOLOGICO DE LA \"FIGURA EN 8\" O \"MUNECO DE NIEVE\" EN LA PLACA DE TORAX CORRESPONDE A:",
+        "options": [
+          "DRENAJE VENOSO PULMONAR ANOMALO TOTAL SUPRACARDIACO",
+          "TETRALOGIA DE FALLOT",
+          "COARTACION DE AORTA",
+          "ESTENOSIS AORTICA CRITICA",
+          "PERSISTENCIA DE VENA CAVA IZQUIERDA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La vena vertical anómala y la vena cava superior forman la sombra superior redondeada (\"cabeza\"), y el corazón agrandado la base (\"cuerpo\") del muñeco de nieve."
+      },
+      {
+        "id": "udabol_cardio_20",
+        "question": "EL SOPLO INOCENTE MAS COMUN EN PREESCOLARES Y ESCOLARES SANOS, VIBRATORIO Y MUSICAL EN MESOCARDIO QUE DISMINUYE DE PIE, SE DENOMINA:",
+        "options": [
+          "SOPLO DE STILL",
+          "SOPLO DE AUSTIN FLINT",
+          "SOPLO DE CAREY COOMBS",
+          "SOPLO DE GRAHAM STEELL",
+          "SOPLO DE GIBSON"
+        ],
+        "correctIndex": 0,
+        "explanation": "El soplo de Still es un soplo inocente vibratorio o musical protosistólico que no indica patología orgánica y se atenúa al disminuir el retorno venoso."
+      }
+    ]
+  },
+  {
+    "id": "udabol_pediatria",
+    "isUdabol": true,
+    "title": "🏥 UDABOL: Pediatría & Neonatología Clínica (MED-402-16850)",
+    "subtitle": "Examen 2-2025 • Carpeta Pedagógica Digital",
+    "badge": "UDABOL Oficial",
+    "badgeColor": "#0284c7",
+    "subjectCode": "MED-402-16850: Pediatría & Neonatología - NM - C",
+    "sessionName": "Examen 2-2025",
+    "description": "Casos clínicos pediátricos y neonatales: hidratación OMS, test de Apgar, dosis farmacológicas e infecciones frecuentes. Formato oficial de la Carpeta Pedagógica.",
+    "questions": [
+      {
+        "id": "udabol_ped_1",
+        "question": "LACTANTE DE 8 MESES CON DIARREA ACUOSA ABUNDANTE SIN MOCO NI SANGRE DE 48 HORAS, OJOS MUY HUNDIDOS, SIGNO DEL PLIEGUE >2 SEGUNDOS Y LETARGIA. EL DIAGNOSTICO Y PLAN ES:",
+        "options": [
+          "EDA CON DESHIDRATACION GRAVE - PLAN C INTRAVENOSO",
+          "DISENTERIA BACTERIANA AGUDA - ANTIBIOTICO ORAL",
+          "EDA CON DESHIDRATACION LEVE - PLAN A EN EL HOGAR",
+          "TRAUMATISMO CRANEOENCEFALICO OCULTO - TOMOGRAFIA",
+          "NEUROINFECCION BACTERIANA PRIMARIA - PUNCION LUMBAR"
+        ],
+        "correctIndex": 0,
+        "explanation": "La letargia, ojos muy hundidos y pliegue cutáneo que desaparece muy lentamente (>2 seg) definen deshidratación grave que requiere Plan C intravenoso inmediato."
+      },
+      {
+        "id": "udabol_ped_2",
+        "question": "EVALUACION DE APGAR AL MINUTO 1: FC 120 LPM, ESFUERZO RESPIRATORIO VIGOROSO CON LLANTO, LEVE FLEXION DE MIEMBROS, MUECAS AL ESTIMULO Y ACROCIANOSIS. EL APGAR ES:",
+        "options": [
+          "APGAR 7",
+          "APGAR 8",
+          "APGAR 9",
+          "APGAR 6",
+          "APGAR 10"
+        ],
+        "correctIndex": 0,
+        "explanation": "FC >100 (+2), respiración/llanto (+2), tono flexión (+1), reflejo mueca (+1), color acrocianosis (+1) = Total: 7 puntos."
+      },
+      {
+        "id": "udabol_ped_3",
+        "question": "EL AGENTE BACTERIANO MAS FRECUENTE DE MENINGITIS Y SEPSIS NEONATAL DE TRANSMISION VERTICAL EN LAS PRIMERAS 72 HORAS DE VIDA ES:",
+        "options": [
+          "STREPTOCOCCUS AGALACTIAE (ESTREPTOCOCO GRUPO B)",
+          "STREPTOCOCCUS PNEUMONIAE",
+          "NEISSERIA MENINGITIDIS",
+          "HAEMOPHILUS INFLUENZAE TIPO B",
+          "STAPHYLOCOCCUS AUREUS"
+        ],
+        "correctIndex": 0,
+        "explanation": "Streptococcus agalactiae (EGB) y Escherichia coli son los principales agentes de sepsis y meningitis de inicio temprano vertical."
+      },
+      {
+        "id": "udabol_ped_4",
+        "question": "LACTANTE DE 5 MESES CON RINORREA, FEBRICULA, TAQUIPNEA, TIRAJE SUBCOSTAL Y SIBILANCIAS ESPIRATORIAS GENERALIZADAS. EL DIAGNOSTICO CLINICO ES:",
+        "options": [
+          "BRONQUIOLITIS AGUDA POR VIRUS SINCITIAL RESPIRATORIO (VSR)",
+          "CRISIS ASMATICA SEVERA",
+          "CUERPO EXTRAÑO INTRABRONQUIAL",
+          "NEUMONIA LOBAR TIPICA",
+          "CRUP LARINGEO"
+        ],
+        "correctIndex": 0,
+        "explanation": "El primer episodio de dificultad espiratoria con sibilancias en un lactante menor de 1 año precedido por coriza viral define bronquiolitis aguda."
+      },
+      {
+        "id": "udabol_ped_5",
+        "question": "EN UN NINO DE 2 ANOS CON OTITIS MEDIA AGUDA (OMA) NO COMPLICADA Y SIN ALERGIA A PENICILINAS, LA DOSIS OPTIMA DE AMOXICILINA ORAL ES:",
+        "options": [
+          "80 A 90 MG/KG/DIA DIVIDIDA CADA 8 O 12 HORAS",
+          "20 A 30 MG/KG/DIA EN TOMA UNICA",
+          "50 MG/KG/DIA UNA VEZ AL DIA",
+          "10 MG/KG/DIA POR VIA INTRAMUSCULAR",
+          "150 MG/KG/DIA POR VIA RECTAL"
+        ],
+        "correctIndex": 0,
+        "explanation": "La dosis recomendada por la AAP es de 80-90 mg/kg/día para superar los mecanismos de resistencia intermedia de Streptococcus pneumoniae."
+      },
+      {
+        "id": "udabol_ped_6",
+        "question": "LA ESCALA DE SILVERMAN-ANDERSON EVALUA EN EL RECIEN NACIDO EL GRADO DE:",
+        "options": [
+          "DIFICULTAD RESPIRATORIA NEONATAL",
+          "ENCEFALOPATIA HIPOXICO-ISQUEMICA",
+          "HIPERBILIRRUBINEMIA",
+          "EDAD GESTACIONAL SOMATICA",
+          "DESHIDRATACION AGUDA"
+        ],
+        "correctIndex": 0,
+        "explanation": "Silverman-Anderson valora distrés respiratorio a través de quejido, aleteo nasal, tiraje intercostal, retracción esternal y disociación toracoabdominal."
+      },
+      {
+        "id": "udabol_ped_7",
+        "question": "UNA CARACTERISTICA DISTINTIVA DE LA ICTERICIA NEONATAL FISIOLOGICA FRENTE A LA PATOLOGICA ES QUE LA FISIOLOGICA:",
+        "options": [
+          "APARECE DESPUES DE LAS 24 HORAS DE VIDA Y ES A PREDOMINIO INDIRECTO",
+          "SE INICIA DENTRO DE LAS PRIMERAS 6 HORAS DE VIDA",
+          "PRESENTA ELEVACION DE BILIRRUBINA DIRECTA MAYOR AL 20%",
+          "CURSA CON COLURIA Y HECES ACOLICAS",
+          "SUBE MAS DE 5 MG/DL AL DIA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La ictericia fisiológica nunca aparece en el primer día de vida, es indirecta y remite espontáneamente hacia la primera o segunda semana."
+      },
+      {
+        "id": "udabol_ped_8",
+        "question": "LA TRIADA CLASICA DE LA ESTENOSIS HIPERTROFICA CONGENITA DE PILORO EN UN LACTANTE DE 4 SEMANAS INCLUYE:",
+        "options": [
+          "VOMITOS NO BILIARES EN PROYECTIL, OLIVA PILORICA PALPABLE Y ALCALOSIS METABOLICA HIPOCLOREMICA",
+          "VOMITOS BILIARES VERDOSOS, DISTENSION ABDOMINAL Y ACIDOSIS METABOLICA",
+          "DIARREA CON SANGRE, FIEBRE Y DESHIDRATACION",
+          "ICTERICIA OBSTRUCTIVA, ACOLIA Y HEPATOMEGALIA",
+          "TOS NOCTURNA, REFLUJO Y ANEMIA FERROPENICA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La pérdida de ácido clorhídrico por vómitos no biliares en proyectil produce alcalosis hipoclorémica con palpación de la masa en oliva pilórica."
+      },
+      {
+        "id": "udabol_ped_9",
+        "question": "EL SIGNO RADIOLOGICO DE LA \"DOBLE BURBUJA\" EN LA PLACA DE ABDOMEN SIMPLE DE UN NEONATO ES PATOGNOMONICO DE:",
+        "options": [
+          "ATRESIA DUODENAL",
+          "ESTENOSIS PILORICA",
+          "INVAGINACION ILEOCECAL",
+          "ATRESIA ESOFAGICA SIN FISTULA",
+          "ANO IMPERFORADO"
+        ],
+        "correctIndex": 0,
+        "explanation": "Las dos burbujas corresponden a la cámara gástrica y al bulbo duodenal dilatados proximales al defecto atrésico duodenal."
+      },
+      {
+        "id": "udabol_ped_10",
+        "question": "VACUNA QUE SE ADMINISTRA POR VIA ESTRICTAMENTE INTRADERMICA EN EL RECIEN NACIDO PARA LA PREVENCION DE FORMAS GRAVES DE TUBERCULOSIS:",
+        "options": [
+          "BCG (BACILO DE CALMETTE-GUERIN)",
+          "HEPATITIS B RECOMBINANTE",
+          "PENTAVALENTE CELULAR",
+          "ANTIPOLIOMIELITICA IPV",
+          "NEUMOCOCO CONJUGADA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La vacuna BCG se inocula en el deltoides derecho a dosis de 0.1 mL por vía intradérmica para prevenir tuberculosis meníngea y diseminada."
+      },
+      {
+        "id": "udabol_ped_11",
+        "question": "LACTANTE DE 10 MESES CON DOLOR PAROXISTICO INTENSO, LLANTO VIGOROSO INTERMITENTE Y EVACUACION DE HECES EN \"JALEA DE GROSELLA\". EL DIAGNOSTICO ES:",
+        "options": [
+          "INVAGINACION INTESTINAL (INTUSUSCEPCION)",
+          "GASTROENTERITIS AGUDA POR ROTAVIRUS",
+          "APENDICITIS AGUDA SUPURADA",
+          "MEGACOLON TOXICO",
+          "DIVERTICULITIS AGUDA"
+        ],
+        "correctIndex": 0,
+        "explanation": "Las heces mucosanguinolentas en jalea de grosella y el llanto cólico episódico son típicos de invaginación ileocecal o ileocólica."
+      },
+      {
+        "id": "udabol_ped_12",
+        "question": "LA PROFILAXIS UNIVERSAL CON 1 MG INTRAMUSCULAR DE FITOMENADIONA (VITAMINA K) AL NACER PREVIENE:",
+        "options": [
+          "LA ENFERMEDAD HEMORRAGICA DEL RECIEN NACIDO",
+          "EL RAQUITISMO CARENCIAL",
+          "LA ICTERICIA POR INCOMPATIBILIDAD ABO",
+          "LA RETINOPATIA DE LA PREMATURIDAD",
+          "EL QUERATOCONO CONGENITO"
+        ],
+        "correctIndex": 0,
+        "explanation": "La administración de vitamina K al nacer asegura la síntesis de factores II, VII, IX y X previniendo sangrados neonatales graves."
+      },
+      {
+        "id": "udabol_ped_13",
+        "question": "NINO DE 3 ANOS CON FIEBRE DE 6 DIAS, INYECCION CONJUNTIVAL NO EXUDATIVA, LENGUA EN FRAMBUESA Y ERITEMA CON DESCAMACION PERIUNGUEAL. SOSPECHA DIAGNOSTICA:",
+        "options": [
+          "ENFERMEDAD DE KAWASAKI",
+          "ESCARLATINA ESTREPTOCOCICA",
+          "SARAMPION COMPLICADO",
+          "MONONUCLEOSIS INFECCIOSA",
+          "SINDROME DE ERITEMA MULTIFORME"
+        ],
+        "correctIndex": 0,
+        "explanation": "La vasculitis de Kawasaki cursa con fiebre >5 días, conjuntivitis bilateral, lengua aframbuesada y riesgo de aneurismas de arterias coronarias."
+      },
+      {
+        "id": "udabol_ped_14",
+        "question": "EL VIRUS MAS FRECUENTEMENTE RESPONSABLE DE LARINGOTRAQUEITIS AGUDA (CRUP VIRAL) EN PEDIATRIA ES:",
+        "options": [
+          "VIRUS PARAINFLUENZA TIPO 1",
+          "ADENOVIRUS SEROTIPO 7",
+          "INFLUENZA A H1N1",
+          "RINOVIRUS",
+          "CORONAVIRUS NL63"
+        ],
+        "correctIndex": 0,
+        "explanation": "El virus parainfluenza tipo 1 causa la mayoría de los casos de crup con tos perruna, afonía y estridor inspiratorio."
+      },
+      {
+        "id": "udabol_ped_15",
+        "question": "FARMACO CORTICOIDE DE PRIMERA LINEA RECOMENDADO EN DOSIS UNICA (0.15 A 0.6 MG/KG) PARA EL TRATAMIENTO DEL CRUP VIRAL:",
+        "options": [
+          "DEXAMETASONA ORAL O PARENTERAL",
+          "HIDROCORTISONA EN PERFUSION",
+          "PREDNISONA TOPICA",
+          "BUDESONIDA SISTEMICA",
+          "METILPREDNISOLONA INTRATECAL"
+        ],
+        "correctIndex": 0,
+        "explanation": "La dexametasona en dosis única oral o IM reduce el edema subglótico de forma sostenida gracias a su prolongada vida media biológica."
+      },
+      {
+        "id": "udabol_ped_16",
+        "question": "CALCULO DE LIQUIDOS BASALES POR LA REGLA DE HOLLIDAY-SEGAR PARA UN NINO DE 14 KG DE PESO:",
+        "options": [
+          "1200 ML/DIA (1000 ML POR PRIMEROS 10 KG + 200 ML POR LOS 4 KG RESTANTES)",
+          "1400 ML/DIA",
+          "1000 ML/DIA",
+          "800 ML/DIA",
+          "1600 ML/DIA"
+        ],
+        "correctIndex": 0,
+        "explanation": "Primeros 10 kg = 100 mL/kg (1000 mL); de 11 a 20 kg = 50 mL/kg (4 x 50 = 200 mL). Total: 1200 mL/día."
+      },
+      {
+        "id": "udabol_ped_17",
+        "question": "EL CIERRE FISIOLOGICO COMPLETO DE LA FONTANELA ANTERIOR O BREGMATICA EN EL LACTANTE SANO TIENE LUGAR HABITUALMENTE ENTRE:",
+        "options": [
+          "LOS 9 Y 18 MESES DE EDAD",
+          "EL 1ER Y 2DO MES DE EDAD",
+          "LOS 24 Y 36 MESES DE EDAD",
+          "LOS 4 Y 6 MESES DE EDAD",
+          "LAS PRIMERAS 72 HORAS DE VIDA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La fontanela anterior cierra típicamente entre los 9 y 18 meses, mientras que la posterior cierra a los 2-3 meses."
+      },
+      {
+        "id": "udabol_ped_18",
+        "question": "EL REFLEJO ARCAICO EN EL QUE LA EXTENSION REPENTINA DE LA CABEZA DESENCADENA ABDUCCION Y EXTENSION DE BRAZOS SE DENOMINA:",
+        "options": [
+          "REFLEJO DE MORO",
+          "REFLEJO DE GALANT",
+          "REFLEJO DE MARCHA AUTOMATICA",
+          "REFLEJO TONICO ASIMETRICO DEL CUELLO",
+          "REFLEJO DE SUCCION"
+        ],
+        "correctIndex": 0,
+        "explanation": "El reflejo de Moro es un reflejo del desarrollo que desaparece fisiológicamente entre el 4to y 6to mes."
+      },
+      {
+        "id": "udabol_ped_19",
+        "question": "EL MECANISMO FISIOPATOLOGICO PRINCIPAL DE LA ENFERMEDAD DE MEMBRANA HIALINA EN EL PREMATURO ES:",
+        "options": [
+          "DEFICIENCIA CUANTITATIVA Y CUALITATIVA DE SURFACTANTE PULMONAR",
+          "ASPIRACION DE LIQUIDO MECONIAL EN EL CANAL DEL PARTO",
+          "REABSORCION TARDIA DEL LIQUIDO PULMONAR",
+          "INFECCION POR LISTERIA MONOCYTOGENES",
+          "HIPOPLASIA VENTRICULAR IZQUIERDA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La inmadurez alveolar con déficit de surfactante pulmonar causa colapso espiratorio y atelectasias difusas."
+      },
+      {
+        "id": "udabol_ped_20",
+        "question": "LA CAUSA MAS FRECUENTE DE HIPOTIROIDISMO CONGENITO PRIMARIO DETECTABLE MEDIANTE TAMIZAJE NEONATAL ES:",
+        "options": [
+          "DISGENESIA TIROIDEA (ECTOPIA, HIPOPLASIA O AGENESIA)",
+          "DISHORMONOGENESIS HEREDITARIA",
+          "DEFICIT HIPOFISIARIO DE TSH",
+          "CARENCIA NUTRICIONAL SEVERA DE YODO",
+          "TIROIDITIS AUTOINMUNE MATERNA"
+        ],
+        "correctIndex": 0,
+        "explanation": "La disgenesia tiroidea (especialmente la tiroides ectópica lingual) origina más del 80-85% de los hipotiroidismos congénitos primarios."
+      }
+    ]
+  },
   {
     id: 'mtc',
     title: '🚗 Examen MTC - Reglas de Tránsito (Perú)',
