@@ -723,43 +723,99 @@ class _BrowserScreenState extends State<BrowserScreen> {
               }
             });
 
-            // En UDABOL: Buscar el enunciado real ubicado inmediatamente antes de los radio buttons
+            // Búsqueda del enunciado real para UDABOL, Moodle y simulador
             if (questionText.length < 5) {
-              var firstRadio = currentGroup[0];
-              var parentBlock = firstRadio.closest('.form-group, .opcion, .option, li, tr, div, p');
-              if (parentBlock && parentBlock.parentElement) {
-                var prevSib = parentBlock.previousElementSibling;
-                while (prevSib) {
-                  var pCand = stripNoise(clean(prevSib.innerText || prevSib.textContent));
-                  if (pCand.length > 5 && options.indexOf(pCand) === -1 && !/CARPETA\\s+PEDAG/i.test(pCand)) {
-                    questionText = pCand;
-                    strategyUsed = 'radio_hermano_previo (UDABOL/Moodle)';
-                    matchedSelector = 'input[type=radio] -> previousElementSibling';
-                    targetEl = prevSib;
-                    break;
+              // 1. Limpieza estructural de HTML ignorando cabeceras institucionales, navegación y perfiles
+              var cleanedHtml = '';
+              try {
+                var rawBody = doc.body ? doc.body.innerHTML : '';
+                cleanedHtml = rawBody
+                  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')
+                  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')
+                  .replace(/<header[\\s\\S]*?<\\/header>/gi, '')
+                  .replace(/<nav[\\s\\S]*?<\\/nav>/gi, '')
+                  .replace(/<footer[\\s\\S]*?<\\/footer>/gi, '')
+                  .replace(/<div[^>]*class=["'][^"']*(header|user_header|logo|exit_button)[^"']*["'][\\s\\S]*?<\\/div>/gi, '')
+                  .replace(/<table[^>]*class=["'][^"']*(header|user_header)[^"']*["'][\\s\\S]*?<\\/table>/gi, '')
+                  .replace(/<[^>]+>/g, '\\n');
+              } catch(e) {
+                cleanedHtml = doc.body ? (doc.body.innerText || '') : '';
+              }
+
+              var rawLines = cleanedHtml.split(/[\\r\\n]+/).map(function(l) { return clean(l); }).filter(function(l) { return l.length > 0; });
+              var filteredLines = [];
+              for (var i = 0; i < rawLines.length; i++) {
+                var line = rawLines[i];
+                if (/^\\d{1,2}\$/.test(line)) continue;
+                if (/^\\d{1,2}:\\d{2}\$/.test(line)) continue;
+                if (/^(CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION)/i.test(line)) continue;
+                if (/^(TouchID|Quiz\\s+Simulator|Banco|Modo:|Ir\\s+al|Categoría|Pregunta\\s+\\d+|Respondidas|Sin responder|Respondida)/i.test(line)) continue;
+                if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
+                if (/^(TIEMPO\\s+RESTANTE|Minutos|Segundos|Pregunta\\s+nro|Terminar\\s+intento)/i.test(line)) continue;
+                if (/^(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar)\$/i.test(line)) continue;
+                // Excluir nombres de estudiantes en mayúsculas
+                if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(line) && line.split(' ').length >= 3 && /CALLE|JOSE|BERNARDO|SUVIA|ESTUDIANTE|ALUMNO/i.test(line)) continue;
+                filteredLines.push(line);
+              }
+
+              // 2. BÚSQUEDA INVERSA: Localizar la primera opción y extraer el texto inmediatamente previo
+              if (options.length >= 2) {
+                var firstOptIdx = -1;
+                for (var li = 0; li < filteredLines.length; li++) {
+                  var cLine = filteredLines[li].toLowerCase();
+                  for (var oi = 0; oi < options.length; oi++) {
+                    var opt = options[oi].toLowerCase();
+                    if (cLine === opt || (opt.length > 3 && cLine.indexOf(opt) !== -1) || (cLine.length > 3 && opt.indexOf(cLine) !== -1)) {
+                      firstOptIdx = li;
+                      break;
+                    }
                   }
-                  prevSib = prevSib.previousElementSibling;
+                  if (firstOptIdx !== -1) break;
+                }
+
+                if (firstOptIdx > 0) {
+                  var qParts = [];
+                  for (var bi = firstOptIdx - 1; bi >= 0; bi--) {
+                    var cand = filteredLines[bi];
+                    if (/^(CARPETA|UDABOL|MED-|1P|2P|3P|FINAL|PARCIAL|EXAMEN|TIEMPO|MINUTOS|SEGUNDOS|CERRAR)/i.test(cand)) break;
+                    if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(cand) && cand.split(' ').length >= 3) break;
+                    if (cand.length >= 4) {
+                      qParts.unshift(cand);
+                      if (qParts.length >= 2 || cand.endsWith('?') || cand.endsWith(':')) break;
+                    }
+                  }
+                  if (qParts.length > 0) {
+                    questionText = qParts.join(' ');
+                    strategyUsed = 'busqueda_inversa_previa_opciones (UDABOL)';
+                    matchedSelector = 'filteredLines (inmediatamente antes de primera opción)';
+                    targetEl = currentGroup[0] ? currentGroup[0].parentElement : null;
+                  }
                 }
               }
 
+              // 3. Respaldo por árbol DOM si la búsqueda inversa no obtuvo texto
               if (questionText.length < 5) {
-                var qContainer = currentGroup[0].closest('.que, .multichoice, fieldset, .question, .question-card, [class*="question"], [class*="cuestion"], form, .card') ||
-                                 currentGroup[0].parentElement?.parentElement?.parentElement;
-                if (qContainer) {
-                  var raw = qContainer.innerText || qContainer.textContent || '';
-                  options.forEach(function(opt) {
-                    raw = raw.split(opt).join('');
-                  });
-                  questionText = stripNoise(raw);
-                  strategyUsed = 'contenedor_padre_strip';
-                  matchedSelector = 'closest(.que/.multichoice/form)';
-                  targetEl = qContainer;
+                var firstRadio = currentGroup[0];
+                var parentBlock = firstRadio.closest('.form-group, .opcion, .option, li, tr, div, p');
+                if (parentBlock && parentBlock.parentElement) {
+                  var prevSib = parentBlock.previousElementSibling;
+                  while (prevSib) {
+                    var pCand = stripNoise(clean(prevSib.innerText || prevSib.textContent));
+                    if (pCand.length > 5 && options.indexOf(pCand) === -1 && !/CARPETA\\s+PEDAG|CERRAR\\s+SESION/i.test(pCand)) {
+                      questionText = pCand;
+                      strategyUsed = 'radio_hermano_previo (UDABOL/Moodle)';
+                      matchedSelector = 'input[type=radio] -> previousElementSibling';
+                      targetEl = prevSib;
+                      break;
+                    }
+                    prevSib = prevSib.previousElementSibling;
+                  }
                 }
               }
             }
           }
 
-          // 4. RESPALDO SEMÁNTICO (Especialmente diseñado para UDABOL y exámenes secuenciales)
+          // 4. RESPALDO SEMÁNTICO GENERAL SI AÚN NO HAY PREGUNTA
           if (options.length < 2 || questionText.length < 5) {
             var bodyText = doc.body.innerText || doc.body.textContent || '';
             var lines = bodyText.split(/[\\r\\n]+/).map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
@@ -769,31 +825,30 @@ class _BrowserScreenState extends State<BrowserScreen> {
               var line = lines[i];
               if (/^\\d{1,2}\$/.test(line)) continue;
               if (/^\\d{1,2}:\\d{2}\$/.test(line)) continue;
-              if (/^(CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD)/i.test(line)) continue;
+              if (/^(CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION)/i.test(line)) continue;
               if (/^(TouchID|Quiz\\s+Simulator|Banco|Modo:|Ir\\s+al|Categoría|Pregunta\\s+\\d+|Respondidas|Sin responder|Respondida)/i.test(line)) continue;
               if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
-              if (/^(TIEMPO\\s+RESTANTE|Minutos|Segundos|Pregunta\\s+nro|Terminar\\s+intento)/i.test(line)) break;
-              if (/^(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar)\$/i.test(line)) break;
+              if (/^(TIEMPO\\s+RESTANTE|Minutos|Segundos|Pregunta\\s+nro|Terminar\\s+intento)/i.test(line)) continue;
+              if (/^(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar)\$/i.test(line)) continue;
+              if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(line) && line.split(' ').length >= 3 && /CALLE|JOSE|BERNARDO|SUVIA|ESTUDIANTE/i.test(line)) continue;
               cleanLines.push(line);
             }
 
             if (cleanLines.length >= 2) {
-              // Si aún no tenemos questionText, tomar la primera línea limpia que NO esté en options
               if (questionText.length < 5) {
-                for (var k = 0; k < cleanLines.length; k++) {
+                for (var k = cleanLines.length - 1; k >= 0; k--) {
                   var cand = cleanLines[k];
-                  if (options.indexOf(cand) === -1 && cand.length > 5 && !/CARPETA\\s+PEDAG/i.test(cand)) {
+                  if (options.indexOf(cand) === -1 && cand.length > 5 && !/CARPETA\\s+PEDAG|CERRAR/i.test(cand)) {
                     questionText = cand;
                     strategyUsed = 'respaldo_semantico_lineas';
-                    matchedSelector = 'body.innerText -> cleanLines[' + k + ']';
+                    matchedSelector = 'cleanLines[' + k + ']';
                     targetEl = doc.body;
                     break;
                   }
                 }
               }
               var parsedOpts = [];
-              var startIdx = (questionText === cleanLines[0]) ? 1 : 0;
-              for (var j = startIdx; j < cleanLines.length; j++) {
+              for (var j = 0; j < cleanLines.length; j++) {
                 var optCandidate = cleanLines[j].replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
                 if (optCandidate && optCandidate !== questionText && parsedOpts.indexOf(optCandidate) === -1) {
                   parsedOpts.push(optCandidate);
@@ -807,16 +862,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
           questionText = stripNoise(questionText);
 
-          var rawHtml = '';
-          if (targetEl) {
-            try {
-              rawHtml = (targetEl.outerHTML || '').slice(0, 1500);
-            } catch(e) {}
-          } else if (radioInputs.length > 0 && radioInputs[0].parentElement) {
-            try {
-              rawHtml = (radioInputs[0].parentElement.parentElement.outerHTML || '').slice(0, 1500);
-            } catch(e) {}
-          }
+          // Capturar el código interno HTML COMPLETO (hasta 100,000 caracteres) para contingencia y auditoría
+          var fullInternalHtml = '';
+          try {
+            fullInternalHtml = (doc.body ? doc.body.innerHTML : (doc.documentElement ? doc.documentElement.innerHTML : '')).slice(0, 100000);
+          } catch(e) {}
 
           var telemetry = {
             url: window.location.href || '',
@@ -824,7 +874,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
             strategy: strategyUsed,
             matchedSelector: matchedSelector,
             domPath: targetEl ? getDomPath(targetEl) : (radioInputs[0] ? getDomPath(radioInputs[0]) : ''),
-            rawQuestionHtml: rawHtml,
+            rawQuestionHtml: fullInternalHtml,
+            fullHtml: fullInternalHtml,
             radiosCount: radioInputs.length,
             optionsCount: options.length,
             timestamp: new Date().toISOString()
