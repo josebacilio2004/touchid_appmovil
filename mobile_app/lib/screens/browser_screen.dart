@@ -546,7 +546,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
             /\\b(Minutos|Segundos)\\b/gi,
             /\\b(Punt[uú]a\\s+como|Puntaje|Sobre\\s+\\d+|Se[ñn]alar\\s+con\\s+bandera|Marcar\\s+con\\s+bandera)\\b[^\\n\\r]*/gi,
             /\\b(Enunciado\\s+de\\s+la\\s+pregunta)\\b/gi,
-            /\\b(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar|Terminar\\s+intento)\\b/gi
+            /\\b(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar|Terminar\\s+intento)\\b/gi,
+            /[✔✓]\\s*[^\\n\\r]*/gi
           ];
 
           function stripNoise(text) {
