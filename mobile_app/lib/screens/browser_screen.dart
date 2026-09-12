@@ -703,11 +703,19 @@ class _BrowserScreenState extends State<BrowserScreen> {
           }
 
           if (options.length < 2 && radioInputs.length > 0) {
+            // Filtrar estrictamente radios visibles (en MTC o simulacros SPA las preguntas previas quedan en el DOM con display: none)
             var visibleRadios = radioInputs.filter(function(r) {
+              var isHidden = !!r.closest('[style*="display: none"], [style*="display:none"], [hidden], .hidden, [aria-hidden="true"]');
+              if (isHidden) return false;
               var rect = r.getBoundingClientRect();
               return (rect.width > 0 || rect.height > 0 || r.offsetParent !== null);
             });
             if (visibleRadios.length === 0) visibleRadios = radioInputs;
+
+            var activeBox = (visibleRadios[0] ? visibleRadios[0].closest('[id*="containerPregunta"], [class*="pregunta"], [class*="question"], .card-box, .card, fieldset') : null);
+            if (activeBox) {
+              targetEl = activeBox;
+            }
 
             var targetName = visibleRadios[0].name;
             var currentGroup = visibleRadios.filter(function(r) {
@@ -717,11 +725,27 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
             currentGroup.forEach(function(input) {
               var txt = getOptionTextFromInput(input);
-              txt = txt.replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
+              txt = txt.replace(/^[A-Za-z0-9][\.\)\-]\s*/, '').trim();
               if (txt && options.indexOf(txt) === -1) {
                 options.push(txt);
               }
             });
+
+            // Si detectamos el contenedor activo visible (ej. MTC #containerPregunta2), extraer enunciado directamente de él
+            if (activeBox && questionText.length < 5) {
+              var pNodes = activeBox.querySelectorAll('p, [class*="font-"], [class*="enunciado"], [class*="pregunta"], h4');
+              for (var pn = 0; pn < pNodes.length; pn++) {
+                var pText = stripNoise(clean(pNodes[pn].innerText || pNodes[pn].textContent));
+                // Omitir títulos de tema genérico
+                if (/^Tema\s*:/i.test(pText)) continue;
+                if (pText.length > 6 && options.indexOf(pText) === -1) {
+                  questionText = pText;
+                  strategyUsed = 'contenedor_activo_visible (MTC/SPA)';
+                  matchedSelector = '#' + (activeBox.id || 'containerActivo') + ' -> ' + pNodes[pn].tagName.toLowerCase();
+                  break;
+                }
+              }
+            }
 
             // Búsqueda del enunciado real para UDABOL, Moodle y simulador
             if (questionText.length < 5) {
@@ -862,21 +886,31 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
           questionText = stripNoise(questionText);
 
-          // Capturar el código interno HTML COMPLETO (hasta 100,000 caracteres) para contingencia y auditoría
+          // Capturar el código interno HTML: tanto el contenedor activo visible como el documento completo
           var fullInternalHtml = '';
           try {
             fullInternalHtml = (doc.body ? doc.body.innerHTML : (doc.documentElement ? doc.documentElement.innerHTML : '')).slice(0, 100000);
           } catch(e) {}
+
+          var activeSnippetHtml = '';
+          if (targetEl) {
+            try {
+              activeSnippetHtml = targetEl.outerHTML || '';
+            } catch(e) {}
+          }
+          if (!activeSnippetHtml) {
+            activeSnippetHtml = fullInternalHtml;
+          }
 
           var telemetry = {
             url: window.location.href || '',
             title: document.title || '',
             strategy: strategyUsed,
             matchedSelector: matchedSelector,
-            domPath: targetEl ? getDomPath(targetEl) : (radioInputs[0] ? getDomPath(radioInputs[0]) : ''),
-            rawQuestionHtml: fullInternalHtml,
+            domPath: targetEl ? getDomPath(targetEl) : (visibleRadios[0] ? getDomPath(visibleRadios[0]) : ''),
+            rawQuestionHtml: activeSnippetHtml,
             fullHtml: fullInternalHtml,
-            radiosCount: radioInputs.length,
+            radiosCount: visibleRadios.length,
             optionsCount: options.length,
             timestamp: new Date().toISOString()
           };
