@@ -281,15 +281,85 @@ app.post('/solve', async (req, res) => {
       return res.status(500).json({ error: 'GEMINI_API_KEY no configurada en el servidor Render.' });
     }
 
-    let prompt = '';
-    if (options && options.length > 0) {
-      prompt = `Pregunta: "${question}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
-    } else {
-      prompt = `Pregunta/Contenido: "${question}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
+    // Rescate inteligente de contingencia en backend si la pregunta enviada por la app es una cabecera
+    let effectiveQuestion = question;
+    const isBogusQuestion = /^(CARPETA\s+PEDAG|JOSE\s+BERNARDO|ESTUDIANTE|UDABOL|CERRAR\s+SESION)/i.test(effectiveQuestion) || 
+                            effectiveQuestion.length < 6 ||
+                            (effectiveQuestion === effectiveQuestion.toUpperCase() && effectiveQuestion.split(' ').length >= 3 && /CALLE|JOSE|BERNARDO|SUVIA/i.test(effectiveQuestion));
+
+    if (isBogusQuestion && req.body.telemetry && req.body.telemetry.rawQuestionHtml) {
+      try {
+        const rawHtml = req.body.telemetry.rawQuestionHtml;
+        const cleanedHtml = rawHtml
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<header[\s\S]*?<\/header>/gi, '')
+          .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+          .replace(/<div[^>]*class=["'][^"']*(header|user_header|logo|exit_button)[^"']*["'][\s\S]*?<\/div>/gi, '')
+          .replace(/<table[^>]*class=["'][^"']*(header|user_header)[^"']*["'][\s\S]*?<\/table>/gi, '')
+          .replace(/<[^>]+>/g, '\n');
+
+        const rawLines = cleanedHtml.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.length > 0);
+        const filteredLines = [];
+        for (let i = 0; i < rawLines.length; i++) {
+          const line = rawLines[i];
+          if (/^\d{1,2}$/.test(line)) continue;
+          if (/^\d{1,2}:\d{2}$/.test(line)) continue;
+          if (/^(CARPETA\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD|CERRAR\s+SESION)/i.test(line)) continue;
+          if (/^(TouchID|Quiz\s+Simulator|Banco|Modo:|Ir\s+al|Categoría|Pregunta\s+\d+|Respondidas|Sin responder|Respondida)/i.test(line)) continue;
+          if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
+          if (/^(TIEMPO\s+RESTANTE|Minutos|Segundos|Pregunta\s+nro|Terminar\s+intento)/i.test(line)) continue;
+          if (/^(Resolver\s+con\s+IA|Siguiente|Anterior|Finalizar)$/i.test(line)) continue;
+          if (/^[A-ZÁÉÍÓÚÑ\s]{10,}$/.test(line) && line.split(' ').length >= 3 && /CALLE|JOSE|BERNARDO|SUVIA|ESTUDIANTE/i.test(line)) continue;
+          filteredLines.push(line);
+        }
+
+        if (options && options.length >= 2) {
+          let firstOptIdx = -1;
+          for (let li = 0; li < filteredLines.length; li++) {
+            const cLine = filteredLines[li].toLowerCase();
+            for (let oi = 0; oi < options.length; oi++) {
+              const opt = options[oi].toLowerCase();
+              if (cLine === opt || (opt.length > 3 && cLine.indexOf(opt) !== -1) || (cLine.length > 3 && opt.indexOf(cLine) !== -1)) {
+                firstOptIdx = li;
+                break;
+              }
+            }
+            if (firstOptIdx !== -1) break;
+          }
+
+          if (firstOptIdx > 0) {
+            const qParts = [];
+            for (let bi = firstOptIdx - 1; bi >= 0; bi--) {
+              const cand = filteredLines[bi];
+              if (/^(CARPETA|UDABOL|MED-|1P|2P|3P|FINAL|PARCIAL|EXAMEN|TIEMPO|MINUTOS|SEGUNDOS|CERRAR)/i.test(cand)) break;
+              if (/^[A-ZÁÉÍÓÚÑ\s]{10,}$/.test(cand) && cand.split(' ').length >= 3) break;
+              if (cand.length >= 4) {
+                qParts.unshift(cand);
+                if (qParts.length >= 2 || cand.endsWith('?') || cand.endsWith(':')) break;
+              }
+            }
+            if (qParts.length > 0) {
+              effectiveQuestion = qParts.join(' ');
+              console.log(`[BACKEND-RESCUE] Enunciado rescatado exitosamente: "${effectiveQuestion}"`);
+            }
+          }
+        }
+      } catch (rescErr) {
+        console.warn('Error en rescate de enunciado en backend:', rescErr.message);
+      }
     }
 
-    const isMtcQuery = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(question);
-    const isRomanOrMedical = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|androstenodiona|testosterona|estr[óo]geno|aromatasa|hormon|enzim|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco/i.test(`${question} ${(options || []).join(' ')}`);
+    let prompt = '';
+    if (options && options.length > 0) {
+      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
+    } else {
+      prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
+    }
+
+    const isMtcQuery = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(effectiveQuestion);
+    const isRomanOrMedical = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|androstenodiona|testosterona|estr[óo]geno|aromatasa|hormon|enzim|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco/i.test(`${effectiveQuestion} ${(options || []).join(' ')}`);
 
     let systemInstructionText = systemPrompt;
     if (!systemInstructionText || systemInstructionText.trim() === '') {
@@ -379,7 +449,7 @@ app.post('/solve', async (req, res) => {
       try {
         await database.collection('history').insertOne({
           userId,
-          question,
+          question: effectiveQuestion,
           options: options || [],
           answer: parsedResult.correct_option_text,
           answerIndex: parsedResult.correct_option_index,
@@ -403,10 +473,10 @@ app.post('/solve', async (req, res) => {
           title: (telemetry && telemetry.title) || '',
           strategy: (telemetry && telemetry.strategy) || 'heuristic_standard',
           matchedSelector: (telemetry && telemetry.matchedSelector) || 'auto_detected',
-          question,
+          question: effectiveQuestion,
           options: options || [],
           domPath: (telemetry && telemetry.domPath) || '',
-          rawQuestionHtml: (telemetry && telemetry.rawQuestionHtml) || '',
+          rawQuestionHtml: (telemetry && (telemetry.fullHtml || telemetry.rawQuestionHtml)) || '',
           radiosCount: (telemetry && typeof telemetry.radiosCount === 'number') ? telemetry.radiosCount : (options ? options.length : 0),
           answer: parsedResult.correct_option_text,
           answerIndex: parsedResult.correct_option_index,
