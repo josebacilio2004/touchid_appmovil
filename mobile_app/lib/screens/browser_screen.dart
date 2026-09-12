@@ -590,11 +590,15 @@ class _BrowserScreenState extends State<BrowserScreen> {
           var qSelectors = [
             '#question-text',
             '.question-box',
-            '.qtext',
-            '.formulation .qtext',
+            '.col-sm-6 > div[style*="font-size"]',
+            '.col-sm-6 > p[style*="font-size"]',
+            '[style*="font-size: 1.2em"]',
+            '[style*="font-size:1.2em"]',
             '.udabol-question-statement',
             '[class*="question-statement"]',
             '[class*="question-text"]',
+            '.qtext',
+            '.formulation .qtext',
             '[class*="enunciado"]',
             '[class*="pregunta-texto"]',
             '.que .content .qtext',
@@ -760,15 +764,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
               var firstRadio = visibleRadios[0];
 
               // 1. HERMANO PREVIO DEL CONTENEDOR DE OPCIONES (Estructura estándar de UDABOL y Simuladores)
-              var optsBox = firstRadio.closest('.udabol-options-container, #udabol-options-box, .options-list, #options-container, [class*="options"], table, ul, ol');
+              var optsBox = firstRadio.closest('.udabol-options-container, #udabol-options-box, .options-list, #options-container, [class*="options"], div.left[style*="text-align"], .left, table, ul, ol');
               if (optsBox && optsBox.previousElementSibling) {
                 var prevBoxSib = optsBox.previousElementSibling;
-                var candBox = stripNoise(clean(prevBoxSib.innerText || prevBoxSib.textContent));
-                if (candBox.length > 6 && !/CARPETA\\s+PEDAG|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION/i.test(candBox)) {
-                  questionText = candBox;
-                  strategyUsed = 'contenedor_opciones_hermano_previo (UDABOL/Web)';
-                  matchedSelector = (optsBox.className || optsBox.tagName) + ' -> previousElementSibling';
-                  targetEl = prevBoxSib;
+                while (prevBoxSib && (prevBoxSib.tagName === 'BR' || prevBoxSib.tagName === 'HR' || clean(prevBoxSib.innerText || prevBoxSib.textContent).length === 0)) {
+                  prevBoxSib = prevBoxSib.previousElementSibling;
+                }
+                if (prevBoxSib) {
+                  var candBox = stripNoise(clean(prevBoxSib.innerText || prevBoxSib.textContent));
+                  if (candBox.length > 6 && !/CARPETA\\s+PEDAG|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION/i.test(candBox)) {
+                    questionText = candBox;
+                    strategyUsed = 'contenedor_opciones_hermano_previo (UDABOL/Web)';
+                    matchedSelector = (optsBox.className || optsBox.tagName) + ' -> previousElementSibling';
+                    targetEl = prevBoxSib;
+                  }
                 }
               }
 
