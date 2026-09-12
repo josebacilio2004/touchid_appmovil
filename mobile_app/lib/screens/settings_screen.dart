@@ -662,8 +662,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           runSpacing: 8,
                           children: [
                             ActionChip(
+                              avatar: const Text('👶', style: TextStyle(fontSize: 13)),
+                              label: const Text('Pediatría (Nelson)', style: TextStyle(color: Colors.white, fontSize: 11.5)),
+                              backgroundColor: const Color(0xFF1E293B),
+                              side: const BorderSide(color: Color(0xFF38BDF8), width: 0.8),
+                              onPressed: () {
+                                setState(() {
+                                  _systemPromptController.text =
+                                      'Actúa como médico pediatra especialista y evaluador de exámenes médicos de alto nivel (Tratado de Nelson, ENAM, MIR). Para cada caso o pregunta: 1) Considera con rigor la edad exacta (neonato, lactante, preescolar, escolar), dosis ponderales e hitos de desarrollo. 2) Analiza y descarta clínicamente los distractores. 3) Selecciona con 100% de certeza científica la alternativa correcta.';
+                                });
+                              },
+                            ),
+                            ActionChip(
+                              avatar: const Text('🩺', style: TextStyle(fontSize: 13)),
+                              label: const Text('Medicina (ENAM/MIR)', style: TextStyle(color: Colors.white, fontSize: 11.5)),
+                              backgroundColor: const Color(0xFF1E293B),
+                              side: const BorderSide(color: Color(0xFF34D399), width: 0.8),
+                              onPressed: () {
+                                setState(() {
+                                  _systemPromptController.text =
+                                      'Actúa como evaluador experto de exámenes médicos de alta exigencia (ENAM, MIR, USMLE). Para cada pregunta: 1) Identifica el concepto fisiológico/farmacológico exacto. 2) Analiza rigurosamente cada alternativa descartando distractores engañosos. 3) Selecciona con 100% de precisión científica la alternativa correcta y su índice exacto.';
+                                });
+                              },
+                            ),
+                            ActionChip(
                               avatar: const Text('🚗', style: TextStyle(fontSize: 13)),
-                              label: const Text('Examen MTC (Perú)', style: TextStyle(color: Colors.white, fontSize: 11.5)),
+                              label: const Text('Examen MTC', style: TextStyle(color: Colors.white, fontSize: 11.5)),
                               backgroundColor: const Color(0xFF1E293B),
                               side: const BorderSide(color: Colors.blueAccent, width: 0.8),
                               onPressed: () {
