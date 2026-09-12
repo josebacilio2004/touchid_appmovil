@@ -561,9 +561,30 @@ class _BrowserScreenState extends State<BrowserScreen> {
             return clean(t);
           }
 
+          function getDomPath(el) {
+            if (!el || !el.parentNode) return '';
+            var stack = [];
+            var curr = el;
+            while (curr && curr.nodeType === 1 && curr.tagName.toLowerCase() !== 'html' && stack.length < 6) {
+              var name = curr.tagName.toLowerCase();
+              if (curr.id) {
+                name += '#' + curr.id;
+              } else if (curr.className && typeof curr.className === 'string') {
+                var cls = curr.className.trim().split(/\\s+/).filter(function(c) { return c && !c.includes(':'); }).slice(0, 2).join('.');
+                if (cls) name += '.' + cls;
+              }
+              stack.unshift(name);
+              curr = curr.parentNode;
+            }
+            return stack.join(' > ');
+          }
+
           var doc = document;
           var questionText = '';
           var options = [];
+          var strategyUsed = 'ninguna';
+          var matchedSelector = '';
+          var targetEl = null;
 
           // 1. PRIORIDAD MÁXIMA PARA PREGUNTA: Selectores dedicados de pregunta
           var qSelectors = [
@@ -584,8 +605,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
               var qCandidate = clean(qEl.innerText || qEl.textContent);
               if (qCandidate.length > 5) {
                 var stripped = stripNoise(qCandidate);
-                if (stripped.length > 5 && !/CARPETA\s+PEDAG/i.test(stripped)) {
+                if (stripped.length > 5 && !/CARPETA\\s+PEDAG/i.test(stripped)) {
                   questionText = stripped;
+                  strategyUsed = 'selector_dedicado (' + qSelectors[qs] + ')';
+                  matchedSelector = qSelectors[qs];
+                  targetEl = qEl;
                   break;
                 }
               }
@@ -618,6 +642,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
               });
               if (list.length >= 2) {
                 options = list;
+                if (!strategyUsed || strategyUsed === 'ninguna') {
+                  strategyUsed = 'tarjetas_opcion (' + optCardSelectors[os] + ')';
+                }
                 break;
               }
             }
@@ -704,8 +731,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 var prevSib = parentBlock.previousElementSibling;
                 while (prevSib) {
                   var pCand = stripNoise(clean(prevSib.innerText || prevSib.textContent));
-                  if (pCand.length > 5 && options.indexOf(pCand) === -1 && !/CARPETA\s+PEDAG/i.test(pCand)) {
+                  if (pCand.length > 5 && options.indexOf(pCand) === -1 && !/CARPETA\\s+PEDAG/i.test(pCand)) {
                     questionText = pCand;
+                    strategyUsed = 'radio_hermano_previo (UDABOL/Moodle)';
+                    matchedSelector = 'input[type=radio] -> previousElementSibling';
+                    targetEl = prevSib;
                     break;
                   }
                   prevSib = prevSib.previousElementSibling;
@@ -721,6 +751,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
                     raw = raw.split(opt).join('');
                   });
                   questionText = stripNoise(raw);
+                  strategyUsed = 'contenedor_padre_strip';
+                  matchedSelector = 'closest(.que/.multichoice/form)';
+                  targetEl = qContainer;
                 }
               }
             }
@@ -749,8 +782,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
               if (questionText.length < 5) {
                 for (var k = 0; k < cleanLines.length; k++) {
                   var cand = cleanLines[k];
-                  if (options.indexOf(cand) === -1 && cand.length > 5 && !/CARPETA\s+PEDAG/i.test(cand)) {
+                  if (options.indexOf(cand) === -1 && cand.length > 5 && !/CARPETA\\s+PEDAG/i.test(cand)) {
                     questionText = cand;
+                    strategyUsed = 'respaldo_semantico_lineas';
+                    matchedSelector = 'body.innerText -> cleanLines[' + k + ']';
+                    targetEl = doc.body;
                     break;
                   }
                 }
@@ -771,9 +807,33 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
           questionText = stripNoise(questionText);
 
+          var rawHtml = '';
+          if (targetEl) {
+            try {
+              rawHtml = (targetEl.outerHTML || '').slice(0, 1500);
+            } catch(e) {}
+          } else if (radioInputs.length > 0 && radioInputs[0].parentElement) {
+            try {
+              rawHtml = (radioInputs[0].parentElement.parentElement.outerHTML || '').slice(0, 1500);
+            } catch(e) {}
+          }
+
+          var telemetry = {
+            url: window.location.href || '',
+            title: document.title || '',
+            strategy: strategyUsed,
+            matchedSelector: matchedSelector,
+            domPath: targetEl ? getDomPath(targetEl) : (radioInputs[0] ? getDomPath(radioInputs[0]) : ''),
+            rawQuestionHtml: rawHtml,
+            radiosCount: radioInputs.length,
+            optionsCount: options.length,
+            timestamp: new Date().toISOString()
+          };
+
           return JSON.stringify({
             question: questionText,
-            options: options
+            options: options,
+            telemetry: telemetry
           });
         })()
       ''';
@@ -781,6 +841,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       // Reintentos automáticos para tolerar transiciones AJAX entre preguntas ("Siguiente")
       String question = '';
       List<String> options = [];
+      Map<String, dynamic>? telemetryData;
 
       for (int attempt = 0; attempt < 4; attempt++) {
         final result = await _tabs[_currentTabIndex].controller.runJavaScriptReturningResult(jsScript);
@@ -795,6 +856,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
           final Map<String, dynamic> data = jsonDecode(cleanResult);
           final String q = (data['question'] ?? '').toString().trim();
           final List<String> opts = List<String>.from(data['options'] ?? []);
+          if (data['telemetry'] is Map) {
+            telemetryData = Map<String, dynamic>.from(data['telemetry']);
+          }
 
           if (q.length >= 8 && opts.length >= 2) {
             question = q;
@@ -816,8 +880,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
         throw Exception('No se detectó suficiente contenido para formular una pregunta.');
       }
 
-      // Llamar a Gemini
-      final responseData = await _queryGemini(question, options);
+      // Llamar a Gemini / Backend con telemetría de análisis DOM
+      final responseData = await _queryGemini(question, options, telemetry: telemetryData);
 
       // Confirmación háptica suave cuando la respuesta está lista
       HapticFeedback.mediumImpact();
@@ -846,7 +910,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   // Petición a la API (Backend Gateway o Gemini directo)
-  Future<Map<String, dynamic>> _queryGemini(String question, List<String> options) async {
+  Future<Map<String, dynamic>> _queryGemini(String question, List<String> options, {Map<String, dynamic>? telemetry}) async {
     final backendUrl = widget.config.backendUrl.trim();
     final userId = widget.config.userId.trim();
 
@@ -885,6 +949,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             'question': question,
             'options': options,
             'systemPrompt': systemPrompt,
+            'telemetry': telemetry,
           }),
         ).timeout(const Duration(seconds: 45));
 
