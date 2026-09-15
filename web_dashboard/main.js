@@ -41,6 +41,25 @@ const domSearchInput = document.getElementById('dom-search-input');
 const domRefreshBtn = document.getElementById('dom-refresh-btn');
 const domClearBtn = document.getElementById('dom-clear-btn');
 
+// Elementos del Banco de Preguntas y Registros por Materia
+const bankStatTotal = document.getElementById('bank-stat-total');
+const bankStatCourses = document.getElementById('bank-stat-courses');
+const bankStatActiveCourse = document.getElementById('bank-stat-active-course');
+const bankCourseList = document.getElementById('bank-course-list');
+const bankSubjectLabel = document.getElementById('bank-subject-label');
+const bankSubjectCount = document.getElementById('bank-subject-count');
+const bankSearchInput = document.getElementById('bank-search-input');
+const bankRefreshBtn = document.getElementById('bank-refresh-btn');
+const bankCopyAllBtn = document.getElementById('bank-copy-all-btn');
+const bankExportExcelBtn = document.getElementById('bank-export-excel-btn');
+const bankExportBtn = document.getElementById('bank-export-btn');
+const bankQuestionsFeed = document.getElementById('bank-questions-feed');
+
+// Elementos de Usuarios y Créditos en Vivo
+const usersCreditTableBody = document.getElementById('users-credit-table-body');
+const usersCreditSearch = document.getElementById('users-credit-search');
+
+
 // Elementos del Sandbox DOM
 const sandboxHtmlInput = document.getElementById('sandbox-html-input');
 const sandboxParseBtn = document.getElementById('sandbox-parse-btn');
@@ -167,25 +186,126 @@ let allDomInspections = [];
 async function loadAllData() {
   loadStats();
   loadLicenses();
+  loadUsers();
   loadHistory();
   loadDomInspections();
+  loadQuestionBank();
 }
 
-async function loadStats() {
+let allUsersList = [];
+
+async function loadUsers() {
+  if (!usersCreditTableBody) return;
   try {
-    const response = await fetch(`${backendUrl}/admin/stats`, {
+    const response = await fetch(`${backendUrl}/admin/users`, {
       headers: { 'x-admin-token': adminToken }
     });
     if (response.ok) {
-      const data = await response.json();
-      statTotal.textContent = data.totalQuestions || 0;
-      statUsers.textContent = data.totalUsers || 0;
-      statLicActive.textContent = data.activeLicenses || 0;
-      statLicUsed.textContent = data.usedLicenses || 0;
+      allUsersList = await response.json();
+      renderUsersTable(allUsersList);
     }
   } catch (e) {
-    console.error('Error al cargar estadísticas:', e);
+    console.error('Error al cargar usuarios y créditos:', e);
   }
+}
+
+function renderUsersTable(users) {
+  if (!usersCreditTableBody) return;
+
+  const term = usersCreditSearch ? usersCreditSearch.value.toLowerCase().trim() : '';
+  let filtered = users;
+  if (term) {
+    filtered = users.filter(u => {
+      const id = (u._id || u.userId || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const name = (u.name || '').toLowerCase();
+      return id.includes(term) || email.includes(term) || name.includes(term);
+    });
+  }
+
+  if (filtered.length === 0) {
+    usersCreditTableBody.innerHTML = `
+      <tr>
+        <td colspan="5" class="table-placeholder">No hay usuarios registrados con ese filtro.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  usersCreditTableBody.innerHTML = '';
+  filtered.forEach(u => {
+    const tr = document.createElement('tr');
+    const id = u._id || u.userId || 'Desconocido';
+    const isUnlimited = u.isUnlimited === true || (u.credits !== undefined && u.credits >= 999999);
+    const credits = typeof u.credits === 'number' ? u.credits : 0;
+    const isSpecial = id === 'unlimited_user_touchid' || id.includes('74934503');
+
+    let creditDisplay = '';
+    if (isUnlimited) {
+      creditDisplay = `<span class="badge chip-gold" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 700; padding: 4px 10px; border-radius: 12px;">✨ Ilimitado</span>`;
+    } else if (credits > 0) {
+      creditDisplay = `<span style="font-weight: 700; color: #34d399; font-size: 15px; display: inline-flex; align-items: center; gap: 4px;">
+        <span>${credits.toLocaleString()}</span>
+        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">cr</span>
+      </span>`;
+    } else {
+      creditDisplay = `<span style="font-weight: 700; color: #f87171; font-size: 14px;">0 cr (Agotado)</span>`;
+    }
+
+    let statusDisplay = '';
+    if (isUnlimited) {
+      statusDisplay = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">VIP Ilimitado</span>`;
+    } else if (credits > 0) {
+      statusDisplay = `<span class="badge badge-active">Activo</span>`;
+    } else {
+      statusDisplay = `<span class="badge badge-used" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">Sin Créditos</span>`;
+    }
+
+    const dateStr = u.updatedAt ? new Date(u.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
+    tr.innerHTML = `
+      <td>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-family: monospace; font-size: 13px; font-weight: 600; color: #f8fafc;">${escapeHtml(id)}</span>
+          ${isSpecial ? '<span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; font-size: 10px; padding: 1px 6px;">ADMIN</span>' : ''}
+        </div>
+      </td>
+      <td>${creditDisplay}</td>
+      <td>${statusDisplay}</td>
+      <td style="color: #94a3b8; font-size: 12.5px;">${dateStr}</td>
+      <td>
+        <button class="btn btn-quick-recharge" data-user="${escapeHtml(id)}" style="padding: 4px 10px; font-size: 11.5px; height: auto; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px;">
+          + Recargar
+        </button>
+      </td>
+    `;
+
+    usersCreditTableBody.appendChild(tr);
+  });
+}
+
+if (usersCreditTableBody) {
+  usersCreditTableBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-quick-recharge');
+    if (btn) {
+      const uId = btn.getAttribute('data-user');
+      const directUserInput = document.getElementById('direct-user-id');
+      const directCredInput = document.getElementById('direct-credits');
+      if (uId && directUserInput) {
+        directUserInput.value = uId;
+        if (directCredInput) directCredInput.focus();
+        directUserInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        directUserInput.style.borderColor = '#38bdf8';
+        setTimeout(() => { directUserInput.style.borderColor = ''; }, 2000);
+      }
+    }
+  });
+}
+
+if (usersCreditSearch) {
+  usersCreditSearch.addEventListener('input', () => {
+    renderUsersTable(allUsersList);
+  });
 }
 
 async function loadLicenses() {
@@ -652,6 +772,11 @@ function renderDomInspections(inspections) {
     card.className = 'dom-card';
     card.setAttribute('data-id', doc.id || idx);
 
+    const isSuccess = doc.isSuccess !== false && !doc.errorReason;
+    if (!isSuccess) {
+      card.style.borderLeft = '4px solid #ef4444';
+    }
+
     const urlLower = (doc.url || '').toLowerCase();
     let portalBadge = '<span class="dom-portal-badge badge-generic">Web Exam</span>';
     let portalName = 'Plataforma Web';
@@ -667,6 +792,14 @@ function renderDomInspections(inspections) {
       portalName = 'Banco de Preguntas';
     }
 
+    const statusBadge = isSuccess
+      ? '<span class="dom-portal-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">✓ Resuelto con Éxito</span>'
+      : '<span class="dom-portal-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">⚠️ Sin Respuesta / Error</span>';
+
+    const courseBadge = doc.course
+      ? `<span class="dom-portal-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">📖 ${escapeHtml(doc.course)}</span>`
+      : '';
+
     const date = new Date(doc.timestamp || Date.now());
     const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -674,7 +807,7 @@ function renderDomInspections(inspections) {
     const domPathClean = doc.domPath || 'body > form > div.pregunta';
 
     const optionsPills = (doc.options || []).map((opt, i) => {
-      const isAnswer = (opt === doc.answer || i === doc.answerIndex);
+      const isAnswer = (opt === doc.answer || i === doc.answerIndex || (doc.answerLetter && String.fromCharCode(65 + i) === doc.answerLetter));
       return `<span class="dom-opt-pill ${isAnswer ? 'is-answer' : ''}">${isAnswer ? '✓ ' : ''}${escapeHtml(opt)}</span>`;
     }).join('');
 
@@ -685,6 +818,8 @@ function renderDomInspections(inspections) {
       <div class="dom-card-header">
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
           ${portalBadge}
+          ${courseBadge}
+          ${statusBadge}
           <span style="font-weight: 700; color: #fff; font-size: 14px;">${portalName}</span>
           <span class="dom-strategy-tag">⚙ ${escapeHtml(strategyClean)}</span>
         </div>
@@ -696,6 +831,12 @@ function renderDomInspections(inspections) {
       <div style="font-size: 12px; color: #94a3b8; word-break: break-all; margin-bottom: 6px;">
         <strong>URL:</strong> <a href="${escapeHtml(doc.url)}" target="_blank" style="color: #38bdf8; text-decoration: none;">${escapeHtml(doc.url)}</a>
       </div>
+
+      ${!isSuccess && doc.errorReason ? `
+      <div style="margin: 8px 0; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 6px; font-size: 12.5px; color: #fca5a5;">
+        <strong>Diagnóstico de Extracción:</strong> ${escapeHtml(doc.errorReason)}
+      </div>
+      ` : ''}
 
       <div class="dom-breadcrumb-path">
         📍 <strong>Ruta Jerárquica DOM:</strong> ${escapeHtml(domPathClean)}
@@ -714,18 +855,19 @@ function renderDomInspections(inspections) {
 
       ${doc.answer ? `
       <div style="margin-top: 6px; font-size: 13px; color: #34d399; font-weight: 600;">
-        ✨ Respuesta IA: <span style="color: #fff;">${escapeHtml(doc.answer)}</span>
+        ✨ Respuesta IA: <span style="color: #fff;">${doc.answerLetter ? '[' + escapeHtml(doc.answerLetter) + '] ' : ''}${escapeHtml(doc.answer)}</span>
+        ${doc.explanation ? `<div style="font-size: 12px; color: #94a3b8; font-weight: normal; margin-top: 2px;">${escapeHtml(doc.explanation)}</div>` : ''}
       </div>
       ` : ''}
 
       ${hasRawHtml ? `
       <div style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
         <button type="button" class="accordion-toggle" data-target="raw-${idx}">
-          <span>▶ Ver Estructura HTML Cruda (DOM Snippet)</span>
+          <span>▶ Ver Estructura HTML Cruda (DOM Snippet para Auditoría)</span>
         </button>
         <div class="accordion-content" id="raw-${idx}">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 11px; color: #94a3b8;">Fragmento HTML extraído del portal de examen:</span>
+            <span style="font-size: 11px; color: #94a3b8;">Fragmento HTML extraído del portal de examen (${doc.radiosCount || 0} radios, ${doc.formsCount || 0} forms):</span>
             <button class="copy-cell-btn btn-copy-html" style="margin: 0;">Copiar HTML</button>
           </div>
           <pre class="dom-code-box"><code>${rawHtmlContent}</code></pre>
@@ -818,7 +960,432 @@ if (domClearBtn) {
   });
 }
 
-// --- 11. Laboratorio / Sandbox DOM (Parser Interactivo de Prueba) ---
+// --- 11. Módulo Banco de Preguntas por Curso / Materia ---
+// --- 11. Módulo Banco de Preguntas y Registros por Materia ---
+let allBankQuestions = [];
+let selectedBankCourse = 'all';
+
+async function loadQuestionBank() {
+  if (!bankQuestionsFeed) return;
+  try {
+    let response = await fetch(`${backendUrl}/admin/question-bank`, {
+      headers: { 'x-admin-token': adminToken }
+    });
+
+    let questions = [];
+    let courses = [];
+
+    if (response.ok) {
+      const data = await response.json();
+      questions = data.questions || [];
+      courses = data.courses || [];
+    } else {
+      // Fallback a /admin/history si el nuevo endpoint aún se está desplegando en Render
+      const histResp = await fetch(`${backendUrl}/admin/history`, {
+        headers: { 'x-admin-token': adminToken }
+      });
+      if (histResp.ok) {
+        const histData = await histResp.json();
+        const courseSet = new Set();
+        questions = histData.map(h => {
+          const course = h.subject || 'General';
+          courseSet.add(course);
+          const alts = (h.options || []).map((opt, i) => ({
+            id: String.fromCharCode(65 + i),
+            text: opt
+          }));
+          return {
+            id: h.id,
+            question: h.question,
+            alternatives: alts,
+            answer: (h.answerIndex !== undefined && h.answerIndex >= 0) ? String.fromCharCode(65 + h.answerIndex) : (h.answer || 'A'),
+            answerText: h.answer || '',
+            explanation: h.explanation || '',
+            course: course,
+            timestamp: h.timestamp
+          };
+        });
+        courses = Array.from(courseSet);
+      }
+    }
+
+    allBankQuestions = questions;
+
+    // Calcular conteo por curso
+    const courseCounts = {};
+    allBankQuestions.forEach(q => {
+      const c = q.course || 'General';
+      courseCounts[c] = (courseCounts[c] || 0) + 1;
+      if (!courses.includes(c)) courses.push(c);
+    });
+    courses.sort((a, b) => (courseCounts[b] || 0) - (courseCounts[a] || 0));
+
+    // Actualizar métricas generales
+    if (bankStatTotal) bankStatTotal.textContent = allBankQuestions.length;
+    if (bankStatCourses) bankStatCourses.textContent = courses.length;
+
+    // Renderizar directorio de materias (Columna izquierda)
+    renderCourseDirectory(courses, courseCounts);
+
+    // Aplicar filtro actual y renderizar registros
+    applyBankFilter();
+
+  } catch (e) {
+    console.error('Error al cargar Banco de Preguntas:', e);
+  }
+}
+
+function renderCourseDirectory(courses, courseCounts) {
+  if (!bankCourseList) return;
+
+  const totalAll = allBankQuestions.length;
+  let html = `
+    <div class="bank-course-item ${selectedBankCourse === 'all' ? 'active' : ''}" data-course="all" style="padding: 10px 14px; border-radius: 8px; cursor: pointer; background: ${selectedBankCourse === 'all' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${selectedBankCourse === 'all' ? 'rgba(56, 189, 248, 0.4)' : 'transparent'}; color: ${selectedBankCourse === 'all' ? '#38bdf8' : '#cbd5e1'}; font-weight: 600; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <span>Todas las materias</span>
+      <span class="badge" style="background: rgba(56, 189, 248, 0.25); color: #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 11px;">${totalAll}</span>
+    </div>
+  `;
+
+  courses.forEach(c => {
+    const isSelected = selectedBankCourse === c;
+    const count = courseCounts[c] || 0;
+    html += `
+      <div class="bank-course-item ${isSelected ? 'active' : ''}" data-course="${escapeHtml(c)}" style="padding: 9px 14px; border-radius: 8px; cursor: pointer; background: ${isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${isSelected ? 'rgba(56, 189, 248, 0.4)' : 'transparent'}; color: ${isSelected ? '#38bdf8' : '#cbd5e1'}; font-weight: 500; font-size: 13px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px;" title="${escapeHtml(c)}">📁 ${escapeHtml(c)}</span>
+        <span class="badge" style="background: rgba(255, 255, 255, 0.08); color: #94a3b8; padding: 2px 7px; border-radius: 12px; font-size: 11px;">${count}</span>
+      </div>
+    `;
+  });
+
+  bankCourseList.innerHTML = html;
+
+  // Asignar eventos de clic al directorio
+  bankCourseList.querySelectorAll('.bank-course-item').forEach(item => {
+    item.addEventListener('click', () => {
+      selectedBankCourse = item.getAttribute('data-course');
+      // Actualizar estilos activos
+      bankCourseList.querySelectorAll('.bank-course-item').forEach(el => {
+        const isThis = el.getAttribute('data-course') === selectedBankCourse;
+        el.style.background = isThis ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)';
+        el.style.border = isThis ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent';
+        el.style.color = isThis ? '#38bdf8' : '#cbd5e1';
+      });
+      applyBankFilter();
+    });
+  });
+}
+
+function applyBankFilter() {
+  const term = bankSearchInput ? bankSearchInput.value.toLowerCase().trim() : '';
+
+  let filtered = allBankQuestions;
+  if (selectedBankCourse && selectedBankCourse !== 'all') {
+    filtered = filtered.filter(q => q.course === selectedBankCourse);
+  }
+
+  if (term) {
+    filtered = filtered.filter(q => {
+      const qText = (q.question || '').toLowerCase();
+      const aText = (q.alternatives || []).map(a => (a.text || '').toLowerCase()).join(' ');
+      return qText.includes(term) || aText.includes(term);
+    });
+  }
+
+  // Actualizar indicadores de cabecera
+  const courseDisplay = selectedBankCourse === 'all' ? 'Todas las materias' : selectedBankCourse;
+  if (bankStatActiveCourse) bankStatActiveCourse.textContent = courseDisplay;
+  if (bankSubjectLabel) bankSubjectLabel.textContent = `Registros: ${courseDisplay}`;
+  if (bankSubjectCount) bankSubjectCount.textContent = `${filtered.length} preguntas registradas`;
+
+  renderQuestionBank(filtered);
+}
+
+function renderQuestionBank(questions) {
+  if (!bankQuestionsFeed) return;
+
+  if (questions.length === 0) {
+    bankQuestionsFeed.innerHTML = `
+      <div class="card" style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+        <p style="font-size: 15px; margin-bottom: 8px; color: #fff;">No hay registros para este filtro.</p>
+        <p style="font-size: 13px;">A medida que los estudiantes rindan cuestionarios con la aplicación móvil, los enunciados y alternativas aparecerán catalogados aquí automáticamente.</p>
+      </div>
+    `;
+    return;
+  }
+
+  bankQuestionsFeed.innerHTML = '';
+  questions.forEach((q, idx) => {
+    const card = document.createElement('div');
+    card.className = 'dom-card';
+    card.style.borderLeft = '4px solid #38bdf8';
+
+    const date = new Date(q.timestamp || Date.now());
+    const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const alternativesHtml = (q.alternatives || []).map((alt, i) => {
+      const isCorrect = (alt.id === q.answer || alt.text === q.answerText || (q.answer && q.answer.toUpperCase() === String.fromCharCode(65 + i)));
+      return `
+        <div style="display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px; margin-bottom: 4px; border-radius: 6px; background: ${isCorrect ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.03)'}; border: 1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.35)' : 'transparent'};">
+          <span style="font-weight: 700; color: ${isCorrect ? '#34d399' : '#94a3b8'}; min-width: 24px;">[${escapeHtml(alt.id || String.fromCharCode(65 + i))}]</span>
+          <span style="color: ${isCorrect ? '#f0fdf4' : '#cbd5e1'}; font-size: 13px; font-weight: ${isCorrect ? '600' : '400'}; flex: 1;">${escapeHtml(alt.text)}</span>
+          ${isCorrect ? '<span style="color: #34d399; font-size: 12px; font-weight: 700;">✓ Correcta</span>' : ''}
+        </div>
+      `;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="dom-card-header">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="dom-portal-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">
+            📁 Materia: ${escapeHtml(q.course || 'General')}
+          </span>
+          <span style="font-weight: 700; color: #fff; font-size: 14px;">Registro #${idx + 1}</span>
+        </div>
+        <div class="dom-meta-info">
+          <span>${escapeHtml(q.userId || 'móvil')} • ${dateStr}</span>
+        </div>
+      </div>
+
+      <div style="font-size: 14.5px; font-weight: 700; color: #f8fafc; line-height: 1.4; margin: 10px 0 12px;">
+        ${escapeHtml(q.question)}
+      </div>
+
+      ${q.images && q.images.length > 0 ? `
+        <div style="margin-bottom: 12px;">
+          ${q.images.map(img => `<img src="${escapeHtml(img.src)}" alt="${escapeHtml(img.alt)}" style="max-height: 200px; max-width: 100%; border-radius: 8px; border: 1px solid var(--card-border);">`).join('')}
+        </div>
+      ` : ''}
+
+      <div style="margin-bottom: 10px;">
+        <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Alternativas Registradas (${q.alternatives ? q.alternatives.length : 0}):</span>
+        <div style="margin-top: 6px;">
+          ${alternativesHtml || '<p style="color: #94a3b8; font-size: 13px;">Sin alternativas estructuradas.</p>'}
+        </div>
+      </div>
+
+      ${q.explanation ? `
+        <div style="padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 12px; color: #93c5fd; margin-top: 6px;">
+          💡 <strong>Respuesta IA:</strong> ${escapeHtml(q.explanation)}
+        </div>
+      ` : ''}
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);">
+        <button class="btn btn-copy-single-record" data-idx="${idx}" style="height: 30px; font-size: 11.5px; padding: 0 12px; background: rgba(255,255,255,0.08); color: #cbd5e1;">Copiar Registro</button>
+        <button class="btn btn-delete-question" data-id="${q.id}" style="height: 30px; font-size: 11.5px; padding: 0 12px; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">Eliminar</button>
+      </div>
+    `;
+
+    bankQuestionsFeed.appendChild(card);
+  });
+}
+
+// Búsqueda en tiempo real en Banco de Preguntas
+if (bankSearchInput) {
+  bankSearchInput.addEventListener('input', () => {
+    applyBankFilter();
+  });
+}
+
+// Botón refrescar Banco de Preguntas
+if (bankRefreshBtn) {
+  bankRefreshBtn.addEventListener('click', () => {
+    loadQuestionBank();
+  });
+}
+
+// Botón Copiar Todos los Registros de la Materia a Texto Plano
+if (bankCopyAllBtn) {
+  bankCopyAllBtn.addEventListener('click', () => {
+    let filtered = allBankQuestions;
+    if (selectedBankCourse && selectedBankCourse !== 'all') {
+      filtered = filtered.filter(q => q.course === selectedBankCourse);
+    }
+    if (filtered.length === 0) {
+      alert('No hay registros para copiar en esta materia.');
+      return;
+    }
+
+    const courseName = selectedBankCourse === 'all' ? 'Todas las materias' : selectedBankCourse;
+    let docText = `==================================================\n`;
+    docText += `BANCO DE REGISTROS DE PREGUNTAS Y ALTERNATIVAS\n`;
+    docText += `Materia: ${courseName}\n`;
+    docText += `Total Registros: ${filtered.length}\n`;
+    docText += `Fecha de exportación: ${new Date().toLocaleString()}\n`;
+    docText += `==================================================\n\n`;
+
+    filtered.forEach((q, idx) => {
+      docText += `[REGISTRO #${idx + 1}] - Materia: ${q.course || 'General'}\n`;
+      docText += `ENUNCIADO: ${q.question}\n`;
+      docText += `ALTERNATIVAS:\n`;
+      (q.alternatives || []).forEach((alt, i) => {
+        const letter = alt.id || String.fromCharCode(65 + i);
+        const isCorrect = (alt.id === q.answer || alt.text === q.answerText || (q.answer && q.answer.toUpperCase() === String.fromCharCode(65 + i)));
+        docText += `  ${letter}) ${alt.text} ${isCorrect ? ' [CORRECTA]' : ''}\n`;
+      });
+      docText += `RESPUESTA: ${q.answer || ''} - ${q.answerText || ''}\n`;
+      if (q.explanation) docText += `EXPLICACIÓN: ${q.explanation}\n`;
+      docText += `--------------------------------------------------\n\n`;
+    });
+
+    navigator.clipboard.writeText(docText).then(() => {
+      const prevText = bankCopyAllBtn.textContent;
+      bankCopyAllBtn.textContent = `¡${filtered.length} Registros Copiados!`;
+      bankCopyAllBtn.style.background = 'rgba(16, 185, 129, 0.25)';
+      bankCopyAllBtn.style.color = '#34d399';
+      setTimeout(() => {
+        bankCopyAllBtn.textContent = prevText;
+        bankCopyAllBtn.style.background = '';
+        bankCopyAllBtn.style.color = '';
+      }, 2500);
+    });
+  });
+}
+
+// Botón exportar a Excel (CSV con formato para Microsoft Excel)
+if (bankExportExcelBtn) {
+  bankExportExcelBtn.addEventListener('click', () => {
+    let filtered = allBankQuestions;
+    if (selectedBankCourse && selectedBankCourse !== 'all') {
+      filtered = filtered.filter(q => q.course === selectedBankCourse);
+    }
+    if (filtered.length === 0) {
+      alert('No hay registros disponibles para exportar a Excel.');
+      return;
+    }
+
+    const headers = [
+      'N°',
+      'Materia',
+      'Enunciado de la Pregunta',
+      'Alternativa A',
+      'Alternativa B',
+      'Alternativa C',
+      'Alternativa D',
+      'Alternativa E',
+      'Clave Correcta',
+      'Texto Respuesta Correcta',
+      'Justificación IA',
+      'Fecha de Captura'
+    ];
+
+    function escapeCsv(val) {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""').replace(/\r?\n/g, ' ');
+      return `"${str}"`;
+    }
+
+    const csvRows = [headers.map(escapeCsv).join(',')];
+
+    filtered.forEach((q, idx) => {
+      const alts = q.alternatives || [];
+      const getAltText = (i) => alts[i] ? alts[i].text : '';
+
+      const row = [
+        idx + 1,
+        q.course || 'General',
+        q.question || '',
+        getAltText(0),
+        getAltText(1),
+        getAltText(2),
+        getAltText(3),
+        getAltText(4),
+        q.answer || '',
+        q.answerText || '',
+        q.explanation || '',
+        q.timestamp ? new Date(q.timestamp).toLocaleString() : ''
+      ];
+
+      csvRows.push(row.map(escapeCsv).join(','));
+    });
+
+    // Prefijo BOM (\uFEFF) para que Excel reconozca tildes, caracteres especiales y UTF-8
+    const csvBlob = new Blob(['\uFEFF' + csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(csvBlob);
+
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', url);
+    const courseSlug = (selectedBankCourse || 'todas').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    downloadAnchor.setAttribute('download', `Banco_Preguntas_${courseSlug}_${Date.now()}.csv`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    URL.revokeObjectURL(url);
+  });
+}
+
+// Botón exportar JSON del Banco de Preguntas
+if (bankExportBtn) {
+  bankExportBtn.addEventListener('click', () => {
+    let filtered = allBankQuestions;
+    if (selectedBankCourse && selectedBankCourse !== 'all') {
+      filtered = filtered.filter(q => q.course === selectedBankCourse);
+    }
+    if (filtered.length === 0) {
+      alert('No hay registros disponibles para exportar.');
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(filtered, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    const courseSlug = (selectedBankCourse || 'todas').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    downloadAnchor.setAttribute("download", `banco_${courseSlug}_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  });
+}
+
+// Delegación de eventos para copiar un solo registro o eliminar
+if (bankQuestionsFeed) {
+  bankQuestionsFeed.addEventListener('click', async (e) => {
+    const copyBtn = e.target.closest('.btn-copy-single-record');
+    if (copyBtn) {
+      const idx = parseInt(copyBtn.getAttribute('data-idx'), 10);
+      let filtered = allBankQuestions;
+      if (selectedBankCourse && selectedBankCourse !== 'all') {
+        filtered = filtered.filter(q => q.course === selectedBankCourse);
+      }
+      const q = filtered[idx];
+      if (q) {
+        let singleText = `Materia: ${q.course || 'General'}\nPregunta: ${q.question}\nAlternativas:\n`;
+        (q.alternatives || []).forEach((a, i) => {
+          const l = a.id || String.fromCharCode(65 + i);
+          const isCorrect = (a.id === q.answer || a.text === q.answerText || (q.answer && q.answer.toUpperCase() === String.fromCharCode(65 + i)));
+          singleText += `${l}) ${a.text} ${isCorrect ? ' [CORRECTA]' : ''}\n`;
+        });
+        singleText += `Respuesta: ${q.answer || ''} - ${q.answerText || ''}\n`;
+        navigator.clipboard.writeText(singleText).then(() => {
+          const prev = copyBtn.textContent;
+          copyBtn.textContent = '¡Copiado!';
+          setTimeout(() => { copyBtn.textContent = prev; }, 1800);
+        });
+      }
+      return;
+    }
+
+    const delBtn = e.target.closest('.btn-delete-question');
+    if (delBtn) {
+      const id = delBtn.getAttribute('data-id');
+      if (!id) return;
+      if (!confirm('¿Deseas eliminar este registro del banco de preguntas?')) return;
+      try {
+        const resp = await fetch(`${backendUrl}/admin/question-bank/${id}`, {
+          method: 'DELETE',
+          headers: { 'x-admin-token': adminToken }
+        });
+        if (resp.ok) {
+          allBankQuestions = allBankQuestions.filter(item => item.id !== id);
+          applyBankFilter();
+        }
+      } catch (err) {
+        console.error('Error al eliminar registro:', err);
+      }
+    }
+  });
+}
+
+
+// --- 12. Laboratorio / Sandbox DOM (Parser Interactivo de Prueba) ---
 function simulateMobileAlgorithm(htmlSnippet) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlSnippet, 'text/html');

@@ -1,17 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Límite de 50MB para soportar HTML crudo completo de contingencia de plataformas como UDABOL
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, '../docs')));
 
 // Formatear URI asegurando directConnection=true para conexiones remotas/túneles
 function getFormattedMongoUri() {
-  let uri = process.env.MONGODB_URI || 'mongodb://admin:touchid_secure_2026@bore.pub:65480/touchid?authSource=admin&directConnection=true';
+  let uri = process.env.MONGODB_URI || 'mongodb://admin:touchid_secure_2026@bore.pub:52133/touchid?authSource=admin&directConnection=true';
   if (!uri.includes('directConnection=')) {
     uri += (uri.includes('?') ? '&' : '?') + 'directConnection=true';
   }
@@ -51,6 +54,58 @@ async function seedUnlimitedUser(database) {
   }
 }
 
+let lastConnectionFailure = 0;
+const FAILURE_COOLDOWN_MS = 30000;
+
+// Almacén de contingencia en memoria (últimas 100 capturas) y en disco
+const contingencyCaptures = [];
+const CONTINGENCY_DIR = path.join(__dirname, 'contingency_dumps');
+try {
+  if (!fs.existsSync(CONTINGENCY_DIR)) {
+    fs.mkdirSync(CONTINGENCY_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('No se pudo crear directorio de contingencia en disco:', e.message);
+}
+
+function saveContingencyCapture(data) {
+  const id = 'dump_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  const capture = {
+    id,
+    timestamp: new Date().toISOString(),
+    userId: data.userId || 'anonymous',
+    url: data.url || (data.telemetry && data.telemetry.url) || 'N/A',
+    title: (data.telemetry && data.telemetry.title) || '',
+    strategy: (data.telemetry && data.telemetry.strategy) || 'unknown',
+    matchedSelector: (data.telemetry && data.telemetry.matchedSelector) || '',
+    domPath: (data.telemetry && data.telemetry.domPath) || '',
+    question: data.question || '',
+    options: data.options || [],
+    optionsCount: data.options ? data.options.length : 0,
+    rawQuestionHtml: (data.telemetry && (data.telemetry.rawQuestionHtml || data.telemetry.fullHtml)) || data.rawQuestionHtml || '',
+    fullHtml: (data.telemetry && data.telemetry.fullHtml) || data.fullHtml || '',
+    error: data.error || null,
+    hasAnswer: !!data.answer,
+    answer: data.answer || null
+  };
+
+  contingencyCaptures.unshift(capture);
+  if (contingencyCaptures.length > 100) contingencyCaptures.pop();
+
+  try {
+    const filePath = path.join(CONTINGENCY_DIR, `${id}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(capture, null, 2), 'utf8');
+  } catch (fsErr) {
+    console.warn('⚠️ Error escribiendo dump a disco:', fsErr.message);
+  }
+
+  if (db) {
+    db.collection('dom_inspections').insertOne(capture).catch(() => {});
+  }
+
+  return capture;
+}
+
 async function getDb() {
   if (db && dbClient) {
     try {
@@ -64,22 +119,27 @@ async function getDb() {
     }
   }
 
+  // Si falló recientemente (ej. túnel bore.pub cerrado), no congelar la petición con timeouts
+  if (Date.now() - lastConnectionFailure < FAILURE_COOLDOWN_MS) {
+    return null;
+  }
+
   if (isConnecting) {
-    // Esperar hasta 4 segundos si ya se está conectando
-    for (let i = 0; i < 8; i++) {
-      await new Promise(r => setTimeout(r, 500));
+    for (let i = 0; i < 4; i++) {
+      await new Promise(r => setTimeout(r, 250));
       if (db) return db;
     }
+    return null;
   }
 
   isConnecting = true;
   try {
     const currentUri = getFormattedMongoUri();
     dbClient = new MongoClient(currentUri, {
-      maxPoolSize: 20,
-      serverSelectionTimeoutMS: 15000,
-      connectTimeoutMS: 15000,
-      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 2500, // 2.5s máximo en vez de 15s para no demorar la respuesta
+      connectTimeoutMS: 2500,
+      socketTimeoutMS: 10000,
       directConnection: true
     });
 
@@ -92,9 +152,11 @@ async function getDb() {
 
     return db;
   } catch (err) {
+    lastConnectionFailure = Date.now();
     db = null;
     dbClient = null;
-    throw err;
+    console.warn('⚠️ MongoDB no disponible (entrando en cooldown 30s):', err.message);
+    return null;
   } finally {
     isConnecting = false;
   }
@@ -646,7 +708,7 @@ app.get('/admin/users', checkAdminToken, requireDb, async (req, res) => {
 });
 
 // 6. Endpoints de Telemetría DOM e Inspección Estructural de Exámenes
-// Endpoint para recibir telemetría directa desde la app móvil o simuladores
+// Endpoint para recibir telemetría incondicional (éxito o fallo) desde la app móvil o simuladores
 app.post('/api/telemetry', requireDb, async (req, res) => {
   try {
     const p = req.body || {};
@@ -654,15 +716,23 @@ app.post('/api/telemetry', requireDb, async (req, res) => {
       userId: p.userId || 'anon_client',
       url: p.url || 'N/A',
       title: p.title || '',
+      course: p.course || '',
       strategy: p.strategy || 'direct_telemetry',
-      matchedSelector: p.matchedSelector || 'N/A',
+      matchedSelector: p.matchedSelector || p.strategy || 'N/A',
       question: p.question || '',
       options: p.options || [],
       domPath: p.domPath || '',
       rawQuestionHtml: p.rawQuestionHtml || '',
-      radiosCount: typeof p.radiosCount === 'number' ? p.radiosCount : (p.options ? p.options.length : 0),
+      radiosCount: typeof p.radiosCount === 'number' ? p.radiosCount : 0,
+      inputsCount: typeof p.inputsCount === 'number' ? p.inputsCount : 0,
+      formsCount: typeof p.formsCount === 'number' ? p.formsCount : 0,
+      labelsCount: typeof p.labelsCount === 'number' ? p.labelsCount : 0,
+      candidatesCount: typeof p.candidatesCount === 'number' ? p.candidatesCount : 0,
       answer: p.answer || '',
-      answerIndex: p.answerIndex !== undefined ? p.answerIndex : -1,
+      answerLetter: p.answerLetter || '',
+      explanation: p.explanation || '',
+      isSuccess: p.isSuccess !== undefined ? p.isSuccess : (p.answer ? true : false),
+      errorReason: p.errorReason || null,
       source: p.source || 'mobile_app',
       timestamp: new Date()
     };
@@ -678,22 +748,29 @@ app.post('/api/telemetry', requireDb, async (req, res) => {
 // Endpoint administrativo para consultar el feed de inspecciones DOM
 app.get('/admin/dom-inspections', checkAdminToken, requireDb, async (req, res) => {
   try {
-    const docs = await req.db.collection('dom_inspections').find().sort({ timestamp: -1 }).limit(100).toArray();
+    const docs = await req.db.collection('dom_inspections').find().sort({ timestamp: -1 }).limit(150).toArray();
     const inspections = docs.map(doc => ({
       id: doc._id.toString(),
       userId: doc.userId,
       url: doc.url,
       title: doc.title,
+      course: doc.course || '',
       strategy: doc.strategy,
       matchedSelector: doc.matchedSelector,
       question: doc.question,
       options: doc.options || [],
       domPath: doc.domPath,
       rawQuestionHtml: doc.rawQuestionHtml,
-      radiosCount: doc.radiosCount,
+      radiosCount: doc.radiosCount || 0,
+      inputsCount: doc.inputsCount || 0,
+      formsCount: doc.formsCount || 0,
+      labelsCount: doc.labelsCount || 0,
+      candidatesCount: doc.candidatesCount || 0,
       answer: doc.answer,
-      answerIndex: doc.answerIndex,
+      answerLetter: doc.answerLetter || '',
       explanation: doc.explanation,
+      isSuccess: doc.isSuccess !== undefined ? doc.isSuccess : true,
+      errorReason: doc.errorReason || null,
       source: doc.source,
       timestamp: doc.timestamp ? (doc.timestamp.toISOString ? doc.timestamp.toISOString() : doc.timestamp) : null
     }));
@@ -710,6 +787,92 @@ app.delete('/admin/dom-inspections', checkAdminToken, requireDb, async (req, res
     res.json({ success: true, deletedCount: result.deletedCount });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// 7. Endpoints de Banco de Preguntas por Cursos / Materias
+// Endpoint para guardar preguntas extraídas en el banco de datos
+app.post('/api/question-bank', requireDb, async (req, res) => {
+  try {
+    const q = req.body || {};
+    const questionDoc = {
+      userId: q.userId || 'anon_mobile',
+      course: q.course || 'General',
+      question: q.question || '',
+      type: q.type || 'single_choice',
+      alternatives: q.alternatives || [],
+      answer: q.answer || '',
+      answerText: q.answerText || '',
+      explanation: q.explanation || '',
+      images: q.images || [],
+      confidence: q.confidence || 0.95,
+      source: q.source || 'mobile_app',
+      timestamp: new Date()
+    };
+
+    if (!questionDoc.question || questionDoc.question.length < 4) {
+      return res.status(400).json({ error: 'Pregunta inválida o vacía.' });
+    }
+
+    // Evitar duplicados exactos en el mismo curso
+    const existing = await req.db.collection('question_bank').findOne({
+      course: questionDoc.course,
+      question: questionDoc.question
+    });
+
+    if (existing) {
+      return res.json({ success: true, id: existing._id, duplicate: true });
+    }
+
+    const result = await req.db.collection('question_bank').insertOne(questionDoc);
+    res.json({ success: true, id: result.insertedId });
+  } catch (err) {
+    console.error('Error guardando en Banco de Preguntas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint administrativo para consultar preguntas clasificadas por curso
+app.get('/admin/question-bank', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const courseFilter = req.query.course;
+    const query = (courseFilter && courseFilter !== 'all') ? { course: courseFilter } : {};
+    const docs = await req.db.collection('question_bank').find(query).sort({ timestamp: -1 }).limit(500).toArray();
+
+    // Obtener cursos únicos disponibles
+    const courses = await req.db.collection('question_bank').distinct('course');
+
+    res.json({
+      total: docs.length,
+      courses: courses.filter(Boolean),
+      questions: docs.map(d => ({
+        id: d._id.toString(),
+        userId: d.userId,
+        course: d.course || 'General',
+        question: d.question,
+        type: d.type || 'single_choice',
+        alternatives: d.alternatives || [],
+        answer: d.answer,
+        answerText: d.answerText,
+        explanation: d.explanation,
+        images: d.images || [],
+        confidence: d.confidence,
+        timestamp: d.timestamp ? (d.timestamp.toISOString ? d.timestamp.toISOString() : d.timestamp) : null
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint administrativo para eliminar una pregunta del banco
+app.delete('/admin/question-bank/:id', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { ObjectId } = require('mongodb');
+    const result = await req.db.collection('question_bank').deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
