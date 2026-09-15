@@ -40,6 +40,7 @@ async function seedUnlimitedUser(database) {
           credits: 999999,
           isUnlimited: true,
           role: 'admin',
+          password: process.env.ADMIN_PASSWORD || 'TouchID@2026#SecureAdmin!',
           updatedAt: new Date()
         },
         $setOnInsert: {
@@ -48,7 +49,7 @@ async function seedUnlimitedUser(database) {
       },
       { upsert: true }
     );
-    console.log('✅ Usuario ilimitado verificado/sembrado en MongoDB.');
+    console.log('✅ Usuario ilimitado verificado/sembrado en MongoDB con contraseña segura.');
   } catch (err) {
     console.warn('⚠️ No se pudo auto-sembrar usuario ilimitado:', err.message);
   }
@@ -180,21 +181,45 @@ const requireDb = async (req, res, next) => {
   }
 };
 
-// Tokens administrativos válidos (soporta env y claves usuales)
+// Tokens administrativos válidos (soporta env, clave en BD y token seguro)
+const DEFAULT_SECURE_TOKEN = 'TouchID@2026#SecureAdmin!';
+
 const VALID_ADMIN_TOKENS = new Set([
   (process.env.ADMIN_TOKEN || '').trim(),
-  'admin123',
-  'admin',
-  'touchid_admin_2026',
+  (process.env.ADMIN_PASSWORD || '').trim(),
+  DEFAULT_SECURE_TOKEN,
   'touchid_secure_2026'
 ].filter(Boolean));
 
-const checkAdminToken = (req, res, next) => {
-  const token = (req.headers['x-admin-token'] || '').trim();
-  if (!token || !VALID_ADMIN_TOKENS.has(token)) {
-    return res.status(401).json({ error: 'Acceso no autorizado. Token incorrecto.' });
+const checkAdminToken = async (req, res, next) => {
+  const token = (req.headers['x-admin-token'] || req.headers['authorization'] || '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    return res.status(401).json({ error: 'Acceso no autorizado. Token no proporcionado.' });
   }
-  next();
+
+  // 1. Verificación rápida en memoria / env
+  if (VALID_ADMIN_TOKENS.has(token)) {
+    return next();
+  }
+
+  // 2. Verificación dinámica contra el usuario admin en la base de datos
+  try {
+    const database = await getDb();
+    if (database) {
+      const adminDoc = await database.collection('users').findOne({
+        role: 'admin',
+        password: token
+      });
+      if (adminDoc) {
+        VALID_ADMIN_TOKENS.add(token); // Cachear token validado
+        return next();
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Error al consultar token de admin en DB:', err.message);
+  }
+
+  return res.status(401).json({ error: 'Acceso no autorizado. Token incorrecto.' });
 };
 
 // Endpoint Health Check
