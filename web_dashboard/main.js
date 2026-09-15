@@ -192,6 +192,23 @@ async function loadAllData() {
   loadQuestionBank();
 }
 
+async function loadStats() {
+  try {
+    const response = await fetch(`${backendUrl}/admin/stats`, {
+      headers: { 'x-admin-token': adminToken }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (statTotal) statTotal.textContent = data.totalQuestions || 0;
+      if (statUsers) statUsers.textContent = data.totalUsers || 0;
+      if (statLicActive) statLicActive.textContent = data.activeLicenses || 0;
+      if (statLicUsed) statLicUsed.textContent = data.usedLicenses || 0;
+    }
+  } catch (e) {
+    console.error('Error al cargar estadísticas:', e);
+  }
+}
+
 let allUsersList = [];
 
 async function loadUsers() {
