@@ -8,6 +8,9 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/app_config.dart';
+import '../models/quiz_models.dart';
+import '../services/quiz_extractor_service.dart';
+import '../services/quiz_ai_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'settings_screen.dart';
 import 'chrome_history_screen.dart';
@@ -479,7 +482,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     } catch (_) {}
   }
 
-  // Raspado del cuestionario e invocación a la API (Backend o Gemini)
+  // Raspado del cuestionario e invocación a la IA (Backend o Gemini)
   Future<void> _solveQuestionnaire() async {
     // 1. Anti-spam / Debounce: Si ya está procesando, ignorar pulsaciones y emitir micro-clic táctil
     if (_isLoading) {
@@ -487,7 +490,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       return;
     }
 
-    // 2. Feedback háptico instantáneo en el dedo al presionar por primera vez
+    // 2. Feedback háptico instantáneo al presionar el TouchID
     HapticFeedback.lightImpact();
 
     final hasBackend = widget.config.backendUrl.trim().isNotEmpty;
@@ -524,490 +527,65 @@ class _BrowserScreenState extends State<BrowserScreen> {
       _isLoading = true;
     });
 
+    QuizExtractionResult? extractionResult;
+    AiSolutionResponse? aiSolution;
+    String? failureReason;
+
     try {
-      // Inyectar script universal para UDABOL, Simulador TouchID y plataformas universitarias
-      const jsScript = '''
-        (function() {
-          function clean(str) {
-            if (!str) return '';
-            return str.replace(/\\s+/g, ' ').trim();
-          }
+      // 1. Extraer preguntas con el motor estructural heurístico tolerante a SPA
+      extractionResult = await QuizExtractorService.extractQuiz(_currentTab.controller);
 
-          // Patrones de ruido administrativos y de paginación
-          var noisePatterns = [
-            /\\b(TouchID|Quiz\\s+Simulator|Banco\\s+de\\s+Preguntas|Simulador\\s+de\\s+Ex[áa]menes)[^\\n\\r]*/gi,
-            /\\b(Modo:\\s*[^\\n\\r]*|Ir\\s+al\\s+Dashboard[^\\n\\r]*)/gi,
-            /\\b(CARPETA\\s+PEDAG[OÓ]GICA\\s+DIGITAL|CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD\\s+DE\\s+AQUINO)[^\\n\\r]*/gi,
-            /\\b(1P|2P|3P|FINAL|EXAMEN\\s*\\d*|PARCIAL|MED-\\d+)[^\\n\\r]*/gi,
-            /\\b(Respondidas|Sin responder|Respondida)\\b/gi,
-            /\\bPregunta\\s+nro\\.?\\s*\\d+\\b/gi,
-            /\\bPregunta\\s+\\d+\\s+de\\s+\\d+\\b/gi,
-            /\\bTIEMPO\\s+RESTANTE\\b[\\s\\S]*?(?=(?:Pregunta|Siguiente|\$))/gi,
-            /\\b(Minutos|Segundos)\\b/gi,
-            /\\b(Punt[uú]a\\s+como|Puntaje|Sobre\\s+\\d+|Se[ñn]alar\\s+con\\s+bandera|Marcar\\s+con\\s+bandera)\\b[^\\n\\r]*/gi,
-            /\\b(Enunciado\\s+de\\s+la\\s+pregunta)\\b/gi,
-            /\\b(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar|Terminar\\s+intento)\\b/gi,
-            /[✔✓]\\s*[^\\n\\r]*/gi
-          ];
-
-          function stripNoise(text) {
-            var t = text || '';
-            noisePatterns.forEach(function(p) {
-              t = t.replace(p, ' ');
-            });
-            // Eliminar números sueltos de paginación (1 al 20) y timestamps tipo 01:39
-            t = t.replace(/\\b\\d{1,2}:\\d{2}\\b/g, ' ');
-            t = t.replace(/(?:^|\\s)\\d{1,2}(?=\\s|\$)/g, ' ');
-            return clean(t);
-          }
-
-          function getDomPath(el) {
-            if (!el || !el.parentNode) return '';
-            var stack = [];
-            var curr = el;
-            while (curr && curr.nodeType === 1 && curr.tagName.toLowerCase() !== 'html' && stack.length < 6) {
-              var name = curr.tagName.toLowerCase();
-              if (curr.id) {
-                name += '#' + curr.id;
-              } else if (curr.className && typeof curr.className === 'string') {
-                var cls = curr.className.trim().split(/\\s+/).filter(function(c) { return c && !c.includes(':'); }).slice(0, 2).join('.');
-                if (cls) name += '.' + cls;
-              }
-              stack.unshift(name);
-              curr = curr.parentNode;
-            }
-            return stack.join(' > ');
-          }
-
-          var doc = document;
-          var questionText = '';
-          var options = [];
-          var strategyUsed = 'ninguna';
-          var matchedSelector = '';
-          var targetEl = null;
-
-          // 1. PRIORIDAD MÁXIMA PARA PREGUNTA: Selectores dedicados de pregunta VISIBLES
-          var qSelectors = [
-            '#question-text',
-            '.question-box',
-            '.col-sm-6 > div[style*="font-size"]',
-            '.col-sm-6 > p[style*="font-size"]',
-            '[style*="font-size: 1.2em"]',
-            '[style*="font-size:1.2em"]',
-            '.udabol-question-statement',
-            '[class*="question-statement"]',
-            '[class*="question-text"]',
-            '.qtext',
-            '.formulation .qtext',
-            '[class*="enunciado"]',
-            '[class*="pregunta-texto"]',
-            '.que .content .qtext',
-            '.question_content',
-            '.freebirdFormviewerViewNumberedItemHeader'
-          ];
-          for (var qs = 0; qs < qSelectors.length; qs++) {
-            var qEls = doc.querySelectorAll(qSelectors[qs]);
-            for (var qi = 0; qi < qEls.length; qi++) {
-              var qEl = qEls[qi];
-              var isHidden = !!qEl.closest('[style*="display: none"], [style*="display:none"], [hidden], .hidden, [aria-hidden="true"]');
-              if (isHidden) continue;
-              var rect = qEl.getBoundingClientRect();
-              if (rect.width === 0 && rect.height === 0 && qEl.offsetParent === null) continue;
-              var qCandidate = clean(qEl.innerText || qEl.textContent);
-              if (qCandidate.length > 8 && !/CARPETA\s+PEDAG|Simulaci[óo]n|Banco\s+de/i.test(qCandidate)) {
-                var stripped = stripNoise(qCandidate);
-                if (stripped.length > 8) {
-                  questionText = stripped;
-                  strategyUsed = 'selector_dedicado_visible (' + qSelectors[qs] + ')';
-                  matchedSelector = qSelectors[qs];
-                  targetEl = qEl;
-                  break;
-                }
-              }
-            }
-            if (questionText.length >= 8) break;
-          }
-
-          // 2. PRIORIDAD MÁXIMA PARA OPCIONES: Selectores de tarjetas/elementos de opción (Simulador, Custom Divs)
-          var optCardSelectors = [
-            '#options-container .option-item',
-            '.options-list .option-item',
-            '.option-item',
-            '.option-card',
-            '[class*="option-item"]',
-            '[class*="option-card"]',
-            '[role="radio"]'
-          ];
-          for (var os = 0; os < optCardSelectors.length; os++) {
-            var optNodes = doc.querySelectorAll(optCardSelectors[os]);
-            if (optNodes && optNodes.length >= 2) {
-              var list = [];
-              optNodes.forEach(function(node) {
-                var clone = node.cloneNode(true);
-                var idx = clone.querySelector('.option-index, [class*="index"], [class*="letter"]');
-                if (idx) idx.remove();
-                var t = clean(clone.innerText || clone.textContent);
-                t = t.replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
-                if (t && list.indexOf(t) === -1) {
-                  list.push(t);
-                }
-              });
-              if (list.length >= 2) {
-                options = list;
-                if (!strategyUsed || strategyUsed === 'ninguna') {
-                  strategyUsed = 'tarjetas_opcion (' + optCardSelectors[os] + ')';
-                }
-                break;
-              }
-            }
-          }
-
-          // 3. ESTRATEGIA DE RADIO BUTTONS (UDABOL Carpeta Pedagógica, Moodle, Google Forms)
-          var radioInputs = Array.from(doc.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
-          if (radioInputs.length === 0) {
-            var iframes = doc.querySelectorAll('iframe');
-            for (var f = 0; f < iframes.length; f++) {
-              try {
-                var idoc = iframes[f].contentDocument || iframes[f].contentWindow.document;
-                if (idoc) {
-                  var ifRadios = Array.from(idoc.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
-                  if (ifRadios.length > 0) {
-                    radioInputs = ifRadios;
-                    doc = idoc;
-                    break;
-                  }
-                }
-              } catch(e) {}
-            }
-          }
-
-          function getOptionTextFromInput(input) {
-            if (input.id) {
-              var lbl = doc.querySelector('label[for="' + input.id + '"]');
-              if (lbl) {
-                var lt = clean(lbl.innerText || lbl.textContent);
-                if (lt) return lt;
-              }
-            }
-            var parentLbl = input.closest('label');
-            if (parentLbl) {
-              var pt = clean(parentLbl.innerText || parentLbl.textContent);
-              if (pt) return pt;
-            }
-            var sib = input.nextElementSibling;
-            if (sib) {
-              var st = clean(sib.innerText || sib.textContent);
-              if (st) return st;
-            }
-            if (input.nextSibling && input.nextSibling.textContent) {
-              var nst = clean(input.nextSibling.textContent);
-              if (nst) return nst;
-            }
-            var parentBox = input.closest('.answer, .r0, .r1, .opcion, .option, li, div, p');
-            if (parentBox) {
-              var clone = parentBox.cloneNode(true);
-              var inputs = clone.querySelectorAll('input, button');
-              inputs.forEach(function(i) { i.remove(); });
-              var cText = clean(clone.innerText || clone.textContent);
-              if (cText) return cText;
-            }
-            return '';
-          }
-
-          if (options.length < 2 && radioInputs.length > 0) {
-            // Filtrar estrictamente radios visibles (en MTC o simulacros SPA las preguntas previas quedan en el DOM con display: none)
-            var visibleRadios = radioInputs.filter(function(r) {
-              var isHidden = !!r.closest('[style*="display: none"], [style*="display:none"], [hidden], .hidden, [aria-hidden="true"]');
-              if (isHidden) return false;
-              var rect = r.getBoundingClientRect();
-              return (rect.width > 0 || rect.height > 0 || r.offsetParent !== null);
-            });
-            if (visibleRadios.length === 0) visibleRadios = radioInputs;
-
-            var activeBox = (visibleRadios[0] ? visibleRadios[0].closest('[id*="containerPregunta"], [class*="pregunta"], [class*="question"], .card-box, .card, fieldset') : null);
-            if (activeBox) {
-              targetEl = activeBox;
-            }
-
-            var targetName = visibleRadios[0].name;
-            var currentGroup = visibleRadios.filter(function(r) {
-              return !targetName || r.name === targetName;
-            });
-            if (currentGroup.length < 2) currentGroup = visibleRadios;
-
-            currentGroup.forEach(function(input) {
-              var txt = getOptionTextFromInput(input);
-              txt = txt.replace(/^[A-Za-z0-9][\.\)\-]\s*/, '').trim();
-              if (txt && options.indexOf(txt) === -1) {
-                options.push(txt);
-              }
-            });
-
-            // Si detectamos el contenedor activo visible (ej. MTC #containerPregunta2), extraer enunciado directamente de él
-            if (activeBox && questionText.length < 5) {
-              var pNodes = activeBox.querySelectorAll('p, [class*="font-"], [class*="enunciado"], [class*="pregunta"], h4');
-              for (var pn = 0; pn < pNodes.length; pn++) {
-                var pText = stripNoise(clean(pNodes[pn].innerText || pNodes[pn].textContent));
-                // Omitir títulos de tema genérico
-                if (/^Tema\s*:/i.test(pText)) continue;
-                if (pText.length > 6 && options.indexOf(pText) === -1) {
-                  questionText = pText;
-                  strategyUsed = 'contenedor_activo_visible (MTC/SPA)';
-                  matchedSelector = '#' + (activeBox.id || 'containerActivo') + ' -> ' + pNodes[pn].tagName.toLowerCase();
-                  break;
-                }
-              }
-            }
-
-            // Búsqueda del enunciado real para UDABOL, Moodle y simulador
-            if (questionText.length < 5 && visibleRadios.length > 0) {
-              var firstRadio = visibleRadios[0];
-
-              // 1. HERMANO PREVIO DEL CONTENEDOR DE OPCIONES (Estructura estándar de UDABOL y Simuladores)
-              var optsBox = firstRadio.closest('.udabol-options-container, #udabol-options-box, .options-list, #options-container, [class*="options"], div.left[style*="text-align"], .left, table, ul, ol');
-              if (optsBox && optsBox.previousElementSibling) {
-                var prevBoxSib = optsBox.previousElementSibling;
-                while (prevBoxSib && (prevBoxSib.tagName === 'BR' || prevBoxSib.tagName === 'HR' || clean(prevBoxSib.innerText || prevBoxSib.textContent).length === 0)) {
-                  prevBoxSib = prevBoxSib.previousElementSibling;
-                }
-                if (prevBoxSib) {
-                  var candBox = stripNoise(clean(prevBoxSib.innerText || prevBoxSib.textContent));
-                  if (candBox.length > 6 && !/CARPETA\\s+PEDAG|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION/i.test(candBox)) {
-                    questionText = candBox;
-                    strategyUsed = 'contenedor_opciones_hermano_previo (UDABOL/Web)';
-                    matchedSelector = (optsBox.className || optsBox.tagName) + ' -> previousElementSibling';
-                    targetEl = prevBoxSib;
-                  }
-                }
-              }
-
-              // 2. HERMANO PREVIO DEL BLOQUE DE LA PRIMERA OPCIÓN (Moodle / Tablas simples)
-              if (questionText.length < 5) {
-                var parentBlock = firstRadio.closest('.form-group, .opcion, .option, tr, li, div, p');
-                var prevSib = parentBlock ? parentBlock.previousElementSibling : null;
-                while (prevSib) {
-                  var pCand = stripNoise(clean(prevSib.innerText || prevSib.textContent));
-                  if (pCand.length > 6 && options.indexOf(pCand) === -1 && !/CARPETA\\s+PEDAG|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION/i.test(pCand)) {
-                    questionText = pCand;
-                    strategyUsed = 'radio_hermano_previo (UDABOL/Moodle)';
-                    matchedSelector = 'input[type=radio] -> previousElementSibling';
-                    targetEl = prevSib;
-                    break;
-                  }
-                  prevSib = prevSib.previousElementSibling;
-                }
-              }
-
-              // 3. BÚSQUEDA INVERSA ESTRICTA USANDO innerText VISIBLE (Excluye display:none por diseño)
-              if (questionText.length < 5) {
-                var bodyVisibleText = doc.body ? (doc.body.innerText || '') : '';
-                var rawLines = bodyVisibleText.split(/[\\r\\n]+/).map(function(l) { return clean(l); }).filter(function(l) { return l.length > 0; });
-                var filteredLines = [];
-                for (var i = 0; i < rawLines.length; i++) {
-                  var line = rawLines[i];
-                  if (/^\\d{1,2}\$/.test(line)) continue;
-                  if (/^\\d{1,2}:\\d{2}\$/.test(line)) continue;
-                  if (/^(CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION)/i.test(line)) continue;
-                  if (/^(TouchID|Quiz\\s+Simulator|Banco|Modo:|Ir\\s+al|Categoría|Pregunta\\s+\\d+|Respondidas|Sin responder|Respondida)/i.test(line)) continue;
-                  if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
-                  if (/^(TIEMPO\\s+RESTANTE|Minutos|Segundos|Pregunta\\s+nro|Terminar\\s+intento)/i.test(line)) continue;
-                  if (/^(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar)\$/i.test(line)) continue;
-                  // Excluir nombres de estudiantes en mayúsculas
-                  if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(line) && line.split(' ').length >= 3 && /CALLE|JOSE|BERNARDO|SUVIA|ESTUDIANTE|ALUMNO/i.test(line)) continue;
-                  filteredLines.push(line);
-                }
-
-                function isStrictOptionMatch(line, opt) {
-                  var l = clean(line).toLowerCase().replace(/^[a-z0-9][\\.\\)\\-]\\s*/i, '');
-                  var o = clean(opt).toLowerCase().replace(/^[a-z0-9][\\.\\)\\-]\\s*/i, '');
-                  if (l === o) return true;
-                  // Si tiene 8 o más caracteres puede ser substring, pero nunca para palabras cortas como "TODOS"
-                  if (o.length >= 8 && l.indexOf(o) !== -1) return true;
-                  return false;
-                }
-
-                if (options.length >= 2) {
-                  var firstOptIdx = -1;
-                  for (var li = 0; li < filteredLines.length; li++) {
-                    for (var oi = 0; oi < options.length; oi++) {
-                      if (isStrictOptionMatch(filteredLines[li], options[oi])) {
-                        firstOptIdx = li;
-                        break;
-                      }
-                    }
-                    if (firstOptIdx !== -1) break;
-                  }
-
-                  if (firstOptIdx > 0) {
-                    var qParts = [];
-                    for (var bi = firstOptIdx - 1; bi >= 0; bi--) {
-                      var cand = filteredLines[bi];
-                      if (/^(CARPETA|UDABOL|MED-|1P|2P|3P|FINAL|PARCIAL|EXAMEN|TIEMPO|MINUTOS|SEGUNDOS|CERRAR)/i.test(cand)) break;
-                      if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(cand) && cand.split(' ').length >= 3) break;
-                      if (cand.length >= 4) {
-                        qParts.unshift(cand);
-                        if (qParts.length >= 2 || cand.endsWith('?') || cand.endsWith(':')) break;
-                      }
-                    }
-                    if (qParts.length > 0) {
-                      questionText = qParts.join(' ');
-                      strategyUsed = 'busqueda_inversa_previa_opciones_visible (UDABOL)';
-                      matchedSelector = 'filteredLines (inmediatamente antes de primera opción)';
-                      targetEl = currentGroup[0] ? currentGroup[0].parentElement : null;
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          // 4. RESPALDO SEMÁNTICO GENERAL SI AÚN NO HAY PREGUNTA
-          if (options.length < 2 || questionText.length < 5) {
-            var bodyText = doc.body.innerText || doc.body.textContent || '';
-            var lines = bodyText.split(/[\\r\\n]+/).map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
-            var cleanLines = [];
-
-            for (var i = 0; i < lines.length; i++) {
-              var line = lines[i];
-              if (/^\\d{1,2}\$/.test(line)) continue;
-              if (/^\\d{1,2}:\\d{2}\$/.test(line)) continue;
-              if (/^(CARPETA\\s+PEDAG[OÓ]GICA|UDABOL|UNIVERSIDAD|CERRAR\\s+SESION)/i.test(line)) continue;
-              if (/^(TouchID|Quiz\\s+Simulator|Banco|Modo:|Ir\\s+al|Categoría|Pregunta\\s+\\d+|Respondidas|Sin responder|Respondida)/i.test(line)) continue;
-              if (/^(1P|2P|3P|FINAL|EXAMEN|PARCIAL|MED-)/i.test(line)) continue;
-              if (/^(TIEMPO\\s+RESTANTE|Minutos|Segundos|Pregunta\\s+nro|Terminar\\s+intento)/i.test(line)) continue;
-              if (/^(Resolver\\s+con\\s+IA|Siguiente|Anterior|Finalizar)\$/i.test(line)) continue;
-              if (/^[A-ZÁÉÍÓÚÑ\\s]{10,}\$/.test(line) && line.split(' ').length >= 3 && /CALLE|JOSE|BERNARDO|SUVIA|ESTUDIANTE/i.test(line)) continue;
-              cleanLines.push(line);
-            }
-
-            if (cleanLines.length >= 2) {
-              if (questionText.length < 5) {
-                for (var k = cleanLines.length - 1; k >= 0; k--) {
-                  var cand = cleanLines[k];
-                  if (options.indexOf(cand) === -1 && cand.length > 5 && !/CARPETA\\s+PEDAG|UDABOL|UNIVERSIDAD|CERRAR|Simulador|TouchID/i.test(cand)) {
-                    questionText = cand;
-                    strategyUsed = 'respaldo_semantico_lineas';
-                    matchedSelector = 'cleanLines[' + k + ']';
-                    targetEl = doc.body;
-                    break;
-                  }
-                }
-              }
-              var parsedOpts = [];
-              for (var j = 0; j < cleanLines.length; j++) {
-                var optCandidate = cleanLines[j].replace(/^[A-Za-z0-9][\\.\\)\\-]\\s*/, '').trim();
-                if (optCandidate && optCandidate !== questionText && parsedOpts.indexOf(optCandidate) === -1) {
-                  parsedOpts.push(optCandidate);
-                }
-              }
-              if (parsedOpts.length >= 2 && options.length < 2) {
-                options = parsedOpts;
-              }
-            }
-          }
-
-          questionText = stripNoise(questionText);
-
-          // Capturar el código interno HTML: tanto el contenedor activo visible como el documento completo
-          var fullInternalHtml = '';
-          try {
-            fullInternalHtml = (doc.body ? doc.body.innerHTML : (doc.documentElement ? doc.documentElement.innerHTML : '')).slice(0, 100000);
-          } catch(e) {}
-
-          var activeSnippetHtml = '';
-          if (targetEl) {
-            try {
-              activeSnippetHtml = targetEl.outerHTML || '';
-            } catch(e) {}
-          }
-          if (!activeSnippetHtml) {
-            activeSnippetHtml = fullInternalHtml;
-          }
-
-          var telemetry = {
-            url: window.location.href || '',
-            title: document.title || '',
-            strategy: strategyUsed,
-            matchedSelector: matchedSelector,
-            domPath: targetEl ? getDomPath(targetEl) : (visibleRadios[0] ? getDomPath(visibleRadios[0]) : ''),
-            rawQuestionHtml: activeSnippetHtml,
-            fullHtml: fullInternalHtml,
-            radiosCount: visibleRadios.length,
-            optionsCount: options.length,
-            timestamp: new Date().toISOString()
-          };
-
-          return JSON.stringify({
-            question: questionText,
-            options: options,
-            telemetry: telemetry
-          });
-        })()
-      ''';
-
-      // Reintentos automáticos para tolerar transiciones AJAX entre preguntas ("Siguiente")
-      String question = '';
-      List<String> options = [];
-      Map<String, dynamic>? telemetryData;
-
-      for (int attempt = 0; attempt < 4; attempt++) {
-        final result = await _tabs[_currentTabIndex].controller.runJavaScriptReturningResult(jsScript);
-        
-        String cleanResult = result.toString();
-        if (cleanResult.startsWith('"') && cleanResult.endsWith('"')) {
-          cleanResult = cleanResult.substring(1, cleanResult.length - 1);
-          cleanResult = cleanResult.replaceAll('\\"', '"').replaceAll('\\\\', '\\');
-        }
-
-        try {
-          final Map<String, dynamic> data = jsonDecode(cleanResult);
-          final String q = (data['question'] ?? '').toString().trim();
-          final List<String> opts = List<String>.from(data['options'] ?? []);
-          if (data['telemetry'] is Map) {
-            telemetryData = Map<String, dynamic>.from(data['telemetry']);
-          }
-
-          if (q.length >= 8 && opts.length >= 2) {
-            question = q;
-            options = opts;
-            break; // Pregunta y alternativas listas
-          } else if (q.length >= 8 && attempt == 3) {
-            question = q;
-            options = opts;
-          }
-        } catch (_) {}
-
-        // Si la página aún está renderizando la transición, esperar 250ms antes del próximo reintento
-        if (attempt < 3) {
-          await Future.delayed(const Duration(milliseconds: 250));
-        }
+      if (!extractionResult.isSuccess || extractionResult.questions.isEmpty) {
+        failureReason = extractionResult.errorMessage ?? 'No se detectaron preguntas en el DOM renderizado.';
+        throw Exception(failureReason);
       }
 
-      if (question.length < 5) {
-        throw Exception('No se detectó suficiente contenido para formular una pregunta.');
-      }
+      final activeQuestion = extractionResult.questions.first;
 
-      // Llamar a Gemini / Backend con telemetría de análisis DOM
-      final responseData = await _queryGemini(question, options, telemetry: telemetryData);
+      // 2. Resolver con la IA (enviando solo el JSON limpio)
+      aiSolution = await QuizAiService.solveQuestion(
+        question: activeQuestion,
+        config: widget.config,
+        telemetry: extractionResult.telemetry,
+      );
 
       // Confirmación háptica suave cuando la respuesta está lista
       HapticFeedback.mediumImpact();
 
-      // Mostrar el bottom sheet con la respuesta
-      _showAnswerBottomSheet(question, options, responseData);
+      // 3. Mostrar la respuesta en la interfaz de forma más sutil y desapercibida
+      _showAnswerBottomSheet(activeQuestion, aiSolution);
 
-      // Sincronizar en la nube
-      if (widget.isFirebaseInitialized) {
-        _syncToFirestore(question, options, responseData);
-      }
+      // 4. Sincronizar en Firestore / Historial y Banco de Preguntas
+      _syncQuestionAndAnswer(activeQuestion, aiSolution);
 
     } catch (e) {
-      // Opción A: Modo táctil cero pantalla (100% discreto e indetectable a terceros)
-      // CERO avisos en pantalla. CERO recuadros rojos.
-      // Notificación táctil secreta de 2 toques cortos (tac-tac) en el teléfono.
       _hapticErrorFeedback();
-      debugPrint('Error al resolver cuestionario (modo sigiloso): $e');
+      failureReason ??= e.toString();
+      debugPrint('Fallo al resolver cuestionario: $e');
+
+      if (!_isStealthMode) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failureReason.startsWith('Exception: ') ? failureReason.substring(11) : failureReason,
+              style: const TextStyle(fontSize: 12),
+            ),
+            backgroundColor: const Color(0xFF323639),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } finally {
+      // 5. ¡IMPORTANTE! Enviar telemetría DOM incondicionalmente a backend y Firestore
+      // (dé o no dé respuesta, para análisis forense y auditoría web)
+      if (extractionResult != null) {
+        _sendTelemetryInconditionally(
+          extractionResult: extractionResult,
+          solution: aiSolution,
+          errorReason: failureReason,
+        );
+      }
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -1016,306 +594,256 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  // Petición a la API (Backend Gateway o Gemini directo)
-  Future<Map<String, dynamic>> _queryGemini(String question, List<String> options, {Map<String, dynamic>? telemetry}) async {
+  /// Envía la telemetría DOM incondicionalmente al backend y a Firestore (tanto en éxito como en fallo)
+  void _sendTelemetryInconditionally({
+    required QuizExtractionResult extractionResult,
+    AiSolutionResponse? solution,
+    String? errorReason,
+  }) async {
     final backendUrl = widget.config.backendUrl.trim();
-    final userId = widget.config.userId.trim();
+    final userId = widget.config.userId.trim().isNotEmpty ? widget.config.userId.trim() : 'anon_mobile';
+    final tel = extractionResult.telemetry;
+    final activeQ = extractionResult.questions.isNotEmpty ? extractionResult.questions.first : null;
 
-    // Determinar system prompt inteligente (con detección MTC, médica/romanos y alta precisión)
-    String systemPrompt = widget.config.systemPrompt.trim();
-    if (systemPrompt.isEmpty) {
-      final isMtc = RegExp(
-        r'mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|adelantamiento|preferencia|estacionar|remolque|soat|citv|inspecci[óo]n|v[íi]a|intersecci[óo]n',
-        caseSensitive: false,
-      ).hasMatch('$question ${options.join(' ')}');
-      final isRomanOrMedical = RegExp(
-        r'\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|androstenodiona|testosterona|estr[óo]geno|aromatasa|hormon|enzim|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco',
-        caseSensitive: false,
-      ).hasMatch('$question ${options.join(' ')}');
-      if (isMtc) {
-        systemPrompt = 'Eres el evaluador oficial y perito experto del examen de reglas de tránsito del MTC (Ministerio de Transportes y Comunicaciones del Perú). Tu objetivo es responder con 100% de precisión y exactitud jurídica basándote estrictamente en el TUO del Reglamento Nacional de Tránsito (D.S. N° 016-2009-MTC y sus modificatorias como D.S. N° 025-2021-MTC sobre límites de velocidad de 30 km/h en calles/jirones y 50 km/h en avenidas) y el Balotario Oficial de Preguntas del MTC. Responde de forma rigurosa seleccionando la alternativa oficial correcta.';
-      } else if (isRomanOrMedical) {
-        systemPrompt = 'Actúa como evaluador experto de exámenes médicos y fisiológicos de alta exigencia (Fisiología I/II, Medicina Interna, ENAM, MIR). Para cada pregunta: 1) Identifica el concepto fisiológico/farmacológico exacto. 2) Analiza rigurosamente cada alternativa descartando distractores engañosos. 3) Selecciona con 100% de precisión científica la alternativa correcta y su índice exacto.';
-      } else {
-        systemPrompt = 'Actúa como un experto académico de élite y responde con el 100% de precisión analizando rigurosamente todas las alternativas y descartando distractores.';
+    final telemetryPayload = {
+      'userId': userId,
+      'url': tel.url,
+      'title': tel.title,
+      'course': extractionResult.course ?? activeQ?.course ?? '',
+      'strategy': tel.strategyUsed,
+      'matchedSelector': tel.strategyUsed,
+      'question': activeQ?.statement ?? (errorReason != null ? 'Error: $errorReason' : 'Sin pregunta detectada'),
+      'options': activeQ?.alternatives.map((a) => a.text).toList() ?? [],
+      'domPath': tel.domPath,
+      'rawQuestionHtml': tel.rawQuestionHtml,
+      'radiosCount': tel.radiosCount,
+      'inputsCount': tel.inputsCount,
+      'formsCount': tel.formsCount,
+      'labelsCount': tel.labelsCount,
+      'candidatesCount': tel.candidatesCount,
+      'answer': solution?.answerText ?? '',
+      'answerLetter': solution?.answer ?? '',
+      'explanation': solution?.explanation ?? '',
+      'isSuccess': solution != null,
+      'errorReason': errorReason,
+      'source': 'mobile_app',
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    // A. Enviar al Backend si está configurado
+    if (backendUrl.isNotEmpty) {
+      try {
+        String tUrl = backendUrl;
+        if (!tUrl.endsWith('/api/telemetry')) {
+          tUrl = tUrl.endsWith('/') ? '${tUrl}api/telemetry' : '$tUrl/api/telemetry';
+        }
+        http.post(
+          Uri.parse(tUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(telemetryPayload),
+        ).timeout(const Duration(seconds: 15)).catchError((_) => http.Response('', 500));
+      } catch (_) {}
+    }
+
+    // B. Enviar a Firestore si está inicializado
+    if (widget.isFirebaseInitialized) {
+      try {
+        await FirebaseFirestore.instance.collection('dom_inspections').add({
+          ...telemetryPayload,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
+  }
+
+  /// Sincroniza la pregunta y respuesta en el Historial y en el Banco de Preguntas por curso
+  void _syncQuestionAndAnswer(QuestionItem question, AiSolutionResponse solution) async {
+    final userId = widget.config.userId.trim().isNotEmpty ? widget.config.userId.trim() : 'anon_mobile';
+    final course = question.course ?? solution.subject;
+
+    // A. Sincronizar en Firestore 'history' y 'question_bank'
+    if (widget.isFirebaseInitialized) {
+      try {
+        // Historial de resoluciones
+        await FirebaseFirestore.instance.collection('history').add({
+          'userId': userId,
+          'question': question.statement,
+          'options': question.alternatives.map((a) => a.text).toList(),
+          'answer': solution.answerText,
+          'answerLetter': solution.answer,
+          'explanation': solution.explanation,
+          'subject': course,
+          'timestamp': FieldValue.serverTimestamp(),
+          'source': 'mobile_app',
+        });
+
+        // Banco de Preguntas persistido por Curso / Materia
+        await FirebaseFirestore.instance.collection('question_bank').add({
+          'userId': userId,
+          'course': course.isNotEmpty ? course : 'General',
+          'question': question.statement,
+          'type': question.type,
+          'alternatives': question.alternatives.map((a) => a.toJson()).toList(),
+          'answer': solution.answer,
+          'answerText': solution.answerText,
+          'explanation': solution.explanation,
+          'images': question.images.map((i) => i.toJson()).toList(),
+          'confidence': solution.confidence,
+          'timestamp': FieldValue.serverTimestamp(),
+          'source': 'mobile_app',
+        });
+      } catch (e) {
+        debugPrint('Error guardando en Firestore: $e');
       }
     }
 
+    // B. Sincronizar con el Backend /api/question-bank si está disponible
+    final backendUrl = widget.config.backendUrl.trim();
     if (backendUrl.isNotEmpty) {
-      String urlStr = backendUrl;
-      if (!urlStr.endsWith('/solve')) {
-        urlStr = urlStr.endsWith('/') ? '${urlStr}solve' : '$urlStr/solve';
-      }
-
       try {
-        final response = await http.post(
-          Uri.parse(urlStr),
+        String qbUrl = backendUrl;
+        if (!qbUrl.endsWith('/api/question-bank')) {
+          qbUrl = qbUrl.endsWith('/') ? '${qbUrl}api/question-bank' : '$qbUrl/api/question-bank';
+        }
+        http.post(
+          Uri.parse(qbUrl),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'userId': userId,
-            'question': question,
-            'options': options,
-            'systemPrompt': systemPrompt,
-            'telemetry': telemetry,
+            'course': course.isNotEmpty ? course : 'General',
+            'question': question.statement,
+            'type': question.type,
+            'alternatives': question.alternatives.map((a) => a.toJson()).toList(),
+            'answer': solution.answer,
+            'answerText': solution.answerText,
+            'explanation': solution.explanation,
+            'images': question.images.map((i) => i.toJson()).toList(),
+            'confidence': solution.confidence,
+            'timestamp': DateTime.now().toIso8601String(),
           }),
-        ).timeout(const Duration(seconds: 45));
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(utf8.decode(response.bodyBytes));
-          return data;
-        } else {
-          String errorMsg = 'Error en el servidor backend';
-          try {
-            final errBody = jsonDecode(utf8.decode(response.bodyBytes));
-            errorMsg = errBody['error'] ?? errorMsg;
-          } catch (_) {}
-          throw Exception('$errorMsg (Código ${response.statusCode})');
-        }
-      } catch (e) {
-        if (widget.config.geminiApiKey.isEmpty) {
-          rethrow;
-        }
-        // Si falla el backend pero tenemos API key local, podemos intentar localmente
-        print('Error en backend, reintentando localmente: $e');
-      }
-    }
-
-    // Código original de Gemini directo
-    final apiKey = widget.config.geminiApiKey;
-    if (apiKey.isEmpty) {
-      throw Exception('Por favor configura la API Key de Gemini o el Servidor Backend.');
-    }
-
-    final models = [
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-2.5-flash-lite',
-      'gemini-flash-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-1.5-flash',
-    ];
-
-    String prompt = '';
-    if (options.isNotEmpty) {
-      prompt = '''
-Responde con máxima precisión a esta pregunta de examen.
-Pregunta: "$question"
-Opciones:
-${options.asMap().entries.map((e) => '${e.key}) ${e.value}').join('\n')}
-
-INSTRUCCIONES:
-1. Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.
-2. Identifica con certeza absoluta la alternativa correcta y su índice exacto (0-indexed).
-
-Responde estrictamente en formato JSON:
-{
-  "thought": "análisis breve y descarte en 1 oración",
-  "correct_option_index": int_indice_comenzando_en_0,
-  "correct_option_text": "texto exacto de la opcion",
-  "explanation": "explicación max 5 palabras",
-  "subject": "disciplina 1 palabra"
-}
-''';
-    } else {
-      prompt = '''
-Identifica la mejor respuesta.
-Contenido: "$question"
-
-Responde estrictamente en formato JSON:
-{
-  "thought": "análisis breve",
-  "correct_option_index": -1,
-  "correct_option_text": "respuesta sintetizada",
-  "explanation": "explicación max 5 palabras",
-  "subject": "disciplina 1 palabra"
-}
-''';
-    }
-
-    final requestBody = {
-      'contents': [
-        {
-          'parts': [
-            {'text': prompt}
-          ]
-        }
-      ],
-      'systemInstruction': {
-        'parts': [
-          {'text': systemPrompt}
-        ]
-      },
-      'generationConfig': {
-        'temperature': 0.0,
-        'responseMimeType': 'application/json',
-        'responseSchema': {
-          'type': 'OBJECT',
-          'properties': {
-            'thought': {'type': 'STRING'},
-            'correct_option_index': {'type': 'INTEGER'},
-            'correct_option_text': {'type': 'STRING'},
-            'explanation': {'type': 'STRING'},
-            'subject': {'type': 'STRING'}
-          },
-          'required': ['correct_option_index', 'correct_option_text', 'explanation', 'subject']
-        }
-      }
-    };
-
-    http.Response? lastResponse;
-    String? lastError;
-
-    for (final model in models) {
-      final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey');
-      try {
-        final response = await http.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(requestBody),
-        ).timeout(const Duration(seconds: 10));
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(utf8.decode(response.bodyBytes));
-          final String resultText = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
-          if (resultText.isNotEmpty) {
-            return jsonDecode(resultText.trim());
-          }
-        } else {
-          lastResponse = response;
-          lastError = 'HTTP ${response.statusCode}: ${response.body}';
-        }
-      } catch (e) {
-        lastError = e.toString();
-      }
-    }
-
-    if (lastResponse != null) {
-      throw Exception('API Gemini falló (código ${lastResponse.statusCode}).');
-    } else {
-      throw Exception('Error al conectar con la API de Gemini: $lastError');
+        ).timeout(const Duration(seconds: 15)).catchError((_) => http.Response('', 500));
+      } catch (_) {}
     }
   }
 
-  // Guardar en Firestore
-  void _syncToFirestore(String question, List<String> options, Map<String, dynamic> resData) async {
-    try {
-      await FirebaseFirestore.instance.collection('history').add({
-        'question': question,
-        'options': options,
-        'answer': resData['correct_option_text'],
-        'answerIndex': resData['correct_option_index'],
-        'explanation': resData['explanation'],
-        'subject': resData['subject'] ?? 'General',
-        'timestamp': FieldValue.serverTimestamp(),
-        'source': 'mobile_app',
-      });
-    } catch (e) {
-      print('Error saving to firestore: $e');
-    }
-  }
-
-  // Mostrar Bottom Sheet elegante con la respuesta (Modo Desapercibido / Faint Overlay)
-  void _showAnswerBottomSheet(String question, List<String> options, Map<String, dynamic> resData) {
+  // Mostrar Bottom Sheet sutil y desapercibido con la respuesta
+  void _showAnswerBottomSheet(QuestionItem question, AiSolutionResponse solution) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.04),
+      barrierColor: Colors.black.withOpacity(0.02), // Prácticamente invisible
+      isScrollControlled: true,
       builder: (context) {
-        final explanation = (resData['explanation'] ?? '').toString();
-        final subject = (resData['subject'] ?? 'General').toString();
+        final courseName = (question.course?.isNotEmpty == true) ? question.course! : solution.subject;
+        final explanation = solution.explanation.trim();
 
-        final rawIndex = resData['correct_option_index'];
-        int? optionIndex;
-        if (rawIndex is int) {
-          optionIndex = rawIndex;
-        } else if (rawIndex != null) {
-          optionIndex = int.tryParse(rawIndex.toString());
-        }
-
-        String letterPrefix = '';
-        if (optionIndex != null && optionIndex >= 0 && optionIndex < 26) {
-          letterPrefix = '[${String.fromCharCode(65 + optionIndex)}] ';
-        }
-        final answerText = (resData['correct_option_text'] ?? '').toString();
-
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1F22).withOpacity(0.95),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.12),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.5),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              )
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8AB4F8).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      subject.toUpperCase(),
-                      style: const TextStyle(
-                        color: Color(0xFF8AB4F8),
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.close,
-                        color: Colors.white.withOpacity(0.4),
-                        size: 16,
-                      ),
-                    ),
-                  )
-                ],
+        return GestureDetector(
+          onTap: () => Navigator.pop(context),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              // Fondo oscuro translúcido que se mimetiza sutilmente con la pantalla
+              color: const Color(0xFF141517).withOpacity(0.85),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.06),
+                width: 0.8,
               ),
-              const SizedBox(height: 8),
-              Text(
-                '$letterPrefix$answerText',
-                style: const TextStyle(
-                  color: Color(0xFFE8EAED),
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.bold,
-                  height: 1.3,
-                ),
-              ),
-              if (explanation.isNotEmpty && explanation != 'N/A' && explanation != 'none') ...[
-                const SizedBox(height: 6),
-                Text(
-                  explanation,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.55),
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
-                ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                )
               ],
-              const SizedBox(height: 2),
-            ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cabecera discreta: curso y botón cerrar tenue
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        courseName.toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.35),
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(
+                      Icons.close,
+                      color: Colors.white.withOpacity(0.25),
+                      size: 14,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+
+                // Enunciado en tono apagado para referencia contextual rápida
+                Text(
+                  question.statement,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.40),
+                    fontSize: 10.5,
+                    height: 1.25,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 5),
+
+                // Respuesta correcta destacada en verde suave natural y gris sobrio
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '[${solution.answer}] ',
+                      style: const TextStyle(
+                        color: Color(0xFF81C995),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        solution.answerText,
+                        style: const TextStyle(
+                          color: Color(0xFFE2E8F0),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Explicación concisa y sutil si existe
+                if (explanation.isNotEmpty && explanation != 'N/A' && explanation != 'none') ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    explanation,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.32),
+                      fontSize: 10.0,
+                      height: 1.25,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
           ),
         );
       },
