@@ -172,6 +172,11 @@ getDb().catch(err => {
 const requireDb = async (req, res, next) => {
   try {
     req.db = await getDb();
+    if (!req.db) {
+      return res.status(503).json({ 
+        error: 'Base de datos no disponible. Verifique que MongoDB y el túnel bore estén activos.' 
+      });
+    }
     next();
   } catch (err) {
     console.error('❌ Error conectando a MongoDB:', err.message);
@@ -569,6 +574,10 @@ app.post('/solve', async (req, res) => {
           answerIndex: parsedResult.correct_option_index,
           explanation: parsedResult.explanation,
           subject: parsedResult.subject || 'General',
+          autoMarked: (telemetry && telemetry.autoMarked === true) || req.body.autoMarked === true,
+          autoMarkStatus: (telemetry && telemetry.autoMarkStatus) || req.body.autoMarkStatus || 'not_attempted',
+          autoMarkDetails: (telemetry && telemetry.autoMarkDetails) || req.body.autoMarkDetails || '',
+          autoMarkedOption: (telemetry && telemetry.autoMarkedOption) || req.body.autoMarkedOption || '',
           source: req.body.source || 'mobile_app',
           timestamp: new Date()
         };
@@ -714,6 +723,10 @@ app.get('/admin/history', checkAdminToken, requireDb, async (req, res) => {
       source: doc.source,
       creditsUsed: doc.creditsUsed,
       userType: doc.userType,
+      autoMarked: doc.autoMarked === true,
+      autoMarkStatus: doc.autoMarkStatus || 'not_attempted',
+      autoMarkDetails: doc.autoMarkDetails || '',
+      autoMarkedOption: doc.autoMarkedOption || '',
       timestamp: doc.timestamp ? (doc.timestamp.toISOString ? doc.timestamp.toISOString() : doc.timestamp) : null
     }));
     res.json(history);
@@ -756,6 +769,10 @@ app.post('/api/telemetry', requireDb, async (req, res) => {
       answer: p.answer || '',
       answerLetter: p.answerLetter || '',
       explanation: p.explanation || '',
+      autoMarked: p.autoMarked === true,
+      autoMarkStatus: p.autoMarkStatus || (p.autoMarked ? 'success' : 'not_attempted'),
+      autoMarkDetails: p.autoMarkDetails || '',
+      autoMarkedOption: p.autoMarkedOption || p.answerLetter || '',
       isSuccess: p.isSuccess !== undefined ? p.isSuccess : (p.answer ? true : false),
       errorReason: p.errorReason || null,
       source: p.source || 'mobile_app',
@@ -794,6 +811,10 @@ app.get('/admin/dom-inspections', checkAdminToken, requireDb, async (req, res) =
       answer: doc.answer,
       answerLetter: doc.answerLetter || '',
       explanation: doc.explanation,
+      autoMarked: doc.autoMarked === true,
+      autoMarkStatus: doc.autoMarkStatus || 'not_attempted',
+      autoMarkDetails: doc.autoMarkDetails || '',
+      autoMarkedOption: doc.autoMarkedOption || '',
       isSuccess: doc.isSuccess !== undefined ? doc.isSuccess : true,
       errorReason: doc.errorReason || null,
       source: doc.source,

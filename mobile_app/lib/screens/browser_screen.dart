@@ -529,6 +529,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
     QuizExtractionResult? extractionResult;
     AiSolutionResponse? aiSolution;
+    AutoMarkResult? autoMarkResult;
     String? failureReason;
 
     try {
@@ -552,7 +553,47 @@ class _BrowserScreenState extends State<BrowserScreen> {
       // Confirmación háptica suave cuando la respuesta está lista
       HapticFeedback.mediumImpact();
 
-      // 3. Mostrar la respuesta en la interfaz de forma más sutil y desapercibida
+      // 2.1 AUTO-MARCADO EN EL DOM (WebView):
+      // Marcar automáticamente la alternativa en la página web
+      try {
+        int targetIdx = -1;
+        for (int i = 0; i < activeQuestion.alternatives.length; i++) {
+          final alt = activeQuestion.alternatives[i];
+          if (alt.id.toUpperCase() == aiSolution.answer.toUpperCase() ||
+              alt.text.trim().toLowerCase() == aiSolution.answerText.trim().toLowerCase()) {
+            targetIdx = i;
+            break;
+          }
+        }
+
+        if (targetIdx == -1 && activeQuestion.alternatives.isNotEmpty) {
+          final letterStr = aiSolution.answer.trim().toUpperCase();
+          if (letterStr.isNotEmpty) {
+            final letterCode = letterStr.codeUnitAt(0);
+            if (letterCode >= 65 && letterCode <= 90) {
+              final letterIdx = letterCode - 65;
+              if (letterIdx < activeQuestion.alternatives.length) {
+                targetIdx = letterIdx;
+              }
+            }
+          }
+        }
+
+        if (targetIdx >= 0) {
+          autoMarkResult = await QuizExtractorService.autoMarkOption(
+            _currentTab.controller,
+            targetIndex: targetIdx,
+            targetLetter: aiSolution.answer,
+            targetText: aiSolution.answerText,
+            questionStatement: activeQuestion.statement,
+          );
+          debugPrint('Resultado auto-marcado: $autoMarkResult');
+        }
+      } catch (markErr) {
+        debugPrint('Excepción ejecutando auto-marcado: $markErr');
+      }
+
+      // 3. Mostrar la respuesta en la interfaz de forma sutil y desapercibida (feedback dual)
       _showAnswerBottomSheet(activeQuestion, aiSolution);
 
       // 4. Sincronizar en Firestore / Historial y Banco de Preguntas
@@ -582,6 +623,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         _sendTelemetryInconditionally(
           extractionResult: extractionResult,
           solution: aiSolution,
+          autoMarkResult: autoMarkResult,
           errorReason: failureReason,
         );
       }
@@ -598,6 +640,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void _sendTelemetryInconditionally({
     required QuizExtractionResult extractionResult,
     AiSolutionResponse? solution,
+    AutoMarkResult? autoMarkResult,
     String? errorReason,
   }) async {
     final backendUrl = widget.config.backendUrl.trim();
@@ -624,6 +667,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
       'answer': solution?.answerText ?? '',
       'answerLetter': solution?.answer ?? '',
       'explanation': solution?.explanation ?? '',
+      'autoMarked': autoMarkResult?.success ?? false,
+      'autoMarkStatus': autoMarkResult != null
+          ? (autoMarkResult.success ? 'success' : 'failed')
+          : 'not_attempted',
+      'autoMarkDetails': autoMarkResult?.details ?? autoMarkResult?.error ?? '',
+      'autoMarkedOption': autoMarkResult?.targetLetter ?? solution?.answer ?? '',
       'isSuccess': solution != null,
       'errorReason': errorReason,
       'source': 'mobile_app',

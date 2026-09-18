@@ -159,6 +159,10 @@ class QuizTelemetry {
   final String domPath;
   final String rawQuestionHtml;
   final String? errorReason;
+  final bool autoMarked;
+  final String autoMarkStatus;
+  final String autoMarkDetails;
+  final String autoMarkedOption;
   final String timestamp;
 
   QuizTelemetry({
@@ -175,6 +179,10 @@ class QuizTelemetry {
     this.domPath = '',
     this.rawQuestionHtml = '',
     this.errorReason,
+    this.autoMarked = false,
+    this.autoMarkStatus = 'not_attempted',
+    this.autoMarkDetails = '',
+    this.autoMarkedOption = '',
     String? timestamp,
   }) : timestamp = timestamp ?? DateTime.now().toIso8601String();
 
@@ -193,6 +201,10 @@ class QuizTelemetry {
       domPath: (json['domPath'] ?? '').toString(),
       rawQuestionHtml: (json['rawQuestionHtml'] ?? '').toString(),
       errorReason: json['errorReason']?.toString(),
+      autoMarked: json['autoMarked'] == true,
+      autoMarkStatus: (json['autoMarkStatus'] ?? 'not_attempted').toString(),
+      autoMarkDetails: (json['autoMarkDetails'] ?? '').toString(),
+      autoMarkedOption: (json['autoMarkedOption'] ?? '').toString(),
       timestamp: json['timestamp']?.toString(),
     );
   }
@@ -212,6 +224,10 @@ class QuizTelemetry {
       'domPath': domPath,
       'rawQuestionHtml': rawQuestionHtml,
       if (errorReason != null) 'errorReason': errorReason,
+      'autoMarked': autoMarked,
+      'autoMarkStatus': autoMarkStatus,
+      'autoMarkDetails': autoMarkDetails,
+      'autoMarkedOption': autoMarkedOption,
       'timestamp': timestamp,
     };
   }
@@ -337,4 +353,64 @@ class AiSolutionResponse {
       'subject': subject,
     };
   }
+}
+
+/// Resultado de la operación de marcado automático en el DOM de la página web
+class AutoMarkResult {
+  final bool success;
+  final int targetIndex;
+  final String targetLetter;
+  final String targetText;
+  final String? targetId;
+  final String? targetTag;
+  final bool hasLabel;
+  final String details;
+  final String? error;
+
+  AutoMarkResult({
+    required this.success,
+    required this.targetIndex,
+    required this.targetLetter,
+    this.targetText = '',
+    this.targetId,
+    this.targetTag,
+    this.hasLabel = false,
+    this.details = '',
+    this.error,
+  });
+
+  factory AutoMarkResult.fromJson(Map<String, dynamic> json) {
+    return AutoMarkResult(
+      success: json['success'] == true,
+      targetIndex: json['markedIndex'] is int
+          ? json['markedIndex']
+          : (json['targetIndex'] is int ? json['targetIndex'] : 0),
+      targetLetter: (json['markedLetter'] ?? json['targetLetter'] ?? '').toString(),
+      targetText: (json['targetText'] ?? '').toString(),
+      targetId: json['targetId']?.toString(),
+      targetTag: json['targetTag']?.toString(),
+      hasLabel: json['hasLabel'] == true,
+      details: (json['details'] ?? '').toString(),
+      error: json['error']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'success': success,
+      'targetIndex': targetIndex,
+      'targetLetter': targetLetter,
+      'targetText': targetText,
+      if (targetId != null) 'targetId': targetId,
+      if (targetTag != null) 'targetTag': targetTag,
+      'hasLabel': hasLabel,
+      'details': details,
+      if (error != null) 'error': error,
+    };
+  }
+
+  @override
+  String toString() => success
+      ? 'AutoMark éxito [$targetLetter] (Index $targetIndex, ID: ${targetId ?? "N/A"})'
+      : 'AutoMark fallo [$targetLetter]: ${error ?? "No encontrado"}';
 }

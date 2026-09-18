@@ -37,25 +37,25 @@ import"./web_dashboard-Dtp3Omdk.js";var e=localStorage.getItem(`touchid_backend_
       <tr>
         <td colspan="6" class="table-placeholder">No hay preguntas resueltas aún.</td>
       </tr>
-    `;return}H.innerHTML=``,e.forEach(e=>{let t=document.createElement(`tr`),n=new Date(e.timestamp||Date.now()),r=n.toLocaleDateString()+` `+n.toLocaleTimeString([],{hour:`2-digit`,minute:`2-digit`}),i=e.creditsUsed===void 0?1:e.creditsUsed,a=e.userType===`ilimitado`||i===0?`<span class="badge-credits unlimited">0 cr (Ilimitado)</span>`:`<span class="badge-credits standard">${i} crédito</span>`;t.innerHTML=`
+    `;return}H.innerHTML=``,e.forEach(e=>{let t=document.createElement(`tr`),n=new Date(e.timestamp||Date.now()),r=n.toLocaleDateString()+` `+n.toLocaleTimeString([],{hour:`2-digit`,minute:`2-digit`}),i=e.creditsUsed===void 0?1:e.creditsUsed,a=e.userType===`ilimitado`||i===0?`<span class="badge-credits unlimited">0 cr (Ilimitado)</span>`:`<span class="badge-credits standard">${i} crédito</span>`,o=e.autoMarked===!0?`<span style="display:inline-block; margin-left:6px; font-size:11px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); border-radius:4px; padding:1px 6px; font-weight:700;">⚡ Auto</span>`:``;t.innerHTML=`
       <td data-label="Fecha" class="row-date">${r}</td>
       <td data-label="Materia" class="row-subject"><span class="row-subject">${e.subject||`General`}</span></td>
       <td data-label="Pregunta" class="row-question" title="${e.question}">${e.question}</td>
-      <td data-label="Respuesta" class="row-answer">${e.answer}</td>
+      <td data-label="Respuesta" class="row-answer">${e.answer}${o}</td>
       <td data-label="Créditos" class="row-credits">${a}</td>
       <td data-label="Origen" class="row-source">${e.source===`chrome_extension`?`PC`:`Móvil`}</td>
     `,H.appendChild(t)})}function Me(e){if(e.length===0){V.innerHTML=`
       <div class="feed-placeholder">
         <p>Esperando interacciones de los clientes...</p>
       </div>
-    `;return}let t=e.slice(0,5);V.innerHTML=``,t.forEach(e=>{let t=document.createElement(`div`);t.className=`feed-item`;let n=new Date(e.timestamp||Date.now()).toLocaleTimeString([],{hour:`2-digit`,minute:`2-digit`,second:`2-digit`}),r=(e.options||[]).map((t,n)=>`<div class="feed-option ${t===e.answer||n===e.answerIndex?`correct`:``}">${t}</div>`).join(``);t.innerHTML=`
+    `;return}let t=e.slice(0,5);V.innerHTML=``,t.forEach(e=>{let t=document.createElement(`div`);t.className=`feed-item`;let n=new Date(e.timestamp||Date.now()).toLocaleTimeString([],{hour:`2-digit`,minute:`2-digit`,second:`2-digit`}),r=e.autoMarked===!0?`<span style="background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); border-radius:4px; padding:1px 6px; font-size:10px; font-weight:700; margin-left:6px;">⚡ Auto</span>`:``,i=(e.options||[]).map((t,n)=>`<div class="feed-option ${t===e.answer||n===e.answerIndex?`correct`:``}">${t}</div>`).join(``);t.innerHTML=`
       <div class="feed-meta">
-        <span class="feed-subject">${e.subject||`General`}</span>
+        <span class="feed-subject">${e.subject||`General`}${r}</span>
         <span class="feed-source">${e.source===`chrome_extension`?`Chrome PC`:`App Móvil`} • ${n}</span>
       </div>
       <div class="feed-question">${e.question}</div>
       <div class="feed-options">
-        ${r}
+        ${i}
       </div>
       <div class="feed-explanation">
         <strong>Explicación:</strong> ${e.explanation||`Respuesta sugerida por IA.`}
@@ -65,23 +65,30 @@ import"./web_dashboard-Dtp3Omdk.js";var e=localStorage.getItem(`touchid_backend_
         <p style="font-size: 15px; margin-bottom: 8px; color: #fff;">No hay capturas DOM registradas aún.</p>
         <p style="font-size: 13px;">Al resolver cuestionarios desde la aplicación móvil o simulador, los detalles del DOM analizado (enunciados, alternativas, breadcrumbs) aparecerán automáticamente aquí.</p>
       </div>
-    `;return}E.innerHTML=``,e.forEach((e,t)=>{let n=document.createElement(`div`);n.className=`dom-card`,n.setAttribute(`data-id`,e.id||t);let r=e.isSuccess!==!1&&!e.errorReason;r||(n.style.borderLeft=`4px solid #ef4444`);let i=(e.url||``).toLowerCase(),a=`<span class="dom-portal-badge badge-generic">Web Exam</span>`,o=`Plataforma Web`;i.includes(`udabol`)?(a=`<span class="dom-portal-badge badge-udabol">UDABOL Oficial</span>`,o=`UDABOL (Carpeta Verde)`):i.includes(`moodle`)||i.includes(`continental`)?(a=`<span class="dom-portal-badge badge-moodle">Moodle / Univ</span>`,o=`Campus Virtual Moodle`):(i.includes(`quiz`)||i.includes(`touchid`)||i.includes(`github.io`))&&(a=`<span class="dom-portal-badge badge-simulator">Simulador TouchID</span>`,o=`Banco de Preguntas`);let s=r?`<span class="dom-portal-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">✓ Resuelto con Éxito</span>`:`<span class="dom-portal-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">⚠️ Sin Respuesta / Error</span>`,c=e.course?`<span class="dom-portal-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">📖 ${X(e.course)}</span>`:``,l=new Date(e.timestamp||Date.now()),u=l.toLocaleDateString()+` `+l.toLocaleTimeString([],{hour:`2-digit`,minute:`2-digit`,second:`2-digit`}),d=(e.strategy||`Heurística Estándar`).replace(/_/g,` `),f=e.domPath||`body > form > div.pregunta`,p=(e.options||[]).map((t,n)=>{let r=t===e.answer||n===e.answerIndex||e.answerLetter&&String.fromCharCode(65+n)===e.answerLetter;return`<span class="dom-opt-pill ${r?`is-answer`:``}">${r?`✓ `:``}${X(t)}</span>`}).join(``),m=e.rawQuestionHtml?X(e.rawQuestionHtml):``,h=m.trim().length>0;n.innerHTML=`
+    `;return}E.innerHTML=``,e.forEach((e,t)=>{let n=document.createElement(`div`);n.className=`dom-card`,n.setAttribute(`data-id`,e.id||t);let r=e.isSuccess!==!1&&!e.errorReason;r||(n.style.borderLeft=`4px solid #ef4444`);let i=(e.url||``).toLowerCase(),a=`<span class="dom-portal-badge badge-generic">Web Exam</span>`,o=`Plataforma Web`;i.includes(`udabol`)?(a=`<span class="dom-portal-badge badge-udabol">UDABOL Oficial</span>`,o=`UDABOL (Carpeta Verde)`):i.includes(`moodle`)||i.includes(`continental`)?(a=`<span class="dom-portal-badge badge-moodle">Moodle / Univ</span>`,o=`Campus Virtual Moodle`):(i.includes(`quiz`)||i.includes(`touchid`)||i.includes(`github.io`))&&(a=`<span class="dom-portal-badge badge-simulator">Simulador TouchID</span>`,o=`Banco de Preguntas`);let s=r?`<span class="dom-portal-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">✓ Resuelto con Éxito</span>`:`<span class="dom-portal-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">⚠️ Sin Respuesta / Error</span>`,c=``;e.autoMarked===!0?c=`<span class="dom-portal-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: #10b981; font-weight: 700;">⚡ Auto-marcado:${e.autoMarkedOption?` [${X(e.autoMarkedOption)}]`:``} Éxito</span>`:e.autoMarkStatus===`failed`&&(c=`<span class="dom-portal-badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: #ef4444; font-weight: 700;">⚠️ Auto-marcado: Falló</span>`);let l=e.course?`<span class="dom-portal-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">📖 ${X(e.course)}</span>`:``,u=new Date(e.timestamp||Date.now()),d=u.toLocaleDateString()+` `+u.toLocaleTimeString([],{hour:`2-digit`,minute:`2-digit`,second:`2-digit`}),f=(e.strategy||`Heurística Estándar`).replace(/_/g,` `),p=e.domPath||`body > form > div.pregunta`,m=(e.options||[]).map((t,n)=>{let r=t===e.answer||n===e.answerIndex||e.answerLetter&&String.fromCharCode(65+n)===e.answerLetter,i=e.autoMarked&&(r||e.autoMarkedOption&&String.fromCharCode(65+n)===e.autoMarkedOption)?`⚡ `:r?`✓ `:``;return`<span class="dom-opt-pill ${r?`is-answer`:``}">${i}${X(t)}</span>`}).join(``),h=e.rawQuestionHtml?X(e.rawQuestionHtml):``,g=h.trim().length>0;n.innerHTML=`
       <div class="dom-card-header">
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
           ${a}
-          ${c}
+          ${l}
           ${s}
+          ${c}
           <span style="font-weight: 700; color: #fff; font-size: 14px;">${o}</span>
-          <span class="dom-strategy-tag">⚙ ${X(d)}</span>
+          <span class="dom-strategy-tag">⚙ ${X(f)}</span>
         </div>
         <div class="dom-meta-info">
-          <span>${e.userId||`anon`} • ${u}</span>
+          <span>${e.userId||`anon`} • ${d}</span>
         </div>
       </div>
 
       <div style="font-size: 12px; color: #94a3b8; word-break: break-all; margin-bottom: 6px;">
         <strong>URL:</strong> <a href="${X(e.url)}" target="_blank" style="color: #38bdf8; text-decoration: none;">${X(e.url)}</a>
       </div>
+
+      ${e.autoMarkDetails?`
+      <div style="margin: 6px 0; padding: 7px 12px; background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; border-radius: 4px; font-size: 12px; color: #bae6fd;">
+        ⚡ <strong>Auditoría de Marcado en DOM:</strong> ${X(e.autoMarkDetails)}
+      </div>
+      `:``}
 
       ${!r&&e.errorReason?`
       <div style="margin: 8px 0; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 6px; font-size: 12.5px; color: #fca5a5;">
@@ -90,7 +97,7 @@ import"./web_dashboard-Dtp3Omdk.js";var e=localStorage.getItem(`touchid_backend_
       `:``}
 
       <div class="dom-breadcrumb-path">
-        📍 <strong>Ruta Jerárquica DOM:</strong> ${X(f)}
+        📍 <strong>Ruta Jerárquica DOM:</strong> ${X(p)}
       </div>
 
       <div class="dom-question-box">
@@ -100,7 +107,7 @@ import"./web_dashboard-Dtp3Omdk.js";var e=localStorage.getItem(`touchid_backend_
       <div style="margin: 8px 0;">
         <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Alternativas Extraídas (${e.options?e.options.length:0}):</span>
         <div class="dom-options-pills">
-          ${p||`<span style="color: var(--text-secondary); font-size: 12px;">No se detectaron alternativas estructuradas.</span>`}
+          ${m||`<span style="color: var(--text-secondary); font-size: 12px;">No se detectaron alternativas estructuradas.</span>`}
         </div>
       </div>
 
@@ -111,7 +118,7 @@ import"./web_dashboard-Dtp3Omdk.js";var e=localStorage.getItem(`touchid_backend_
       </div>
       `:``}
 
-      ${h?`
+      ${g?`
       <div style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
         <button type="button" class="accordion-toggle" data-target="raw-${t}">
           <span>▶ Ver Estructura HTML Cruda (DOM Snippet para Auditoría)</span>
@@ -121,7 +128,7 @@ import"./web_dashboard-Dtp3Omdk.js";var e=localStorage.getItem(`touchid_backend_
             <span style="font-size: 11px; color: #94a3b8;">Fragmento HTML extraído del portal de examen (${e.radiosCount||0} radios, ${e.formsCount||0} forms):</span>
             <button class="copy-cell-btn btn-copy-html" style="margin: 0;">Copiar HTML</button>
           </div>
-          <pre class="dom-code-box"><code>${m}</code></pre>
+          <pre class="dom-code-box"><code>${h}</code></pre>
         </div>
       </div>
       `:``}
