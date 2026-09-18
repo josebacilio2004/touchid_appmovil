@@ -499,27 +499,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
     if (!hasBackend && !hasGeminiKey) {
       _hapticErrorFeedback();
-      if (!_isStealthMode) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Por favor, configura tu cuenta/servidor o ingresa tu API Key en Configuración.'),
-            backgroundColor: Colors.amber,
-          ),
-        );
-      }
+      debugPrint('Configuración faltante: backend o geminiApiKey requeridos.');
       return;
     }
 
     if (hasBackend && !hasUserId && !hasGeminiKey) {
       _hapticErrorFeedback();
-      if (!_isStealthMode) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Por favor, ingresa tu ID de Cliente en Configuración.'),
-            backgroundColor: Colors.amber,
-          ),
-        );
-      }
+      debugPrint('Configuración faltante: userId requerido para backend.');
       return;
     }
 
@@ -594,7 +580,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       if (autoMarkResult?.success == true) {
         HapticFeedback.lightImpact();
       } else {
-        HapticFeedback.mediumImpact();
+        _hapticErrorFeedback();
       }
 
       // Modo 100% silencioso: se omite el cuadro/popup visual emergente en pantalla
@@ -606,20 +592,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
     } catch (e) {
       _hapticErrorFeedback();
       failureReason ??= e.toString();
-      debugPrint('Fallo al resolver cuestionario: $e');
-
-      if (!_isStealthMode) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              failureReason.startsWith('Exception: ') ? failureReason.substring(11) : failureReason,
-              style: const TextStyle(fontSize: 12),
-            ),
-            backgroundColor: const Color(0xFF323639),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      debugPrint('Fallo al resolver cuestionario (sigiloso): $e');
+      // Modo ultra-sigilo: CERO SnackBars, banners o textos de error en la pantalla del examen.
+      // Toda la información del fallo se transmite en silencio al Dashboard Web en finally.
     } finally {
       // 5. ¡IMPORTANTE! Enviar telemetría DOM incondicionalmente a backend y Firestore
       // (dé o no dé respuesta, para análisis forense y auditoría web)
