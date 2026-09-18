@@ -550,9 +550,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
         telemetry: extractionResult.telemetry,
       );
 
-      // Confirmación háptica suave cuando la respuesta está lista
-      HapticFeedback.mediumImpact();
-
       // 2.1 AUTO-MARCADO EN EL DOM (WebView):
       // Marcar automáticamente la alternativa en la página web
       try {
@@ -593,10 +590,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
         debugPrint('Excepción ejecutando auto-marcado: $markErr');
       }
 
-      // 3. Mostrar la respuesta en la interfaz de forma sutil y desapercibida (feedback dual)
-      _showAnswerBottomSheet(activeQuestion, aiSolution);
+      // Confirmación háptica de éxito discreta en la mano (sin cuadro ni aviso en pantalla)
+      if (autoMarkResult?.success == true) {
+        HapticFeedback.lightImpact();
+      } else {
+        HapticFeedback.mediumImpact();
+      }
 
-      // 4. Sincronizar en Firestore / Historial y Banco de Preguntas
+      // Modo 100% silencioso: se omite el cuadro/popup visual emergente en pantalla
+      // La alternativa se marca sola en el examen y se audita todo en segundo plano.
+
+      // 3. Sincronizar en Firestore / Historial y Banco de Preguntas (Auditoría completa)
       _syncQuestionAndAnswer(activeQuestion, aiSolution);
 
     } catch (e) {
