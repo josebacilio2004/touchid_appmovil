@@ -467,4 +467,201 @@ class QuizExtractorService {
       reason: 'No se encontraron preguntas en el DOM tras reintentos.',
     );
   }
+
+  /// Inyecta un script JavaScript en el [WebViewController] activo para
+  /// marcar automáticamente la alternativa ganadora en el DOM.
+  /// Simula eventos nativos (focus, change, input, click) tanto en el input
+  /// como en su etiqueta <label> correspondiente.
+  static Future<AutoMarkResult> autoMarkOption(
+    WebViewController controller, {
+    required int targetIndex,
+    required String targetLetter,
+    required String targetText,
+    String? questionStatement,
+  }) async {
+    final sanitizedText = jsonEncode(targetText);
+    final sanitizedLetter = jsonEncode(targetLetter);
+    final sanitizedStatement = jsonEncode(questionStatement ?? '');
+
+    final autoMarkJs = '''
+(function() {
+  var targetIdx = $targetIndex;
+  var targetLetter = $sanitizedLetter;
+  var targetText = $sanitizedText;
+  var targetStatement = $sanitizedStatement;
+
+  function clean(str) {
+    if (!str) return '';
+    return str.replace(/\\s+/g, ' ').trim();
+  }
+
+  try {
+    var doc = document;
+    var allRadios = Array.from(doc.querySelectorAll('input[type="radio"]'));
+
+    // Revisar iframes si no hay radios en el documento principal
+    if (allRadios.length === 0) {
+      var iframes = doc.querySelectorAll('iframe');
+      for (var f = 0; f < iframes.length; f++) {
+        try {
+          var idoc = iframes[f].contentDocument || iframes[f].contentWindow.document;
+          if (idoc && idoc.querySelectorAll('input[type="radio"]').length > 0) {
+            doc = idoc;
+            allRadios = Array.from(doc.querySelectorAll('input[type="radio"]'));
+            break;
+          }
+        } catch(e) {}
+      }
+    }
+
+    var visibleRadios = allRadios.filter(function(r) {
+      var isHidden = !!r.closest('[style*="display: none"], [style*="display:none"], [hidden], .hidden');
+      return !isHidden;
+    });
+    if (visibleRadios.length === 0 && allRadios.length > 0) visibleRadios = allRadios;
+
+    var targetElement = null;
+    var labelElement = null;
+
+    // ESTRATEGIA 1: Coincidencia por texto exacto o contenido en el label asociado
+    if (targetText && targetText.length > 1) {
+      var cleanTarget = targetText.toLowerCase();
+      for (var i = 0; i < visibleRadios.length; i++) {
+        var r = visibleRadios[i];
+        var lbl = (r.id ? doc.querySelector('label[for="' + r.id + '"]') : null) || r.closest('label') || r.parentElement;
+        if (lbl) {
+          var lblText = clean(lbl.innerText || lbl.textContent).toLowerCase();
+          lblText = lblText.replace(/^[a-z0-9][\\.\\)\\-]\\s*/i, '');
+          if (lblText === cleanTarget || (cleanTarget.length > 3 && (lblText.indexOf(cleanTarget) !== -1 || cleanTarget.indexOf(lblText) !== -1))) {
+            targetElement = r;
+            labelElement = lbl;
+            targetIdx = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // ESTRATEGIA 2: Si no coincidió por texto, usar el índice directo
+    if (!targetElement && targetIdx >= 0 && targetIdx < visibleRadios.length) {
+      targetElement = visibleRadios[targetIdx];
+      if (targetElement.id) {
+        labelElement = doc.querySelector('label[for="' + targetElement.id + '"]');
+      }
+      if (!labelElement) {
+        labelElement = targetElement.closest('label');
+      }
+    }
+
+    // ESTRATEGIA 3: Fallback a Checkboxes si la pregunta fuera de opción múltiple
+    if (!targetElement) {
+      var allChecks = Array.from(doc.querySelectorAll('input[type="checkbox"]'));
+      var visibleChecks = allChecks.filter(function(c) {
+        return !c.closest('[style*="display: none"], [style*="display:none"], [hidden], .hidden');
+      });
+      if (visibleChecks.length === 0 && allChecks.length > 0) visibleChecks = allChecks;
+
+      if (targetIdx >= 0 && targetIdx < visibleChecks.length) {
+        targetElement = visibleChecks[targetIdx];
+        if (targetElement.id) {
+          labelElement = doc.querySelector('label[for="' + targetElement.id + '"]');
+        }
+        if (!labelElement) {
+          labelElement = targetElement.closest('label');
+        }
+      }
+    }
+
+    if (targetElement) {
+      // 1. Desplazar hacia la opción
+      try {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch(_) {}
+
+      // 2. Foco y marcado directo
+      targetElement.focus();
+      targetElement.checked = true;
+
+      // 3. Despacho de eventos nativos para frameworks reactivos y Moodle/UDABOL
+      try {
+        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+        targetElement.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch(_) {}
+
+      // 4. Disparar click sobre el label si existe, o directamente en el radio
+      if (labelElement) {
+        try {
+          labelElement.click();
+        } catch(_) {
+          targetElement.click();
+        }
+      } else {
+        try {
+          targetElement.click();
+        } catch(_) {}
+      }
+
+      return JSON.stringify({
+        success: true,
+        markedIndex: targetIdx,
+        markedLetter: targetLetter,
+        targetText: targetText,
+        targetTag: targetElement.tagName,
+        targetId: targetElement.id || '',
+        hasLabel: !!labelElement,
+        details: 'Elemento ' + (targetElement.id ? ('#' + targetElement.id) : ('índice ' + targetIdx)) + ' marcado exitosamente con eventos change/click'
+      });
+    }
+
+    return JSON.stringify({
+      success: false,
+      targetIndex: targetIdx,
+      targetLetter: targetLetter,
+      targetText: targetText,
+      error: 'No se encontró el elemento input correspondiente en el DOM para la opción ' + targetLetter + ' (índice ' + targetIdx + ')'
+    });
+  } catch(err) {
+    return JSON.stringify({
+      success: false,
+      targetIndex: targetIdx,
+      targetLetter: targetLetter,
+      targetText: targetText,
+      error: 'Excepción JS al automarcar: ' + err.message
+    });
+  }
+})();
+''';
+
+    try {
+      final rawResult = await controller.runJavaScriptReturningResult(autoMarkJs);
+      String cleanResult = rawResult.toString().trim();
+
+      if (cleanResult.startsWith('"') && cleanResult.endsWith('"')) {
+        cleanResult = cleanResult.substring(1, cleanResult.length - 1);
+        cleanResult = cleanResult.replaceAll(r'\"', '"').replaceAll(r'\\', r'\');
+      }
+
+      if (cleanResult.isNotEmpty && cleanResult != 'null' && cleanResult.startsWith('{')) {
+        final Map<String, dynamic> jsonMap = jsonDecode(cleanResult);
+        return AutoMarkResult.fromJson(jsonMap);
+      }
+    } catch (e) {
+      debugPrint('Error ejecutando autoMarkOption: $e');
+      return AutoMarkResult(
+        success: false,
+        targetIndex: targetIndex,
+        targetLetter: targetLetter,
+        targetText: targetText,
+        error: e.toString(),
+      );
+    }
+
+    return AutoMarkResult(
+      success: false,
+      targetIndex: targetIndex,
+      targetLetter: targetLetter,
+      targetText: targetText,
+      error: 'Respuesta nula o formato inválido al ejecutar auto-marcado',
+    );
+  }
 }

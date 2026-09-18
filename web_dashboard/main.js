@@ -447,11 +447,15 @@ function renderHistoryTable(history) {
       ? `<span class="badge-credits unlimited">0 cr (Ilimitado)</span>`
       : `<span class="badge-credits standard">${cost} crédito</span>`;
 
+    const autoMarkTag = doc.autoMarked === true
+      ? `<span style="display:inline-block; margin-left:6px; font-size:11px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); border-radius:4px; padding:1px 6px; font-weight:700;">⚡ Auto</span>`
+      : '';
+
     row.innerHTML = `
       <td data-label="Fecha" class="row-date">${dateStr}</td>
       <td data-label="Materia" class="row-subject"><span class="row-subject">${doc.subject || 'General'}</span></td>
       <td data-label="Pregunta" class="row-question" title="${doc.question}">${doc.question}</td>
-      <td data-label="Respuesta" class="row-answer">${doc.answer}</td>
+      <td data-label="Respuesta" class="row-answer">${doc.answer}${autoMarkTag}</td>
       <td data-label="Créditos" class="row-credits">${creditBadge}</td>
       <td data-label="Origen" class="row-source">${doc.source === 'chrome_extension' ? 'PC' : 'Móvil'}</td>
     `;
@@ -480,6 +484,10 @@ function renderLiveFeed(history) {
     const date = new Date(doc.timestamp || Date.now());
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+    const autoMarkFeedBadge = doc.autoMarked === true
+      ? `<span style="background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); border-radius:4px; padding:1px 6px; font-size:10px; font-weight:700; margin-left:6px;">⚡ Auto</span>`
+      : '';
+
     const optionsHtml = (doc.options || []).map((opt, i) => {
       const isCorrect = opt === doc.answer || i === doc.answerIndex;
       return `<div class="feed-option ${isCorrect ? 'correct' : ''}">${opt}</div>`;
@@ -487,7 +495,7 @@ function renderLiveFeed(history) {
 
     feedItem.innerHTML = `
       <div class="feed-meta">
-        <span class="feed-subject">${doc.subject || 'General'}</span>
+        <span class="feed-subject">${doc.subject || 'General'}${autoMarkFeedBadge}</span>
         <span class="feed-source">${doc.source === 'chrome_extension' ? 'Chrome PC' : 'App Móvil'} • ${timeStr}</span>
       </div>
       <div class="feed-question">${doc.question}</div>
@@ -813,6 +821,14 @@ function renderDomInspections(inspections) {
       ? '<span class="dom-portal-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">✓ Resuelto con Éxito</span>'
       : '<span class="dom-portal-badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">⚠️ Sin Respuesta / Error</span>';
 
+    let autoMarkBadge = '';
+    if (doc.autoMarked === true) {
+      const optStr = doc.autoMarkedOption ? ` [${escapeHtml(doc.autoMarkedOption)}]` : '';
+      autoMarkBadge = `<span class="dom-portal-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: #10b981; font-weight: 700;">⚡ Auto-marcado:${optStr} Éxito</span>`;
+    } else if (doc.autoMarkStatus === 'failed') {
+      autoMarkBadge = `<span class="dom-portal-badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: #ef4444; font-weight: 700;">⚠️ Auto-marcado: Falló</span>`;
+    }
+
     const courseBadge = doc.course
       ? `<span class="dom-portal-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">📖 ${escapeHtml(doc.course)}</span>`
       : '';
@@ -825,7 +841,9 @@ function renderDomInspections(inspections) {
 
     const optionsPills = (doc.options || []).map((opt, i) => {
       const isAnswer = (opt === doc.answer || i === doc.answerIndex || (doc.answerLetter && String.fromCharCode(65 + i) === doc.answerLetter));
-      return `<span class="dom-opt-pill ${isAnswer ? 'is-answer' : ''}">${isAnswer ? '✓ ' : ''}${escapeHtml(opt)}</span>`;
+      const isAutoMarked = doc.autoMarked && (isAnswer || (doc.autoMarkedOption && String.fromCharCode(65 + i) === doc.autoMarkedOption));
+      const icon = isAutoMarked ? '⚡ ' : (isAnswer ? '✓ ' : '');
+      return `<span class="dom-opt-pill ${isAnswer ? 'is-answer' : ''}">${icon}${escapeHtml(opt)}</span>`;
     }).join('');
 
     const rawHtmlContent = doc.rawQuestionHtml ? escapeHtml(doc.rawQuestionHtml) : '';
@@ -837,6 +855,7 @@ function renderDomInspections(inspections) {
           ${portalBadge}
           ${courseBadge}
           ${statusBadge}
+          ${autoMarkBadge}
           <span style="font-weight: 700; color: #fff; font-size: 14px;">${portalName}</span>
           <span class="dom-strategy-tag">⚙ ${escapeHtml(strategyClean)}</span>
         </div>
@@ -848,6 +867,12 @@ function renderDomInspections(inspections) {
       <div style="font-size: 12px; color: #94a3b8; word-break: break-all; margin-bottom: 6px;">
         <strong>URL:</strong> <a href="${escapeHtml(doc.url)}" target="_blank" style="color: #38bdf8; text-decoration: none;">${escapeHtml(doc.url)}</a>
       </div>
+
+      ${doc.autoMarkDetails ? `
+      <div style="margin: 6px 0; padding: 7px 12px; background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; border-radius: 4px; font-size: 12px; color: #bae6fd;">
+        ⚡ <strong>Auditoría de Marcado en DOM:</strong> ${escapeHtml(doc.autoMarkDetails)}
+      </div>
+      ` : ''}
 
       ${!isSuccess && doc.errorReason ? `
       <div style="margin: 8px 0; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 6px; font-size: 12.5px; color: #fca5a5;">

@@ -258,5 +258,60 @@ void main() {
       expect(quizResult.questions[1].number, 2);
       expect(quizResult.questions[0].id != quizResult.questions[1].id, isTrue);
     });
+
+    test('11. Serialización y deserialización de AutoMarkResult (Éxito y Fallo)', () {
+      final successJson = {
+        'success': true,
+        'markedIndex': 1,
+        'markedLetter': 'B',
+        'targetText': 'Producción y secreción de surfactante pulmonar',
+        'targetTag': 'INPUT',
+        'targetId': 'resp_1234_2',
+        'hasLabel': true,
+        'details': 'Elemento #resp_1234_2 marcado exitosamente con eventos change/click'
+      };
+
+      final autoMarkSuccess = AutoMarkResult.fromJson(successJson);
+      expect(autoMarkSuccess.success, isTrue);
+      expect(autoMarkSuccess.targetIndex, 1);
+      expect(autoMarkSuccess.targetLetter, 'B');
+      expect(autoMarkSuccess.targetId, 'resp_1234_2');
+      expect(autoMarkSuccess.hasLabel, isTrue);
+      expect(autoMarkSuccess.details, contains('resp_1234_2'));
+      expect(autoMarkSuccess.toString(), contains('AutoMark éxito [B]'));
+
+      final failJson = {
+        'success': false,
+        'targetIndex': 3,
+        'targetLetter': 'D',
+        'error': 'No se encontró el elemento input'
+      };
+
+      final autoMarkFail = AutoMarkResult.fromJson(failJson);
+      expect(autoMarkFail.success, isFalse);
+      expect(autoMarkFail.error, contains('No se encontró'));
+      expect(autoMarkFail.toString(), contains('AutoMark fallo [D]'));
+    });
+
+    test('12. Telemetría de auto-marcado en QuizTelemetry', () {
+      final telJson = {
+        'url': 'https://virtual.udabol.edu.bo/carpetaverde/#examenes/intento/1',
+        'title': 'Examen UDABOL',
+        'autoMarked': true,
+        'autoMarkStatus': 'success',
+        'autoMarkDetails': 'Elemento marcado exitosamente',
+        'autoMarkedOption': 'C'
+      };
+
+      final tel = QuizTelemetry.fromJson(telJson);
+      expect(tel.autoMarked, isTrue);
+      expect(tel.autoMarkStatus, 'success');
+      expect(tel.autoMarkedOption, 'C');
+
+      final serialized = tel.toJson();
+      expect(serialized['autoMarked'], isTrue);
+      expect(serialized['autoMarkStatus'], 'success');
+      expect(serialized['autoMarkedOption'], 'C');
+    });
   });
 }
