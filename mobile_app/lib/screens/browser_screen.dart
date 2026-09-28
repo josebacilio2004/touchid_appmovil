@@ -22,6 +22,7 @@ import 'chrome_add_shortcut_dialog.dart';
 import 'dart:async';
 import 'chrome_help_article_screen.dart';
 import 'chrome_settings_screen.dart';
+import 'package:webview_refresher/webview_refresher.dart';
 import '../widgets/incognito_icon.dart';
 import 'chrome_new_tab_screen.dart';
 import 'chrome_incognito_screen.dart';
@@ -34,6 +35,7 @@ class BrowserTab {
   final WebViewController controller;
   bool isDesktopMode;
   bool isIncognito;
+  Completer<void>? refreshCompleter;
 
   BrowserTab({
     required this.id,
@@ -42,6 +44,7 @@ class BrowserTab {
     required this.controller,
     this.isDesktopMode = false,
     this.isIncognito = false,
+    this.refreshCompleter,
   });
 }
 
@@ -269,6 +272,224 @@ class _BrowserScreenState extends State<BrowserScreen> {
           .setMediaPlaybackRequiresUserGesture(false);
     }
 
+    // Configuración estética moderna de cuadros de diálogo JavaScript (alert, confirm, prompt)
+    // Idéntico a Google Chrome Mobile Dark Theme para Android e iOS
+    controller.setOnJavaScriptConfirmDialog((JavaScriptConfirmDialogRequest request) async {
+      if (!mounted) return false;
+      
+      final rawHost = Uri.tryParse(request.url)?.host ?? '';
+      final host = rawHost.isNotEmpty ? rawHost : 'virtual.udabol.edu.bo';
+
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black.withValues(alpha: 0.65),
+        builder: (BuildContext ctx) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF2B2D30),
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 14),
+            contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            actionsPadding: const EdgeInsets.only(right: 20, bottom: 20),
+            title: Text(
+              '$host dice',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.1,
+              ),
+            ),
+            content: Text(
+              request.message,
+              style: const TextStyle(
+                color: Color(0xFFC4C7C5),
+                fontSize: 15,
+                height: 1.45,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFA8C7FA),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFA8C7FA),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                child: const Text(
+                  'Aceptar',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+      return result ?? false;
+    });
+
+    controller.setOnJavaScriptAlertDialog((JavaScriptAlertDialogRequest request) async {
+      if (!mounted) return;
+      
+      final rawHost = Uri.tryParse(request.url)?.host ?? '';
+      final host = rawHost.isNotEmpty ? rawHost : 'virtual.udabol.edu.bo';
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withValues(alpha: 0.65),
+        builder: (BuildContext ctx) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF2B2D30),
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 14),
+            contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            actionsPadding: const EdgeInsets.only(right: 20, bottom: 20),
+            title: Text(
+              '$host dice',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.1,
+              ),
+            ),
+            content: Text(
+              request.message,
+              style: const TextStyle(
+                color: Color(0xFFC4C7C5),
+                fontSize: 15,
+                height: 1.45,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFA8C7FA),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                child: const Text(
+                  'Aceptar',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    });
+
+    controller.setOnJavaScriptTextInputDialog((JavaScriptTextInputDialogRequest request) async {
+      if (!mounted) return request.defaultText ?? '';
+      
+      final rawHost = Uri.tryParse(request.url)?.host ?? '';
+      final host = rawHost.isNotEmpty ? rawHost : 'virtual.udabol.edu.bo';
+      final textController = TextEditingController(text: request.defaultText);
+
+      final result = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.black.withValues(alpha: 0.65),
+        builder: (BuildContext ctx) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF2B2D30),
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 14),
+            contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            actionsPadding: const EdgeInsets.only(right: 20, bottom: 20),
+            title: Text(
+              '$host dice',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (request.message.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      request.message,
+                      style: const TextStyle(
+                        color: Color(0xFFC4C7C5),
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                TextField(
+                  controller: textController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFA8C7FA)),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFA8C7FA), width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(null),
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(color: Color(0xFFA8C7FA), fontWeight: FontWeight.w600),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(textController.text),
+                child: const Text(
+                  'Aceptar',
+                  style: TextStyle(color: Color(0xFFA8C7FA), fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+      return result ?? request.defaultText ?? '';
+    });
+
     controller.setNavigationDelegate(
       NavigationDelegate(
         onProgress: (int progress) {
@@ -356,9 +577,24 @@ class _BrowserScreenState extends State<BrowserScreen> {
           if (!isIncognito && (pageUrl.contains('google.') || pageUrl.contains('accounts.google') || pageUrl.contains('mail.google'))) {
             _detectGoogleSession(controller);
           }
+
+          // Finalizar pull-to-refresh si estaba activo
+          final tabIdx = _tabs.indexWhere((t) => t.id == id);
+          if (tabIdx != -1 && _tabs[tabIdx].refreshCompleter != null && !_tabs[tabIdx].refreshCompleter!.isCompleted) {
+            _tabs[tabIdx].refreshCompleter!.complete();
+            _tabs[tabIdx].refreshCompleter = null;
+          }
         },
         onWebResourceError: (WebResourceError error) {
           debugPrint('WebView error: [${error.errorCode}] ${error.description} on ${error.url}');
+          
+          // Finalizar pull-to-refresh en caso de error
+          final tabIdx = _tabs.indexWhere((t) => t.id == id);
+          if (tabIdx != -1 && _tabs[tabIdx].refreshCompleter != null && !_tabs[tabIdx].refreshCompleter!.isCompleted) {
+            _tabs[tabIdx].refreshCompleter!.complete();
+            _tabs[tabIdx].refreshCompleter = null;
+          }
+
           if (mounted) {
             setState(() {
               _loadingProgress = 100;
@@ -2394,14 +2630,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                         onPressed: _loadUrl,
                                       ),
                                     ],
-                                  )
-                                else if (_currentTab.url != 'chrome://newtab' && _currentTab.url != 'chrome://incognito')
-                                  IconButton(
-                                    icon: const Icon(Icons.refresh_rounded, color: Color(0xFFC4C7C5), size: 20),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    splashRadius: 18,
-                                    onPressed: () => _tabs[_currentTabIndex].controller.reload(),
                                   ),
                                 const SizedBox(width: 8),
                               ],
@@ -2489,7 +2717,39 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   onAccountTap: _showGoogleAccountBottomSheet,
                                 );
                               } else {
-                                return WebViewWidget(controller: tab.controller);
+                                return WebviewRefresher(
+                                  key: ValueKey('refresher_${tab.id}'),
+                                  controller: tab.controller,
+                                  androidRefresherBuilder: (onRefresh, child) {
+                                    return RefreshIndicator(
+                                      color: const Color(0xFF8AB4F8),
+                                      backgroundColor: const Color(0xFF2B2D30),
+                                      onRefresh: () async => await onRefresh?.call(),
+                                      notificationPredicate: (n) => onRefresh != null && n.depth == 0,
+                                      child: child,
+                                    );
+                                  },
+                                  iosRefreshBuilder: (onRefresh, child) {
+                                    return RefreshIndicator(
+                                      color: const Color(0xFF8AB4F8),
+                                      backgroundColor: const Color(0xFF2B2D30),
+                                      onRefresh: () async => await onRefresh?.call(),
+                                      notificationPredicate: (n) => onRefresh != null && n.depth == 0,
+                                      child: child,
+                                    );
+                                  },
+                                  onRefresh: () async {
+                                    final completer = Completer<void>();
+                                    tab.refreshCompleter = completer;
+                                    await tab.controller.reload();
+                                    Future.delayed(const Duration(seconds: 6), () {
+                                      if (!completer.isCompleted) {
+                                        completer.complete();
+                                      }
+                                    });
+                                    return completer.future;
+                                  },
+                                );
                               }
                             }).toList(),
                     ),
