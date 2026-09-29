@@ -608,8 +608,221 @@
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
+    /* Estilos de botones de prueba de confirmación */
+    .btn-preview-pill {
+      border: none;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .native-pill {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+    }
+    .native-pill:hover {
+      background: rgba(56, 189, 248, 0.3);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+    .android-pill {
+      background: rgba(52, 168, 83, 0.15);
+      border: 1px solid rgba(52, 168, 83, 0.4);
+      color: #4ade80;
+    }
+    .android-pill:hover {
+      background: rgba(52, 168, 83, 0.3);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+    .ios-pill {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #c084fc;
+    }
+    .ios-pill:hover {
+      background: rgba(168, 85, 247, 0.3);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    /* Overlays comunes */
+    .custom-dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+      animation: fadeInOverlay 0.18s ease-out;
+    }
+    @keyframes fadeInOverlay {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ANDROID CHROME DARK DIALOG (Material 3 replica) */
+    #android-dialog-overlay {
+      background: rgba(0, 0, 0, 0.65);
+    }
+    .android-dialog-card {
+      background: #2b2d30;
+      width: 100%;
+      max-width: 360px;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      box-sizing: border-box;
+      animation: scaleInAndroid 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+    }
+    @keyframes scaleInAndroid {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .android-dialog-title {
+      color: #ffffff;
+      font-size: 1.25rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      margin-bottom: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .android-dialog-message {
+      color: #c4c7c5;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      margin-bottom: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .android-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .android-btn {
+      background: transparent;
+      border: none;
+      color: #a8c7fa;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 10px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .android-btn:hover, .android-btn:active {
+      background: rgba(168, 199, 250, 0.12);
+    }
+
+    /* IOS CUPERTINO DARK DIALOG (Apple style replica) */
+    #ios-dialog-overlay {
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .ios-dialog-card {
+      background: rgba(30, 30, 30, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      width: 100%;
+      max-width: 280px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65);
+      text-align: center;
+      overflow: hidden;
+      box-sizing: border-box;
+      animation: scaleInIos 0.18s cubic-bezier(0.1, 0.9, 0.2, 1);
+    }
+    @keyframes scaleInIos {
+      from { transform: scale(1.06); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .ios-dialog-title {
+      color: #ffffff;
+      font-size: 1.05rem;
+      font-weight: 600;
+      padding: 20px 16px 4px;
+      letter-spacing: -0.01em;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+    .ios-dialog-message {
+      color: rgba(235, 235, 245, 0.8);
+      font-size: 0.83rem;
+      line-height: 1.35;
+      padding: 0 16px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+    .ios-dialog-actions {
+      display: flex;
+      border-top: 0.5px solid rgba(255, 255, 255, 0.16);
+    }
+    .ios-btn {
+      flex: 1;
+      height: 44px;
+      background: transparent;
+      border: none;
+      color: #0a84ff;
+      font-size: 1.02rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background 0.12s ease;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+    .ios-btn:first-child {
+      border-right: 0.5px solid rgba(255, 255, 255, 0.16);
+      font-weight: 400;
+    }
+    .ios-btn:last-child {
+      font-weight: 600;
+    }
+    .ios-btn:active {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Toast de feedback */
+    .confirm-feedback-toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 10px 20px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: toastFadeIn 0.2s ease-out;
+    }
+    @keyframes toastFadeIn {
+      from { opacity: 0; transform: translate(-50%, 15px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
   </style>
-  <script type="module" crossorigin src="./assets/quiz-HnGGR9Vi.js"></script>
+  <script type="module" crossorigin src="./assets/quiz-iXYy_zeu.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/web_dashboard-Dtp3Omdk.js">
   <link rel="stylesheet" crossorigin href="./assets/web_dashboard-BLBkLTnz.css">
 </head>
@@ -643,6 +856,22 @@
       <p class="quiz-subtitle">
         Pon a prueba tus conocimientos con preguntas estructuradas, formato oficial universitario y cronómetro en tiempo real. 100% compatible con el Asistente IA de TouchID.
       </p>
+
+      <!-- BARRA DE COMPROBACIÓN DE MODALES ANDROID E IOS -->
+      <div class="modal-preview-bar" style="margin: 0 auto 24px; max-width: 680px; background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 12px 18px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px;">
+        <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+          <span>🔍</span> Cuadros de Confirmación:
+        </span>
+        <button id="hero-btn-confirm-native" type="button" class="btn-preview-pill native-pill" title="Disparar confirm() real del navegador o TouchID">
+          ⚡ Probar confirm() Real
+        </button>
+        <button id="hero-btn-preview-android" type="button" class="btn-preview-pill android-pill" title="Ver cuadro estilo Android Chrome Dark">
+          🤖 Ver Modal Android
+        </button>
+        <button id="hero-btn-preview-ios" type="button" class="btn-preview-pill ios-pill" title="Ver cuadro estilo iOS Cupertino">
+          🍎 Ver Modal iOS
+        </button>
+      </div>
     </div>
 
     <!-- Pestañas de Filtro -->
@@ -794,10 +1023,16 @@
         </div>
       </div>
 
-      <!-- BOTÓN AZUL TERMINAR INTENTO -->
-      <div>
+      <!-- BOTÓN AZUL TERMINAR INTENTO Y SIMULADOR DE MODALES -->
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px;">
         <button id="udabol-btn-finish" type="button" class="udabol-btn-finish">
           <span>✔</span> Terminar intento
+        </button>
+        <button id="udabol-btn-preview-android" type="button" class="btn-preview-pill android-pill" title="Ver cuadro estilo Android Chrome Dark">
+          🤖 Ver Modal Android
+        </button>
+        <button id="udabol-btn-preview-ios" type="button" class="btn-preview-pill ios-pill" title="Ver cuadro estilo iOS Cupertino">
+          🍎 Ver Modal iOS
         </button>
       </div>
     </div>
@@ -829,5 +1064,32 @@
     </div>
   </section>
 
+
+  <!-- MODAL FLOTANTE ESTILO ANDROID (CHROME MOBILE DARK THEME) -->
+  <div id="android-dialog-overlay" class="custom-dialog-overlay" style="display: none;">
+    <div class="android-dialog-card">
+      <div class="android-dialog-title">virtual.udabol.edu.bo dice</div>
+      <div class="android-dialog-message">Esta seguro que desea terminar el intento?</div>
+      <div class="android-dialog-actions">
+        <button type="button" class="android-btn android-btn-cancel" id="android-dialog-cancel">Cancelar</button>
+        <button type="button" class="android-btn android-btn-accept" id="android-dialog-accept">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FLOTANTE ESTILO IOS (SAFARI / CUPERTINO DARK THEME) -->
+  <div id="ios-dialog-overlay" class="custom-dialog-overlay" style="display: none;">
+    <div class="ios-dialog-card">
+      <div class="ios-dialog-title">virtual.udabol.edu.bo</div>
+      <div class="ios-dialog-message">¿Está seguro que desea terminar el intento?</div>
+      <div class="ios-dialog-actions">
+        <button type="button" class="ios-btn ios-btn-cancel" id="ios-dialog-cancel">Cancelar</button>
+        <button type="button" class="ios-btn ios-btn-accept" id="ios-dialog-accept">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST DE FEEDBACK DE ACCIÓN -->
+  <div id="confirm-feedback-toast" class="confirm-feedback-toast" style="display: none;"></div>
 </body>
 </html>
