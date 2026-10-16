@@ -1,6 +1,279 @@
 // Banco de Preguntas Multidisciplinario para el Simulador Web TouchID
 export const QUIZ_CATEGORIES = [
-{
+  {
+  "id": "udabol_anatomia_ktype",
+  "isUdabol": true,
+  "title": "🧠 UDABOL: Anatomía Humana II (Patrón K-Type Oficial)",
+  "subtitle": "Examen Oficial Completo • Carpeta Pedagógica Digital",
+  "badge": "UDABOL Oficial",
+  "badgeColor": "#7cb305",
+  "subjectCode": "MED-102: Anatomía Humana II - Neuroanatomía",
+  "sessionName": "Examen 2-2025",
+  "description": "Simulador 1:1 de 20 preguntas con Patrón de Respuestas combinadas (A si 1,2,3; B si 2,3,4; C si 2,3; D si 1,4; E si todos son verdaderos o falsos). Diseñado para validar el motor proposicional determinista.",
+  "questions": [
+    {
+      "id": "udabol_anat_k1",
+      "question": "LEA DETENIDAMENTE Y RESPONDA SEGÚN CORRESPONDA PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS, Con respecto a los siguientes enunciados identifica cuales son verdaderos:\n1. El encéfalo va a pertenecer al sistema nervioso periférico\n2. La vascularización arterial de la médula oblonga se da por la espinal anterior, espinal posterior y cerebelosa anteroinferior\n3. El tracto de burdach o cuneiforme se va a localizar en el cordón posterior (porción lateral) y finaliza en el núcleo cuneiforme del bulbo\n4. La cara posterior del bulbo raquídeo se va a dividir en tres mitades: superior medio inferior",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS",
+        "C 2 y 3"
+      ],
+      "correctIndex": 4,
+      "explanation": "Enunciados 2 y 3 son VERDADEROS. 1 es FALSO (el encéfalo pertenece al SNC) y 4 es FALSO (la cara posterior se divide en porciones extraventricular e intraventricular, no en tres mitades)."
+    },
+    {
+      "id": "udabol_anat_k2",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a la fosa pterigopalatina y sus relaciones topográficas:\n1. Se comunica anteriormente con la órbita a través de la hendidura esfenomaxilar (fisura orbitaria inferior)\n2. Su contenido principal incluye el nervio maxilar (V2) y la arteria maxilar interna en su porción terminal\n3. El ganglio pterigopalatino de Meckel se ubica suspendido del nervio maxilar en esta fosa\n4. La pared anterior está formada por la apófisis pterigoides del hueso esfenoides",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 0,
+      "explanation": "1, 2 y 3 son VERDADEROS. La pared anterior está formada por la tuberosidad del maxilar (no por la apófisis pterigoides, que forma la pared posterior)."
+    },
+    {
+      "id": "udabol_anat_k3",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. En relación a la estructura y relaciones del mesencéfalo:\n1. El origen aparente del III par craneal (oculomotor) emerge en la cara posterior del mesencéfalo\n2. La sustancia negra de Soemmering separa el pie peduncular del tegmento mesencefálico\n3. El núcleo rojo se localiza a nivel de los colículos superiores en la calota mesencefálica\n4. El acueducto cerebral de Silvio comunica el tercer ventrículo con el cuarto ventrículo",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 1,
+      "explanation": "2, 3 y 4 son VERDADEROS. El enunciado 1 es FALSO (el III par emerge en la cara anterior, en la fosa interpeduncular; el IV es el único posterior)."
+    },
+    {
+      "id": "udabol_anat_k4",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. En cuanto a la protuberancia anular (puente de Varolio):\n1. Su cara anterior presenta el surco basilar por donde discurre la arteria basilar\n2. El nervio abducens (VI par) tiene su origen aparente en la cara anterolateral del puente junto con el trigémino\n3. La porción basilar del puente contiene únicamente fibras sensitivas ascendentes del lemnisco medial\n4. El núcleo motor del nervio facial rodea al núcleo abducens produciendo el colículo facial (eminencia teres) en el piso del 4to ventrículo",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 3,
+      "explanation": "1 y 4 son VERDADEROS. 2 es FALSO (el VI par emerge en el surco bulboprotuberancial) y 3 es FALSO (contiene fibras corticoespinales descendentes y corticopontinas)."
+    },
+    {
+      "id": "udabol_anat_k5",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a la circulación del líquido cefalorraquídeo (LCR):\n1. La mayor parte del LCR se reabsorbe activamente a nivel de los plexos coroideos de los ventrículos laterales\n2. El agujero de Magendie es un orificio par lateral que comunica con el espacio epidural\n3. La presión normal del LCR en decúbito lateral en el adulto supera los 400 mm de agua\n4. Los agujeros de Luschka se ubican en el techo del tercer ventrículo comunicando con la cisterna magna",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 4,
+      "explanation": "TODOS SON FALSOS. El LCR se reabsorbe en vellosidades aracnoideas (Pacchioni); Magendie es orificio medial único; presión normal es 70-180 mmH2O; Luschka están en los recesos laterales del 4to ventrículo."
+    },
+    {
+      "id": "udabol_anat_k6",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Respecto a la anatomía y conexiones del cerebelo:\n1. El arquicerebelo (lóbulo floculonodular) se encarga primordialmente del control del tono muscular antigravitatorio\n2. El núcleo dentado es el núcleo intracerebeloso más grande y filogenéticamente más moderno (neocerebelo)\n3. Las fibras aferentes trepadoras del cerebelo proceden exclusivamente del complejo olivar inferior bulbar\n4. El pedúnculo cerebeloso medio conecta el cerebelo con el mesencéfalo y conduce las fibras eferentes dentotalámicas",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 2,
+      "explanation": "2 y 3 son VERDADEROS. 1 es FALSO (arquicerebelo controla equilibrio y coordinación vestibular) y 4 es FALSO (el pedúnculo medio conecta con la protuberancia)."
+    },
+    {
+      "id": "udabol_anat_k7",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. En relación al polígono arterial de Willis en la base cerebral:\n1. La arteria comunicante anterior une las dos arterias cerebrales anteriores\n2. La arteria comunicante posterior comunica la arteria carótida interna con la arteria cerebral posterior\n3. La arteria basilar termina bifurcándose en las dos arterias cerebrales posteriores\n4. La arteria cerebral media forma parte intrínseca del polígono de Willis cerrando su sector lateral",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 0,
+      "explanation": "1, 2 y 3 son VERDADEROS. 4 es FALSO (la arteria cerebral media es rama terminal de la carótida interna, pero NO integra el heptágono/polígono de Willis)."
+    },
+    {
+      "id": "udabol_anat_k8",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Respecto a los orificios de la base del cráneo y los elementos que los atraviesan:\n1. El agujero redondo mayor (foramen rotundum) da paso a la arteria meníngea media\n2. El agujero oval permite el paso del nervio mandibular (V3) y la arteria meníngea accesoria\n3. Por la hendidura esfenoidal (fisura orbitaria superior) transcurren los pares III, IV, VI y las ramas del nervio oftálmico (V1)\n4. El foramen yugular (agujero rasgado posterior) da paso a la vena yugular interna y los pares craneales IX, X y XI",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 1,
+      "explanation": "2, 3 y 4 son VERDADEROS. 1 es FALSO (el redondo mayor da paso al nervio maxilar V2; la meníngea media atraviesa el redondo menor o espinoso)."
+    },
+    {
+      "id": "udabol_anat_k9",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. En relación a la vía motora voluntaria (haz corticoespinal o piramidal):\n1. Se origina principalmente en las células piramidales gigantes de Betz del área motora primaria (área 4 de Brodmann)\n2. A nivel del brazo anterior de la cápsula interna se sitúa el haz corticoespinal destinado a miembros inferiores\n3. En el mesencéfalo ocupa el tegmento posterior inmediatamente por detrás del acueducto de Silvio\n4. Aproximadamente el 85-90% de las fibras decusan en la decusación piramidal bulbar inferior formando el haz corticoespinal lateral",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 3,
+      "explanation": "1 y 4 son VERDADEROS. 2 es FALSO (ocupa los dos tercios anteriores del brazo POSTERIOR) y 3 es FALSO (ocupa los 3/5 medios del PIE peduncular anterior)."
+    },
+    {
+      "id": "udabol_anat_k10",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a los núcleos talámicos y sus relevos funcionales:\n1. El núcleo ventral posterolateral (VPL) recibe la sensibilidad somatosensorial del tronco y extremidades\n2. El núcleo ventral posteromedial (VPM) recibe la sensibilidad trigeminal y gustativa de la cabeza\n3. El cuerpo geniculado lateral actúa como estación de relevo de la vía visual hacia la corteza calcarina\n4. El cuerpo geniculado medial actúa como estación de relevo de la vía auditiva procedente del colículo inferior",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 4,
+      "explanation": "TODOS SON VERDADEROS. VPL (cuerpo/extremidades), VPM (cara/gusto), CGL (visión) y CGM (audición)."
+    },
+    {
+      "id": "udabol_anat_k11",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. En cuanto a las vías de la sensibilidad propioceptiva y tacto discriminativo epicrítico:\n1. El fascículo de Goll (grácil) conduce información del miembro superior y hemitórax superior\n2. Las neuronas de segundo orden de esta vía se sitúan en los núcleos grácil y cuneiforme en el bulbo raquídeo\n3. Las fibras arciformes internas decusan en el bulbo para formar el lemnisco medial (cinta de Reil media)\n4. El lemnisco medial asciende y termina directamente en la corteza sensitiva sin hacer relevo en el tálamo",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 2,
+      "explanation": "2 y 3 son VERDADEROS. 1 es FALSO (Goll conduce de miembros inferiores y tronco T6 hacia abajo) y 4 es FALSO (hace relevo obligatorio en el VPL del tálamo)."
+    },
+    {
+      "id": "udabol_anat_k12",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Sobre el nervio trigémino (V par craneal):\n1. Es un nervio mixto, sensitivo para la cara y motor para los músculos de la masticación\n2. El ganglio sensitivo semilunar de Gasser se aloja en el cavum de Meckel en la fosa craneal media\n3. La división mandibular (V3) es la única que contiene tanto fibras sensitivas como fibras motoras somáticas\n4. La rama oftálmica (V1) inerva la piel de la mejilla y las piezas dentarias del maxilar superior",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 0,
+      "explanation": "1, 2 y 3 son VERDADEROS. 4 es FALSO (esa es función de la rama maxilar V2; V1 inerva frente, párpado superior y dorso nasal)."
+    },
+    {
+      "id": "udabol_anat_k13",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Respecto al trayecto y ramas del nervio facial (VII par):\n1. Emerge del cráneo a través del foramen oval junto a la arteria carótida interna\n2. En su trayecto intrapetroso discurre por el acueducto de Falopio (conducto facial)\n3. El nervio cuerda del tímpano proporciona sensibilidad gustativa a los dos tercios anteriores de la lengua\n4. Emerge de la base del cráneo a través del agujero estilomastoideo antes de penetrar en la glándula parótida",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 1,
+      "explanation": "2, 3 y 4 son VERDADEROS. 1 es FALSO (entra por el conducto auditivo interno y sale por el agujero estilomastoideo)."
+    },
+    {
+      "id": "udabol_anat_k14",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. En relación al seno cavernoso y sus relaciones neurovasculares:\n1. La arteria carótida interna y el nervio abducens (VI par) atraviesan el interior de la luz venosa del seno cavernoso\n2. Por su pared lateral transcurren el nervio facial y el nervio hipogloso mayor\n3. Drena directamente hacia la vena subclavia a través del seno longitudinal inferior\n4. En la pared lateral del seno cavernoso se disponen de arriba abajo: III par, IV par, nervio oftálmico (V1) y nervio maxilar (V2)",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 3,
+      "explanation": "1 y 4 son VERDADEROS. 2 es FALSO (VII y XII no se relacionan con el seno cavernoso) y 3 es FALSO (drena por senos petrosos hacia la vena yugular interna)."
+    },
+    {
+      "id": "udabol_anat_k15",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a las áreas de Brodmann en la corteza cerebral:\n1. El área motora primaria corresponde a las áreas 1, 2 y 3 ubicadas en la circunvolución parietal ascendente\n2. El área auditiva primaria se localiza en el lóbulo occipital alrededor de la cisura calcarina (área 17)\n3. El área motora del lenguaje articulado de Broca se sitúa en el polo temporal izquierdo (área 22)\n4. El área visual primaria se sitúa en la circunvolución frontal superior ocupando el área 4",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 4,
+      "explanation": "TODOS SON FALSOS. Área 4 es motora primaria; 41-42 temporal es auditiva; Broca es 44-45 frontal; área 17 occipital es visual primaria."
+    },
+    {
+      "id": "udabol_anat_k16",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Sobre la vía óptica y el reflejo fotomotor:\n1. En el quiasma óptico decusan únicamente las fibras procedentes de las hemirretinas temporales\n2. En el quiasma óptico decusan las fibras procedentes de las hemirretinas nasales\n3. La cintilla óptica contiene fibras de la hemirretina temporal ipsilateral y hemirretina nasal contralateral\n4. La lesión completa del quiasma óptico produce amaurosis monocular derecha",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 2,
+      "explanation": "2 y 3 son VERDADEROS. 1 es FALSO (decusan las nasales) y 4 es FALSO (la lesión quiasmática produce hemianopsia bitemporal heterónima clásica)."
+    },
+    {
+      "id": "udabol_anat_k17",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. En relación a los ganglios basales y núcleos del telencéfalo:\n1. El cuerpo estriado está compuesto anatómicamente por el núcleo caudado y el núcleo lenticular\n2. El núcleo lenticular se divide en putamen lateral y globo pálido medial\n3. El núcleo caudado acompaña la curvatura del ventrículo lateral presentando cabeza, cuerpo y cola\n4. El claustro o antemuro es una masa nuclear que se localiza medial al globo pálido",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 0,
+      "explanation": "1, 2 y 3 son VERDADEROS. 4 es FALSO (el claustro se localiza lateral al putamen, entre la cápsula externa y la cápsula extrema)."
+    },
+    {
+      "id": "udabol_anat_k18",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Respecto al nervio vago (X par craneal) e inervación laríngea:\n1. Emerge del bulbo raquídeo a través del surco preolivar junto con el nervio hipogloso\n2. El nervio laríngeo recurrente izquierdo rodea el cayado aórtico por detrás del ligamento arterioso\n3. El nervio laríngeo recurrente derecho rodea la arteria subclavia derecha\n4. Todos los músculos intrínsecos de la laringe son inervados por el nervio laríngeo recurrente, excepto el músculo cricotiroideo (inervado por el laríngeo superior)",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 1,
+      "explanation": "2, 3 y 4 son VERDADEROS. 1 es FALSO (el X par emerge del surco retroolivar; el XII emerge del preolivar)."
+    },
+    {
+      "id": "udabol_anat_k19",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. En cuanto a la anatomía macroscópica de la médula espinal y sus envolturas:\n1. En el adulto promedio la médula espinal finaliza a nivel del borde inferior de L1 o borde superior de L2 (cono medular)\n2. La punción lumbar para extracción de LCR se realiza rutinariamente a nivel del espacio L1-L2 para evitar el fondo de saco dural\n3. El espacio epidural espinal es virtual y no contiene tejido adiposo ni plexos venosos\n4. Los ligamentos dentados son prolongaciones laterales de la piamadre que fijan la médula a la duramadre entre las raíces anteriores y posteriores",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 3,
+      "explanation": "1 y 4 son VERDADEROS. 2 es FALSO (la punción lumbar se realiza en L3-L4 o L4-L5 para evitar dañar la médula) y 3 es FALSO (el espacio epidural espinal es un espacio REAL con grasa y plexos de Batson)."
+    },
+    {
+      "id": "udabol_anat_k20",
+      "question": "PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a la cadena simpática y sistema autónomo cervical:\n1. El ganglio estrellado (cervicotorácico) resulta frecuentemente de la fusión del ganglio cervical inferior con el primer ganglio torácico\n2. Se localiza por delante de la apófisis transversa de C7 y el cuello de la primera costilla\n3. La lesión de la vía simpática cervical produce el síndrome de Claude Bernard-Horner (ptosis, miosis y anhidrosis facial ipsilateral)\n4. Los ramos comunicantes blancos contienen fibras preganglionares mielinizadas procedentes de la médula espinal T1 a L2",
+      "options": [
+        "A 1,2 y 3",
+        "B 2,3 y 4",
+        "C 2 y 3",
+        "D 1 y 4",
+        "E TODOS VERDADEROS O FALSOS"
+      ],
+      "correctIndex": 4,
+      "explanation": "TODOS SON VERDADEROS. Fusión de C8-T1, situación C7/1ra costilla, síndrome de Horner por desaferentación simpática, y ramos blancos mielinizados T1-L2."
+    }
+  ]
+},
+  {
     "id": "udabol_embrio",
     "isUdabol": true,
     "title": "🏥 UDABOL: Embriología II (MED-202-11390)",
