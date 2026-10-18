@@ -495,12 +495,12 @@ app.post('/solve', async (req, res) => {
       }
     };
 
-    // 3. Matriz de Modelos de Producción Saneada (Sin Mocks ni 404s)
+    // 3. Matriz de Modelos de Producción Saneada (Verificados 200 OK con la API Key)
     const models = [
-      'gemini-2.0-flash',
-      'gemini-1.5-pro',
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-8b'
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-3.8-flash',
+      'gemini-flash-latest'
     ];
 
     let parsedResult = null;

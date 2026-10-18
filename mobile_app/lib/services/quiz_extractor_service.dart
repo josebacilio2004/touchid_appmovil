@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../models/quiz_models.dart';
@@ -468,6 +469,20 @@ class QuizExtractorService {
     );
   }
 
+  static final Random _random = Random();
+
+  /// Genera un retraso biométrico estocástico natural (Box-Muller)
+  /// media = 220ms, sigma = 45ms (acotado entre 110ms y 380ms) para evitar detección heurística de bots.
+  static Future<void> _applyHumanizedJitter() async {
+    try {
+      final u1 = _random.nextDouble().clamp(0.0001, 0.9999);
+      final u2 = _random.nextDouble();
+      final z = sqrt(-2.0 * log(u1)) * cos(2.0 * pi * u2);
+      final delayMs = (220.0 + z * 45.0).round().clamp(110, 380);
+      await Future.delayed(Duration(milliseconds: delayMs));
+    } catch (_) {}
+  }
+
   /// Inyecta un script JavaScript en el [WebViewController] activo para
   /// marcar automáticamente la alternativa ganadora en el DOM.
   /// Simula eventos nativos (focus, change, input, click) tanto en el input
@@ -633,6 +648,9 @@ class QuizExtractorService {
 ''';
 
     try {
+      // Retardo biométrico estocástico con distribución Gaussiana Box-Muller (Fase 5.2)
+      await _applyHumanizedJitter();
+
       final rawResult = await controller.runJavaScriptReturningResult(autoMarkJs);
       String cleanResult = rawResult.toString().trim();
 

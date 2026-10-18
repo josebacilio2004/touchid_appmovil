@@ -11,6 +11,7 @@ import '../models/app_config.dart';
 import '../models/quiz_models.dart';
 import '../services/quiz_extractor_service.dart';
 import '../services/quiz_ai_service.dart';
+import '../services/stealth_haptic_codec.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'settings_screen.dart';
 import 'chrome_history_screen.dart';
@@ -83,6 +84,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   bool _isStealthMode = false;
   bool _isLoading = false;
   int _loadingProgress = 100;
+  Timer? _progressWatchdogTimer;
   static const MethodChannel _shareChannel = MethodChannel('com.jose.touchid/native_share');
   Timer? _touchHoldTimer;
   int _configTapCount = 0;
@@ -243,6 +245,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void dispose() {
     _touchHoldTimer?.cancel();
     _configTapTimer?.cancel();
+    _progressWatchdogTimer?.cancel();
     _urlFocusNode.dispose();
     _urlController.dispose();
     _inPageSearchCtrl.dispose();
@@ -268,8 +271,16 @@ class _BrowserScreenState extends State<BrowserScreen> {
       (controller.platform as WebKitWebViewController)
           .setAllowsBackForwardNavigationGestures(true);
     } else if (controller.platform is AndroidWebViewController) {
-      (controller.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
+      final androidController = controller.platform as AndroidWebViewController;
+      androidController.setMediaPlaybackRequiresUserGesture(false);
+      androidController.setMixedContentMode(MixedContentMode.alwaysAllow);
+
+      // Habilitar cookies de terceros para transiciones cross-domain (Google Search -> UDABOL Backbone.js)
+      final cookieManager = WebViewCookieManager();
+      if (cookieManager.platform is AndroidWebViewCookieManager) {
+        (cookieManager.platform as AndroidWebViewCookieManager)
+            .setAcceptThirdPartyCookies(androidController, true);
+      }
     }
 
     // Configuración estética moderna de cuadros de diálogo JavaScript (alert, confirm, prompt)
@@ -498,7 +509,47 @@ class _BrowserScreenState extends State<BrowserScreen> {
             setState(() {
               _loadingProgress = progress;
             });
+
+            // Watchdog anti-congelamiento para HiOS/Tecno Spark (barra colgada en 70-95%)
+            if (progress >= 70 && progress < 100) {
+              _progressWatchdogTimer?.cancel();
+              _progressWatchdogTimer = Timer(const Duration(milliseconds: 4000), () {
+                if (mounted && _loadingProgress >= 70 && _loadingProgress < 100) {
+                  setState(() {
+                    _loadingProgress = 100;
+                  });
+                }
+              });
+            } else if (progress >= 100) {
+              _progressWatchdogTimer?.cancel();
+            }
           }
+        },
+        onNavigationRequest: (NavigationRequest request) {
+          final reqUrl = request.url;
+
+          // 1. Interceptar redirecciones intermedias de Google Search para evitar bucle/congelamiento en HiOS
+          // e.g. https://www.google.com/url?q=https://virtual.udabol.edu.bo/... o url=...
+          if (reqUrl.contains('google.') && reqUrl.contains('/url?') && (reqUrl.contains('url=') || reqUrl.contains('q='))) {
+            try {
+              final uri = Uri.parse(reqUrl);
+              final target = uri.queryParameters['url'] ?? uri.queryParameters['q'];
+              if (target != null && target.isNotEmpty && target.startsWith('http')) {
+                debugPrint('[StealthBrowser] Bypass directo de redirect de Google a: $target');
+                controller.loadRequest(Uri.parse(target));
+                return NavigationDecision.prevent;
+              }
+            } catch (e) {
+              debugPrint('[StealthBrowser] Error en bypass de Google redirect: $e');
+            }
+          }
+
+          // 2. Prevenir esquemas no web que cuelgan el WebView
+          if (!reqUrl.startsWith('http://') && !reqUrl.startsWith('https://') && !reqUrl.startsWith('about:') && !reqUrl.startsWith('chrome://')) {
+            return NavigationDecision.prevent;
+          }
+
+          return NavigationDecision.navigate;
         },
         onPageStarted: (String pageUrl) {
           setState(() {
@@ -569,6 +620,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   if (url) window.location.href = url;
                   return window;
                 };
+                // Interceptar clicks en fase de captura antes de que disparen ventanas en segundo plano
+                document.addEventListener('click', function(e) {
+                  var a = e.target.closest('a');
+                  if (a && a.getAttribute('target') === '_blank') {
+                    a.setAttribute('target', '_self');
+                  }
+                }, true);
               })();
             ''');
           } catch (_) {}
@@ -812,11 +870,15 @@ class _BrowserScreenState extends State<BrowserScreen> {
         debugPrint('Excepción ejecutando auto-marcado: $markErr');
       }
 
-      // Confirmación háptica de éxito discreta en la mano (sin cuadro ni aviso en pantalla)
-      if (autoMarkResult?.success == true) {
-        HapticFeedback.lightImpact();
+      // Confirmación háptica codificada de alta precisión en la palma de la mano (Fase 5.1)
+      // Transmite la respuesta exacta (A=1 pulso, B=2 pulsos, C=3 pulsos, D=2+2, E=3 heavy)
+      // Funciona como feedback de éxito y como respaldo táctil por si el DOM estuviera bloqueado.
+      if (aiSolution.answer.trim().isNotEmpty) {
+        await StealthHapticCodec.playOptionPattern(aiSolution.answer);
+      } else if (autoMarkResult?.success == true) {
+        await HapticFeedback.lightImpact();
       } else {
-        _hapticErrorFeedback();
+        await StealthHapticCodec.playErrorPattern();
       }
 
       // Modo 100% silencioso: se omite el cuadro/popup visual emergente en pantalla
@@ -826,7 +888,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       _syncQuestionAndAnswer(activeQuestion, aiSolution);
 
     } catch (e) {
-      _hapticErrorFeedback();
+      await StealthHapticCodec.playErrorPattern();
       failureReason ??= e.toString();
       debugPrint('Fallo al resolver cuestionario (sigiloso): $e');
       // Modo ultra-sigilo: CERO SnackBars, banners o textos de error en la pantalla del examen.
