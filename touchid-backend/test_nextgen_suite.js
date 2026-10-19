@@ -103,6 +103,11 @@ assert(legacyPromptTest.includes('Langman'), 'Actualiza automáticamente prompt 
 const customPromptTest = getSmartSystemPrompt('pregunta cualquiera', [], 'Mi prompt personalizado del Dr. House');
 assert(customPromptTest === 'Mi prompt personalizado del Dr. House', 'Respeta prompt verdaderamente personalizado si el usuario lo configuró manualmente');
 
+// Caso real del alumno (Captura de pantalla: prompt guardado de Microbiología para examen de Embriología)
+const studentScreenshotPrompt = 'Actúa como un médico especialista de élite en Microbiología Médica y Bacteriología Clínica. Responde con el 100%';
+const studentEmbryoTest = getSmartSystemPrompt('ANTES DEL NACIMIENTO LOS PULMONES ESTAN LLENOS DE', ['A) Liquido con poco cloro y proteinas'], studentScreenshotPrompt);
+assert(studentEmbryoTest.includes('Langman'), 'Protección anti-mismatch: Inyecta Langman a pesar de que el alumno dejó guardado el rol de Microbiología');
+
 // ----------------------------------------------------
 // TEST 4: Caché Semántico Invariante al Orden y Coalescencia
 // ----------------------------------------------------

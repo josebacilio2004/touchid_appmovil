@@ -49,42 +49,38 @@ const GENERAL_PROMPT = `Actúa como un evaluador académico de élite y responde
  */
 function getSmartSystemPrompt(questionText = '', options = [], userCustomPrompt = '') {
   const trimmed = (userCustomPrompt || '').trim();
+  const fullText = `${questionText} ${(options || []).join(' ')}`.toLowerCase();
+  const promptLower = trimmed.toLowerCase();
 
-  // Detectar si es un prompt por defecto o genérico de versiones anteriores del APK
+  // 1. Detectar el dominio médico o académico real de la pregunta
+  const isMTC = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(fullText);
+  const isInfectology = /infectolog|microbiolog|par[áa]sito|bacteri|virus|bacil|chagas|triatoma|amastigote|tripomastigote|promastigote|lutzomyia|aedes|anopheles|malaria|plasmodium|leishmania|dengue|tuberculosis|faget|ziehl|gram|antibi[óo]tic|antimicrobian/i.test(fullText);
+  const isEmbryology = /embriolog|organog[eé]nesis|capa\s*germinativ|ectodermo|mesodermo|endodermo|cresta\s*neural|bolsa\s*far[íi]ngea|arco\s*far[íi]ngeo|hendidura\s*far[íi]ngea|somita|wolff|m[uü]ller|tabicamiento|cardiopat[íi]a\s*cong[eé]nita|rotaci[óo]n\s*intestinal|semana\s*embrionar|teratog|yema\s*ureteral|pulmones\s*estan\s*llenos/i.test(fullText);
+  const isAnatomy = /anatom|bulbo|m[eé]dula\s*oblonga|enc[eé]falo|burdach|cuneiforme|goll|gracilis|arteria|vena|nervio|par\s*craneal|v[íi]a\s*piramidal|lemnisco|scarpa|calot|velpeau|m[uú]sculo|hueso|v[eé]rtebra|fosa|tri[áa]ngulo|conducto|inervaci[óo]n|vascularizaci[óo]n/i.test(fullText);
+  const isKTypeOrGeneralMed = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|f[áa]rmaco/i.test(fullText);
+
+  // 2. Comprobar si el prompt del usuario es por defecto o heredado de una versión anterior
   const isLegacyDefault = !trimmed ||
     /experto acad[eé]mico de alto nivel|profesor universitario experto|evaluador experto de ex[aá]menes m[eé]dicos de [eé]lite|evaluador acad[eé]mico de [eé]lite|100% de tasa de acierto/i.test(trimmed);
 
-  // Si el usuario configuró un prompt manual verdaderamente personalizado (y no es el texto por defecto de versiones viejas)
-  if (!isLegacyDefault && trimmed.length > 0) {
+  // 3. Proteger contra desajuste de materia: si el prompt guardado pertenece a otra materia (ej: guardó Microbiología pero el examen es de Embriología o Anatomía)
+  const isMismatchedRole = trimmed.length > 0 && (
+    (isEmbryology && !/embriolog|langman|teratog/i.test(promptLower)) ||
+    (isAnatomy && !/anatom|latarjet|rouvi[eè]re|neuroanatom/i.test(promptLower)) ||
+    (isMTC && !/mtc|tr[áa]nsito|conductor|brevete/i.test(promptLower))
+  );
+
+  // 4. Si el usuario configuró un prompt manual válido y afín a la materia, se respeta
+  if (!isLegacyDefault && !isMismatchedRole && trimmed.length > 0) {
     return trimmed;
   }
 
-  const fullText = `${questionText} ${(options || []).join(' ')}`.toLowerCase();
-
-  // MTC
-  if (/mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(fullText)) {
-    return MTC_PROMPT;
-  }
-
-  // Infectología y Parasitología
-  if (/infectolog|microbiolog|par[áa]sito|bacteri|virus|bacil|chagas|triatoma|amastigote|tripomastigote|promastigote|lutzomyia|aedes|anopheles|malaria|plasmodium|leishmania|dengue|tuberculosis|faget|ziehl|gram|antibi[óo]tic|antimicrobian/i.test(fullText)) {
-    return INFECTOLOGY_PROMPT;
-  }
-
-  // Embriología
-  if (/embriolog|organog[eé]nesis|capa\s*germinativ|ectodermo|mesodermo|endodermo|cresta\s*neural|bolsa\s*far[íi]ngea|arco\s*far[íi]ngeo|hendidura\s*far[íi]ngea|somita|wolff|m[uü]ller|tabicamiento|cardiopat[íi]a\s*cong[eé]nita|rotaci[óo]n\s*intestinal|semana\s*embrionar|teratog|yema\s*ureteral/i.test(fullText)) {
-    return EMBRYOLOGY_PROMPT;
-  }
-
-  // Anatomía y Neuroanatomía
-  if (/anatom|bulbo|m[eé]dula\s*oblonga|enc[eé]falo|burdach|cuneiforme|goll|gracilis|arteria|vena|nervio|par\s*craneal|v[íi]a\s*piramidal|lemnisco|scarpa|calot|velpeau|m[uú]sculo|hueso|v[eé]rtebra|fosa|tri[áa]ngulo|conducto|inervaci[óo]n|vascularizaci[óo]n/i.test(fullText)) {
-    return ANATOMY_PROMPT;
-  }
-
-  // Médico general
-  if (/\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|f[áa]rmaco/i.test(fullText)) {
-    return ANATOMY_PROMPT; // Usar el prompt de alta exigencia anatómica/médica
-  }
+  // 5. Asignar el prompt canónico de máxima precisión según la materia detectada
+  if (isMTC) return MTC_PROMPT;
+  if (isInfectology) return INFECTOLOGY_PROMPT;
+  if (isEmbryology) return EMBRYOLOGY_PROMPT;
+  if (isAnatomy) return ANATOMY_PROMPT;
+  if (isKTypeOrGeneralMed) return ANATOMY_PROMPT;
 
   return GENERAL_PROMPT;
 }
