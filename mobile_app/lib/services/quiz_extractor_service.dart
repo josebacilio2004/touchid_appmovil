@@ -587,6 +587,27 @@ class QuizExtractorService {
       }
     }
 
+    // ESTRATEGIA 4: Fallback a contenedores clickeables de opciones (.option-item, .udabol-option-row, .opcion, [role="radio"])
+    if (!targetElement) {
+      var customOptions = Array.from(doc.querySelectorAll('.option-item, .udabol-option-row, .opcion, [role="radio"], .answer div, li.option'));
+      if (customOptions.length > 0) {
+        if (targetText && targetText.length > 1) {
+          var cleanT = targetText.toLowerCase();
+          for (var c = 0; c < customOptions.length; c++) {
+            var cTxt = clean(customOptions[c].innerText || customOptions[c].textContent).toLowerCase();
+            if (cTxt.indexOf(cleanT) !== -1 || cleanT.indexOf(cTxt) !== -1) {
+              targetElement = customOptions[c];
+              targetIdx = c;
+              break;
+            }
+          }
+        }
+        if (!targetElement && targetIdx >= 0 && targetIdx < customOptions.length) {
+          targetElement = customOptions[targetIdx];
+        }
+      }
+    }
+
     if (targetElement) {
       // 1. Desplazar hacia la opción
       try {
@@ -594,8 +615,10 @@ class QuizExtractorService {
       } catch(_) {}
 
       // 2. Foco y marcado directo
-      targetElement.focus();
-      targetElement.checked = true;
+      try { targetElement.focus(); } catch(_) {}
+      if (targetElement.tagName === 'INPUT') {
+        targetElement.checked = true;
+      }
 
       // 3. Despacho de eventos nativos para frameworks reactivos y Moodle/UDABOL
       try {
@@ -603,16 +626,14 @@ class QuizExtractorService {
         targetElement.dispatchEvent(new Event('change', { bubbles: true }));
       } catch(_) {}
 
-      // 4. Disparar click sobre el label si existe, o directamente en el radio
-      if (labelElement) {
+      // 4. Disparar click sobre el elemento principal y su label
+      try {
+        targetElement.click();
+      } catch(_) {}
+
+      if (labelElement && labelElement !== targetElement) {
         try {
           labelElement.click();
-        } catch(_) {
-          targetElement.click();
-        }
-      } else {
-        try {
-          targetElement.click();
         } catch(_) {}
       }
 

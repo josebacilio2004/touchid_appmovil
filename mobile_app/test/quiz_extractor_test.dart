@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_app/models/quiz_models.dart';
-import 'package:mobile_app/services/quiz_ai_service.dart';
 
 void main() {
   group('Modelos Fuertemente Tipados (QuizModels)', () {
