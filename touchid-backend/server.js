@@ -373,8 +373,8 @@ app.post('/solve', async (req, res) => {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const rawApiKeys = (process.env.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
+    if (rawApiKeys.length === 0) {
       return res.status(500).json({ error: 'GEMINI_API_KEY no configurada en el servidor Render.' });
     }
 
