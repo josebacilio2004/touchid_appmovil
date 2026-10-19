@@ -5,6 +5,11 @@ const fs = require('fs');
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
+// Motores Next-Gen v3.0 (K-Type, Caché L1 y Prompts Médicos Ultra-Densos)
+const { isKTypeQuestion, K_TYPE_RESPONSE_SCHEMA, resolveKTypeDeterministically } = require('./engines/kTypeSolver');
+const { getSmartSystemPrompt } = require('./engines/medicalPrompts');
+const { l1Cache, inFlightRequests, buildCanonicalSignature, mapCachedAnswerToStudentOptions } = require('./engines/orchestratorService');
+
 const app = express();
 app.use(cors());
 // Límite de 50MB para soportar HTML crudo completo de contingencia de plataformas como UDABOL
@@ -443,25 +448,41 @@ app.post('/solve', async (req, res) => {
       }
     }
 
+    // 1. FAST-PATH: Verificar en Caché Semántico L1 (Memoria RAM < 1ms)
+    const canonicalSig = buildCanonicalSignature(effectiveQuestion, options);
+    const cachedHit = l1Cache.get(canonicalSig);
+    if (cachedHit) {
+      const mapped = mapCachedAnswerToStudentOptions(cachedHit, options);
+      if (mapped) {
+        console.log(`[CACHE-L1-HIT] Resuelto en <1ms: "${mapped.correct_option_letter}"`);
+        return res.json(mapped);
+      }
+    }
+
+    // 2. Detección Inteligente K-Type y Prompt Médico Especializado
+    const isKType = isKTypeQuestion(effectiveQuestion, options);
+    const systemInstructionText = getSmartSystemPrompt(effectiveQuestion, options, systemPrompt);
+
     let prompt = '';
-    if (options && options.length > 0) {
+    let responseSchema = {
+      type: 'OBJECT',
+      properties: {
+        thought: { type: 'STRING' },
+        correct_option_index: { type: 'INTEGER' },
+        correct_option_text: { type: 'STRING' },
+        explanation: { type: 'STRING' },
+        subject: { type: 'STRING' }
+      },
+      required: ['correct_option_index', 'correct_option_text', 'explanation', 'subject']
+    };
+
+    if (isKType) {
+      prompt = `Pregunta K-Type (Patrón de Respuestas Combinadas):\n"${effectiveQuestion}"\n\nAlternativas Disponibles:\n${(options || []).map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción K-Type Obligatoria:\n1) Extrae y evalúa cada proposición numerada (1, 2, 3, 4, etc.) de forma 100% aislada e independiente.\n2) En 'fact_check', cita la estructura anatómica o concepto exacto que valida o invalida la proposición. Determina si es verdadera (true) o falsa (false).\n3) En 'true_indices', lista únicamente los números de las proposiciones verdaderas.\n4) Sugiere la letra y explica brevemente en máximo 15 palabras.`;
+      responseSchema = K_TYPE_RESPONSE_SCHEMA;
+    } else if (options && options.length > 0) {
       prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
     } else {
       prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
-    }
-
-    const isMtcQuery = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(effectiveQuestion);
-    const isRomanOrMedical = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|androstenodiona|testosterona|estr[óo]geno|aromatasa|hormon|enzim|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco/i.test(`${effectiveQuestion} ${(options || []).join(' ')}`);
-
-    let systemInstructionText = systemPrompt;
-    if (!systemInstructionText || systemInstructionText.trim() === '') {
-      if (isMtcQuery) {
-        systemInstructionText = 'Actúa como evaluador oficial del Examen Nacional de Conducir del MTC (Perú). Responde con el 100% de precisión según el Texto Único Ordenado del Reglamento Nacional de Tránsito (D.S. 016-2009-MTC, D.S. 025-2021-MTC y modificatorias) y el Balotario Oficial de Preguntas del MTC. Presta extrema atención a límites de velocidad vigentes en calles/avenidas, reglas de preferencia de paso y preguntas trampa.';
-      } else if (isRomanOrMedical) {
-        systemInstructionText = 'Actúa como evaluador experto de exámenes médicos y fisiológicos de alta exigencia (Fisiología I/II, Medicina Interna, ENAM, MIR). Para cada pregunta: 1) Identifica el concepto fisiológico/farmacológico exacto. 2) Analiza rigurosamente cada alternativa descartando distractores engañosos. 3) Selecciona con 100% de precisión científica la alternativa correcta y su índice exacto.';
-      } else {
-        systemInstructionText = 'Actúa como un evaluador académico de élite y responde con el 100% de precisión analizando rigurosamente todas las alternativas y descartando distractores.';
-      }
     }
 
     const requestBody = {
@@ -470,27 +491,16 @@ app.post('/solve', async (req, res) => {
       generationConfig: {
         temperature: 0.0,
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            thought: { type: 'STRING' },
-            correct_option_index: { type: 'INTEGER' },
-            correct_option_text: { type: 'STRING' },
-            explanation: { type: 'STRING' },
-            subject: { type: 'STRING' }
-          },
-          required: ['correct_option_index', 'correct_option_text', 'explanation', 'subject']
-        }
+        responseSchema: responseSchema
       }
     };
 
+    // 3. Matriz de Modelos de Producción Saneada (Verificados 200 OK con la API Key)
     const models = [
       'gemini-2.5-flash',
-      'gemini-2.0-flash',
       'gemini-2.5-flash-lite',
-      'gemini-flash-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-1.5-flash'
+      'gemini-3.8-flash',
+      'gemini-flash-latest'
     ];
 
     let parsedResult = null;
@@ -523,6 +533,24 @@ app.post('/solve', async (req, res) => {
     if (!parsedResult) {
       throw new Error(lastError || 'No se pudo obtener respuesta válida de Gemini.');
     }
+
+    // 4. Mapeo Determinista Post-LLM para Preguntas K-Type
+    if (isKType && parsedResult.propositions) {
+      parsedResult = resolveKTypeDeterministically(parsedResult, options);
+    } else {
+      const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
+      if (!parsedResult.correct_option_letter && parsedResult.correct_option_index !== undefined && parsedResult.correct_option_index >= 0) {
+        parsedResult.correct_option_letter = alphabet[parsedResult.correct_option_index] || 'A';
+      }
+    }
+
+    // 5. Almacenar en Caché Semántico L1 en RAM
+    l1Cache.set(canonicalSig, {
+      ...parsedResult,
+      canonical_answer_text: parsedResult.correct_option_text,
+      is_k_type: isKType,
+      true_indices: parsedResult.true_indices || []
+    });
 
     // Descontar 1 crédito si no es ilimitado y la base de datos está disponible
     if (!isUnlimited && database) {
