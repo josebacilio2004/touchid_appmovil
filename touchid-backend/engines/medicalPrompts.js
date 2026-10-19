@@ -48,8 +48,15 @@ const GENERAL_PROMPT = `Actúa como un evaluador académico de élite y responde
  * Selecciona el prompt ultra-denso según el análisis léxico de la pregunta y opciones
  */
 function getSmartSystemPrompt(questionText = '', options = [], userCustomPrompt = '') {
-  if (userCustomPrompt && userCustomPrompt.trim().length > 0) {
-    return userCustomPrompt.trim();
+  const trimmed = (userCustomPrompt || '').trim();
+
+  // Detectar si es un prompt por defecto o genérico de versiones anteriores del APK
+  const isLegacyDefault = !trimmed ||
+    /experto acad[eé]mico de alto nivel|profesor universitario experto|evaluador experto de ex[aá]menes m[eé]dicos de [eé]lite|evaluador acad[eé]mico de [eé]lite|100% de tasa de acierto/i.test(trimmed);
+
+  // Si el usuario configuró un prompt manual verdaderamente personalizado (y no es el texto por defecto de versiones viejas)
+  if (!isLegacyDefault && trimmed.length > 0) {
+    return trimmed;
   }
 
   const fullText = `${questionText} ${(options || []).join(' ')}`.toLowerCase();

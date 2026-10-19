@@ -96,6 +96,13 @@ assert(promptInfectology.includes('Mandell, Douglas & Bennett'), 'Selecciona pro
 const promptMTC = getSmartSystemPrompt('límite máximo de velocidad en calles y avenidas según el MTC', []);
 assert(promptMTC.includes('Reglamento Nacional de Tránsito'), 'Selecciona prompt del MTC Perú');
 
+// Prueba de compatibilidad con versiones anteriores del APK
+const legacyPromptTest = getSmartSystemPrompt('en embriología qué arco faríngeo forma el timo', [], 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.');
+assert(legacyPromptTest.includes('Langman'), 'Actualiza automáticamente prompt por defecto de APKs viejos a Langman (Embriología)');
+
+const customPromptTest = getSmartSystemPrompt('pregunta cualquiera', [], 'Mi prompt personalizado del Dr. House');
+assert(customPromptTest === 'Mi prompt personalizado del Dr. House', 'Respeta prompt verdaderamente personalizado si el usuario lo configuró manualmente');
+
 // ----------------------------------------------------
 // TEST 4: Caché Semántico Invariante al Orden y Coalescencia
 // ----------------------------------------------------
