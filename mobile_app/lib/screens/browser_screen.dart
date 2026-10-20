@@ -3020,18 +3020,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   },
                   onTapDown: (_) {
                     _touchHoldTimer?.cancel();
-                    _touchHoldTimer = Timer(const Duration(seconds: 3), () {
+                    _touchHoldTimer = Timer(const Duration(seconds: 4), () {
                       HapticFeedback.heavyImpact();
-                      setState(() {
-                        _isStealthMode = true;
-                      });
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Modo stealth activado. Botón oculto. Toca 2 veces el icono de ajustes en la barra para restaurar.'),
-                            duration: Duration(seconds: 3),
-                          ),
-                        );
+                        setState(() {
+                          _isStealthMode = true;
+                        });
                       }
                     });
                   },
