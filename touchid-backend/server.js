@@ -495,38 +495,46 @@ app.post('/solve', async (req, res) => {
       }
     };
 
-    // 3. Matriz de Modelos de Producción Saneada (Verificados 200 OK con la API Key)
+    // 3. Matriz de Modelos de Producción Saneada y Pool Multi-Key
     const models = [
+      'gemini-3.5-flash-lite',
+      'gemini-flash-lite-latest',
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash',
       'gemini-2.5-flash',
-      'gemini-2.5-flash-lite',
-      'gemini-3.8-flash',
-      'gemini-flash-latest'
+      'gemini-2.5-flash-lite'
     ];
 
     let parsedResult = null;
     let lastError = null;
 
-    for (const model of models) {
-      try {
-        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
-        });
+    keyLoop: for (let kIdx = 0; kIdx < rawApiKeys.length; kIdx++) {
+      const activeKey = rawApiKeys[kIdx];
+      for (const model of models) {
+        try {
+          const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          });
 
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidateText) {
-            parsedResult = JSON.parse(candidateText.trim());
-            break;
+          if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (candidateText) {
+              parsedResult = JSON.parse(candidateText.trim());
+              break keyLoop;
+            }
+          } else {
+            const errText = await geminiRes.text();
+            lastError = `Clave ${kIdx + 1} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+            if (geminiRes.status === 429) {
+              console.warn(`⚠️ [QUOTA-EXCEEDED-429] Clave ${kIdx + 1} agotó cuota en ${model}. Rotando...`);
+            }
           }
-        } else {
-          const errText = await geminiRes.text();
-          lastError = `Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+        } catch (err) {
+          lastError = err.message;
         }
-      } catch (err) {
-        lastError = err.message;
       }
     }
 
