@@ -747,7 +747,21 @@ app.post('/admin/licenses', checkAdminToken, requireDb, async (req, res) => {
 
 app.get('/admin/history', checkAdminToken, requireDb, async (req, res) => {
   try {
-    const docs = await req.db.collection('history').find().sort({ timestamp: -1 }).limit(100).toArray();
+    const limit = parseInt(req.query.limit) || 100;
+    const skip = parseInt(req.query.skip) || 0;
+    const search = req.query.search;
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { question: { $regex: search, $options: 'i' } },
+          { explanation: { $regex: search, $options: 'i' } },
+          { answerText: { $regex: search, $options: 'i' } },
+          { subject: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+    const docs = await req.db.collection('history').find(query).sort({ timestamp: -1 }).skip(skip).limit(limit).toArray();
     const history = docs.map(doc => ({
       id: doc._id.toString(),
       question: doc.question,
@@ -766,6 +780,38 @@ app.get('/admin/history', checkAdminToken, requireDb, async (req, res) => {
       timestamp: doc.timestamp ? (doc.timestamp.toISOString ? doc.timestamp.toISOString() : doc.timestamp) : null
     }));
     res.json(history);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Endpoint administrativo para extraer todas las preguntas de Microbiología / Bacteriología de history y question_bank
+app.get('/admin/export-microbiology', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const microRegex = /microbio|bacteri|gram|coco|bacil|espiroqueta|peptidoglican|teicoico|endotoxina|lipopolisac|staphylococcus|streptococcus|pneumoniae|enterococcus|neisseria|bacillus|clostridium|tetani|botulinum|perfringens|listeria|corynebacterium|escherichia|klebsiella|proteus|salmonella|shigella|yersinia|pseudomonas|vibrio|helicobacter|campylobacter|haemophilus|mycobacterium|tuberculosis|chlamydia|mycoplasma|treponema|cultivo|antibiograma|agar|cefalosporina|penicilina|vancomicina|carbapenem/i;
+
+    const historyDocs = await req.db.collection('history').find({
+      $or: [
+        { question: { $regex: microRegex } },
+        { explanation: { $regex: microRegex } },
+        { subject: { $regex: microRegex } }
+      ]
+    }).sort({ timestamp: -1 }).toArray();
+
+    const qbDocs = await req.db.collection('question_bank').find({
+      $or: [
+        { question: { $regex: microRegex } },
+        { explanation: { $regex: microRegex } },
+        { course: { $regex: microRegex } }
+      ]
+    }).sort({ timestamp: -1 }).toArray();
+
+    res.json({
+      historyCount: historyDocs.length,
+      qbCount: qbDocs.length,
+      history: historyDocs,
+      questionBank: qbDocs
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
