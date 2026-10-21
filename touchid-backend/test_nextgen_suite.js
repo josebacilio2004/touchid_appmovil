@@ -96,6 +96,12 @@ assert(promptInfectology.includes('Mandell, Douglas & Bennett'), 'Selecciona pro
 const promptMTC = getSmartSystemPrompt('límite máximo de velocidad en calles y avenidas según el MTC', []);
 assert(promptMTC.includes('Reglamento Nacional de Tránsito'), 'Selecciona prompt del MTC Perú');
 
+const promptGenetics = getSmartSystemPrompt('patrón de herencia autosómica dominante acondroplasia mutación fgfr3 y ley de hardy weinberg', []);
+assert(promptGenetics.includes('Thompson & Thompson'), 'Selecciona prompt de Genética Médica Humana y Clínica');
+
+const promptSemiology = getSmartSystemPrompt('al palpar el frémito vocal y auscultar el murmullo vesicular en el tórax', []);
+assert(promptSemiology.includes('Argente-Álvarez'), 'Selecciona prompt de Semiología Médica y Exploración del Tórax');
+
 // Prueba de compatibilidad con versiones anteriores del APK
 const legacyPromptTest = getSmartSystemPrompt('en embriología qué arco faríngeo forma el timo', [], 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.');
 assert(legacyPromptTest.includes('Langman'), 'Actualiza automáticamente prompt por defecto de APKs viejos a Langman (Embriología)');

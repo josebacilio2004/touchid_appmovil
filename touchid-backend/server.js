@@ -480,7 +480,11 @@ app.post('/solve', async (req, res) => {
       prompt = `Pregunta K-Type (Patrón de Respuestas Combinadas):\n"${effectiveQuestion}"\n\nAlternativas Disponibles:\n${(options || []).map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción K-Type Obligatoria:\n1) Extrae y evalúa cada proposición numerada (1, 2, 3, 4, etc.) de forma 100% aislada e independiente.\n2) En 'fact_check', cita la estructura anatómica o concepto exacto que valida o invalida la proposición. Determina si es verdadera (true) o falsa (false).\n3) En 'true_indices', lista únicamente los números de las proposiciones verdaderas.\n4) Sugiere la letra y explica brevemente en máximo 15 palabras.`;
       responseSchema = K_TYPE_RESPONSE_SCHEMA;
     } else if (options && options.length > 0) {
-      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
+      const isNegative = /\b(excepto|incorrect[oa]|no\s+es|no\s+corresponde|se[ñn]ale\s+la\s+falsa|fals[oa]|no\s+deber[ií]a|no\s+tiene)\b/i.test(effectiveQuestion);
+      const negWarning = isNegative
+        ? `\n\n⚠️ ¡ATENCIÓN CRÍTICA: PREGUNTA EN NEGATIVO (EXCEPTO / INCORRECTA / FALSA / NO CORRESPONDE)!:\nTu objetivo obligatorio es identificar la opción que sea CLÍNICAMENTE FALSA o ERRÓNEA.\nEn 'thought', evalúa metódicamente cada alternativa con [VERDADERO] o [FALSO].\nMarca en 'correct_option_index' y 'correct_option_text' la opción que resultó [FALSA].`
+        : '';
+      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.${negWarning}\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
     } else {
       prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
     }
@@ -999,6 +1003,21 @@ app.delete('/admin/question-bank/:id', checkAdminToken, requireDb, async (req, r
     const { ObjectId } = require('mongodb');
     const result = await req.db.collection('question_bank').deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint administrativo para actualizar la respuesta de una pregunta en el banco
+app.post('/admin/update-question-bank', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { course, question, answer, answerText, explanation } = req.body;
+    const query = course ? { course, question } : { question };
+    const result = await req.db.collection('question_bank').updateMany(
+      query,
+      { $set: { answer, answerText, explanation, updatedAt: new Date() } }
+    );
+    res.json({ success: true, modifiedCount: result.modifiedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
