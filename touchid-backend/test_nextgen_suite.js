@@ -108,6 +108,9 @@ assert(promptPharmacologyII.includes('Goodman & Gilman'), 'Selecciona prompt de 
 const promptMicrobiologyII = getSmartSystemPrompt('hongo dimórfico histoplasma capsulatum y esférulas de coccidioides en micología médica con virus de la hepatitis b hbsag', []);
 assert(promptMicrobiologyII.includes('Murray Microbiología Médica'), 'Selecciona prompt de Microbiología Médica II: Micología y Virología');
 
+const promptPathophysiology = getSmartSystemPrompt('en la fisiopatología de la insuficiencia cardíaca con fracción de eyección reducida icfer curva de frank starling y perfil de shock cardiogénico con pcp elevada', []);
+assert(promptPathophysiology.includes('Porth Fisiopatología'), 'Selecciona prompt de Fisiopatología Médica Humana y Patología Funcional');
+
 // Prueba de compatibilidad con versiones anteriores del APK
 const legacyPromptTest = getSmartSystemPrompt('en embriología qué arco faríngeo forma el timo', [], 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.');
 assert(legacyPromptTest.includes('Langman'), 'Actualiza automáticamente prompt por defecto de APKs viejos a Langman (Embriología)');

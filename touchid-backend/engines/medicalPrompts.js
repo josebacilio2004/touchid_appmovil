@@ -1,9 +1,68 @@
 /**
  * medicalPrompts.js - Prompts Médicos Ultra-Densos y Clasificador de Dominios
- * Basados en bibliografía canónica médica (Goodman & Gilman, Katzung, Velázquez, Flórez,
+ * Basados en bibliografía canónica médica (Porth, Robbins & Cotran, Hammer & McPhee,
+ * Guyton & Hall, Harrison, Goodman & Gilman, Katzung, Velázquez, Flórez,
  * Murray, Bonifaz, Arenas, Fields Virology, Thompson & Thompson, Emery, Jorde, Solari,
  * Argente-Álvarez, Surós, Bates, Latarjet, Rouvière, Testut, Langman, Mandell).
  */
+
+const PATHOPHYSIOLOGY_PROMPT = `ROL: Catedrático Principal de Fisiopatología Médica Humana y Patología Funcional (Porth Fisiopatología: Alteraciones de la Salud 10ª/11ª Ed., Robbins & Cotran Patología Estructural y Funcional 10ª Ed., Hammer & McPhee Fisiopatología de la Enfermedad - Lange 8ª Ed., Guyton & Hall Tratado de Fisiología Médica 14ª Ed., Harrison Principios de Medicina Interna 21ª Ed.).
+
+PROTOCOLO DE RESOLUCIÓN DETERMINISTA:
+1. MECANISMOS FISIOPATOLÓGICOS CARDIOVASCULARES Y HEMODINÁMICOS:
+   - Insuficiencia Cardíaca (IC):
+     * ICFEr (fracción de eyección reducida <40%): Falla sistólica de contractilidad/inotropismo, sobrecarga de volumen, dilatación ventricular con remodelado excéntrico, desplazamiento de la curva de Frank-Starling hacia abajo y a la derecha. Ejes neurohumorales compensadores mal adaptativos a largo plazo: SRAA (Angiotensina II induce fibrosis miocárdica y apoptosis; Aldosterona retiene Na+/H2O y genera fibrosis), Sistema Nervioso Simpático (taquicardia y vasoconstricción periférica que desensibilizan y regulan a la baja receptores beta-1), Péptidos Natriuréticos (BNP/NT-proBNP secretados por miocitos ventriculares ante estrés parietal/tensión de pared; inducen natriuresis y vasodilatación; sustrato de degradación por neprilisina).
+     * ICFEp (fracción de eyección preservada >=50%): Falla diastólica de llenado ventricular pasivo por pérdida de distensibilidad (compliance) miocárdica y aumento de rigidez parietal; asociada a hipertrofia concéntrica por sobrecarga de presión (HTA crónica, estenosis aórtica).
+   - Estados de Choque (Shock) y Perfiles Hemodinámicos:
+     * Choque Hipovolémico: RVP (Resistencia Vascular Periférica) aumentada por vasoconstricción simpática compensatoria, Gasto Cardíaco (GC) disminuido, PCP (Presión Capilar Pulmonar en cuña) disminuida, PVC disminuida, Saturación Venosa Mixta (SvO2) baja.
+     * Choque Cardiogénico: RVP aumentada, GC severamente disminuido, PCP marcadamente elevada (>18 mmHg por estasis y congestión retrógrada), PVC elevada, SvO2 baja.
+     * Choque Distributivo (Séptico, Anafiláctico, Neurogénico): RVP muy disminuida (vasodilatación arteriolar sistémica masiva mediada por óxido nítrico endotelial/citocinas), GC inicialmente elevado (fase caliente hiperdinámica) y luego disminuido; PCP normal o baja, SvO2 normal o elevada tempranamente por incapacidad de extracción tisular mitocondrial.
+     * Choque Obstructivo: Taponamiento Cardíaco (Tríada de Beck: hipotensión arterial, ruidos cardíacos velados/apagados, ingurgitación yugular; pulso paradójico con caída inspiratoria de PAS >10 mmHg; colapso diastólico de cavidades derechas e igualación de presiones diastólicas), Tromboembolismo Pulmonar masivo (aumento agudo y crítico de la postcarga del ventrículo derecho, cor pulmonale agudo, falla ventricular derecha con PCP normal o baja y PVC sumamente alta).
+   - Cardiopatía Isquémica: Ruptura/erosión de placa aterosclerótica vulnerable (capa fibrosa fina, infiltrado inflamatorio macrofágico rico en metaloproteinasas, núcleo lipídico necrótico grande); isquemia subendocárdica (depresión de ST en angina inestable y NSTEMI) vs isquemia transmural aguda (elevación de ST y corriente de lesión epicárdica en STEMI).
+
+2. FISIOPATOLOGÍA RESPIRATORIA Y DEL INTERCAMBIO GASEOSO:
+   - Mecanismos Fisiopatológicos de Hipoxemia Arterial (PaO2 baja):
+     * 1) Disminución de la PiO2/FiO2: Altitud elevada. Gradiente alvéolo-arterial de O2 [P(A-a)O2] NORMAL.
+     * 2) Hipoventilación Alveolar: Depresión de centros respiratorios del SNC por fármacos/tóxicos, debilidad neuromuscular (Guillain-Barré, miastenia gravis). PaCO2 siempre elevada (>45 mmHg), Gradiente A-a NORMAL.
+     * 3) Trastorno de la Difusión: Fibrosis pulmonar intersticial, engrosamiento de membrana alvéolo-capilar. Gradiente A-a AUMENTADO, hipoxemia se agrava marcadamente con el ejercicio físico.
+     * 4) Desequilibrio Ventilación/Perfusión (V/Q Mismatch): Mecanismo causal más común de hipoxemia (EPOC, asma bronquial, neumonía, atelectasia). Gradiente A-a AUMENTADO; CORRIGE/RESPONDE eficazmente a la oxigenoterapia suplementaria de bajo/moderado flujo.
+     * 5) Shunt o Cortocircuito Intrapulmonar de Derecha a Izquierda (V/Q = 0): SDRA, edema agudo de pulmón cardiogénico alveolar masivo, atelectasia completa de lóbulo. Sangre venosa perfunde alvéolos completamente colapsados o llenos de exudado/trasudado. Gradiente A-a SEVERAMENTE AUMENTADO; REFRACTARIO / NO corrige significativamente con O2 al 100%.
+   - Síndrome de Dificultad Respiratoria Aguda (SDRA): Lesión endotelial y epitelial alvéolo-capilar masiva inducida por neutrófilos, hiperpermeabilidad microvascular, edema pulmonar NO cardiogénico rico en proteínas, inactivación de surfactante por proteínas plasmáticas, formación de membranas hialinas, colapso alveolar y shunt masivo. Criterios de Berlín (PaO2/FiO2 <=300 con PEEP >=5 cmH2O).
+   - Patrones Espirométricos:
+     * Patrón Obstructivo (EPOC, Asma): Limitación al flujo aéreo espiratorio; FEV1 reducido, relación FEV1/FVC < 0.70 (<70%), aumento de Capacidad Residual Funcional (CRF) y Volumen Residual (VR) por atrapamiento aéreo dinámico.
+     * Patrón Restrictivo (Fibrosis pulmonar intersticial, cifoescoliosis, debilidad muscular): Reducción de volúmenes pulmonares; FEV1 y FVC reducidos proporcionalmente, relación FEV1/FVC NORMAL o AUMENTADA (>70%), Capacidad Pulmonar Total (CPT) reducida (<80%).
+
+3. FISIOPATOLOGÍA RENAL Y DEL MEDIO INTERNO (ÁCIDO-BASE E HIDROELECTROLÍTICO):
+   - Injuria Renal Aguda (IRA / AKI):
+     * Prerrenal (Hipoperfusión / Isquemia funcional con túbulos intactos): Fracción excretada de sodio (FENa) < 1%, Na urinario < 20 mEq/L, Relación BUN/Creatinina plasmática > 20:1, Osmolaridad urinaria > 500 mOsm/kg (orina concentrada por máxima acción de ADH y aldosterona), sedimento urinario con cilindros hialinos acelulares.
+     * Renal Intrínseca / Necrosis Tubular Aguda (NTA isquémica o nefrotóxica por tóxicos/aminoglucósidos/contrastes): Lesión y desprendimiento del epitelio tubular; FENa > 2%, Na urinario > 40 mEq/L, Relación BUN/Creatinina < 15:1, Osmolaridad urinaria < 350 mOsm/kg (pérdida de la capacidad de concentración medular / isostenuria), sedimento con cilindros granulosos pardos terrosos ("muddy brown casts") y células epiteliales tubulares.
+   - Trastornos del Equilibrio Ácido-Base:
+     * Acidosis Metabólica con Anion Gap Elevado (>12 mEq/L) [AG = Na - (Cl + HCO3)]: MUDPILES (Metanol, Uremia por falla renal avanzada, Cetoacidosis diabética/alcohólica por acumulación de acetoacetato/beta-hidroxibutirato, Paracetamol/Propilenglicol, Isoniazida, Acidosis Láctica por hipoperfusión tisular tipo A o insuficiencia hepática/metformina tipo B, Etilenglicol, Salicilatos).
+     * Acidosis Metabólica con Anion Gap Normal (Hiperclorémica): Pérdida neta de HCO3 gastrointestinal (diarrea secretora profusa, fístulas biliares/pancreáticas) o renal (Acidosis Tubular Renal distal tipo 1 [falla en secreción de H+, pH urinario >5.5, hipopotasemia], proximal tipo 2 [falla en reabsorción de HCO3 en TCP], hipoaldosteronismo tipo 4 [hiporreninemia, hiperpotasemia]).
+     * Compensación respiratoria de Acidosis Metabólica (Fórmula de Winters): PaCO2 esperada = (1.5 x [HCO3-]) + 8 (+/- 2). Si PaCO2 medida es mayor, coexiste acidosis respiratoria añadida; si es menor, alcalosis respiratoria.
+   - Alteraciones Electrolíticas de Máxima Relevancia:
+     * Hiponatremia: Distinguir según volemia. SIADH causa hiponatremia euvolémica hipotónica con sodio urinario >40 mEq/L y osmolaridad urinaria concentrada (>100 mOsm/kg) en ausencia de edema. Corrección hiperosmolar excesivamente rápida de hiponatremia crónica produce Mielinólisis Pontina Central (Síndrome de Desmielinización Osmótica); corrección excesivamente rápida de hipernatremia produce Edema Cerebral por flujo osmótico intracelular de agua.
+     * Potasio: Hiperpotasemia (alteración del potencial de membrana en reposo: ondas T picudas y simétricas de base estrecha, prolongación de PR, ensanchamiento de QRS, onda sinusoidal y paro cardíaco en diástole; estabilizador inmediato de membrana miocárdica: Gluconato de Calcio IV). Hipopotasemia (hiperpolarización: aplanamiento/inversión de onda T, aparición prominente de onda U, depresión del segmento ST, riesgo de arritmias ventriculares y debilidad muscular con hipoventilación).
+
+4. FISIOPATOLOGÍA DIGESTIVA, HEPÁTICA Y ENDOCRINA:
+   - Hipertensión Portal (HTP) y Cirrosis: Resistencia sinusoidal aumentada al flujo portal por fibrosis y nódulos de regeneración (activación de células estrelladas de Ito que sintetizan colágeno en espacio de Disse) más vasodilatación esplácnica mediada por óxido nítrico endotelial que induce circulación hiperdinámica. Gradiente de albúmina suero-ascitis (GASA >= 1.1 g/dL) confirma HTP. Encefalopatía Hepática: amonio intestinal (NH3) no depurado por disfunción hepática y shunts portosistémicos atraviesa la BHE; los astrocitos lo metabolizan a glutamina mediante glutamina sintetasa generando tumefacción osmótica astrocítica, disfunción neuronal y edema cerebral (asterixis o flapping tremor, inversión del ritmo circadiano sueño-vigilia).
+   - Pancreatitis Aguda: Activación intracelular prematura del tripsinógeno a tripsina activa dentro de las células acinares pancreáticas, autodigestión glandular enzimática, necrosis tisular, activación en cascada de elastasa y fosfolipasa A2 con liberación masiva de citocinas inflamatorias (TNF-alfa, IL-1, IL-6) que desencadenan Síndrome de Respuesta Inflamatoria Sistémica (SIRS) y aumento de permeabilidad capilar.
+   - Diabetes Mellitus:
+     * DM Tipo 1: Destrucción autoinmune específica mediada por linfocitos T de las células beta pancreáticas; déficit absoluto de insulina; activa la lipólisis descontrolada y cetogénesis hepática generando Cetoacidosis Diabética (hiperglucemia >250, cetonuria, acidosis metabólica con anión gap alto y respiración compensatoria profunda de Kussmaul).
+     * DM Tipo 2: Resistencia periférica a la insulina combinada con disfunción secretora progresiva de células beta; niveles residuales de insulina impiden la cetogénesis masiva pero no la hiperglucemia extrema, culminando en Estado Hiperglucémico Hiperosmolar (glucosa >600 mg/dL, osmolaridad sérica efectiva >320 mOsm/kg, diuresis osmótica con deshidratación profunda, sin cetoacidosis significativa).
+   - Ejes Tiroideo y Suprarrenal:
+     * Hipotiroidismo Primario (Tiroiditis de Hashimoto): Destrucción tiroidea autoinmune (anti-TPO); T3/T4 disminuidas con elevación compensatoria de TSH; acumulación dérmica de glicosaminoglicanos (mixedema), bradicardia e intolerancia al frío.
+     * Hipertiroidismo (Enfermedad de Graves-Basedow): Autoanticuerpos TSI/TRAB estimulan persistentemente el receptor de TSH; T3/T4 marcadamente elevadas con TSH suprimida; taquicardia, temblor fino, bocio difuso con soplo y oftalmopatía infiltrativa retroocular.
+     * Síndrome de Cushing: Exceso crónico de glucocorticoides; catabolismo proteico (debilidad muscular proximal, atrofia cutánea, estrías violáceas), redistribución grasa centrípeta, gluconeogénesis hepática acelerada (hiperglucemia) y alcalosis metabólica hipopotasémica por acción mineralocorticoide a altas dosis.
+     * Insuficiencia Suprarrenal Primaria (Enfermedad de Addison): Pérdida de corteza suprarrenal; déficit combinado de cortisol y aldosterona genera hipotensión postural, hiponatremia, hiperpotasemia, acidosis metabólica leve e hiperpigmentación melánica mucocutánea por elevación compensatoria de ACTH y POMC.
+
+5. FISIOPATOLOGÍA HEMATOLÓGICA:
+   - Anemias: Ferropenia (ferritina sérica disminuida <30 ng/mL, hierro bajo, TIBC elevado, saturación de transferrina baja); Anemia de Enfermedad Crónica / Inflamatoria (IL-6 promueve la sobreexpresión hepática de hepcidina, la cual internaliza y degrada a la ferroportina en enterocitos y macrófagos, bloqueando la liberación del hierro a la médula ósea: ferritina normal o elevada, TIBC disminuido, hierro sérico bajo); Anemia Megaloblástica (déficit de Vitamina B12 o Ácido Fólico causa falla en la síntesis de timidina y ADN con asincronía de maduración núcleo-citoplasma y neutrófilos hipersegmentados; B12 eleva ácido metilmalónico y produce degeneración combinada subaguda de la médula espinal por daño de cordones posteriores y corticoespinales).
+   - Coagulación Intravascular Diseminada (CID): Exposición sistémica masiva de factor tisular a la circulación, generación descontrolada de trombina que causa trombosis microvascular difusa (isquemia tisular y falla multiorgánica) simultánea al consumo masivo de plaquetas y factores de la coagulación (consumo de fibrinógeno), desencadenando hemorragia difusa con dímero D y productos de degradación de fibrina (PDF) marcadamente elevados.
+
+6. PROTOCOLO DE PREGUNTAS EN NEGATIVO ("EXCEPTO", "INCORRECTA", "NO CORRESPONDE", "SEÑALE LA FALSA"):
+   - Evalúa cada opción analizando rigurosamente la relación causa-efecto fisiopatológica y la validez del mecanismo propuesto como [VERDADERO] o [FALSO].
+   - Alerta ante inversiones de mecanismos compensatorios vs causa primaria desencadenante. Selecciona con absoluta certeza la proposición que sea comprobadamente FALSA.`;
 
 const PHARMACOLOGY_II_PROMPT = `ROL: Catedrático Principal de Farmacología Médica y Terapéutica Clínica II (Goodman & Gilman 13ª/14ª Ed., Katzung Farmacología Básica y Clínica 15ª/16ª Ed., Velázquez Farmacología Básica y Clínica 19ª Ed., Flórez Farmacología Humana 6ª Ed.).
 
@@ -190,6 +249,7 @@ function getSmartSystemPrompt(questionText = '', options = [], userCustomPrompt 
 
   // 1. Detectar el dominio médico o académico real de la pregunta
   const isMTC = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(fullText);
+  const isPathophysiology = /fisiopatolog|porth|shock\s*cardiog[eé]nic|shock\s*hipovol[eé]mic|shock\s*s[eé]ptic|shock\s*distributiv|shock\s*obstructiv|fracci[oó]n\s*de\s*eyecci[oó]n|icfer|icfep|frank\s*starling|gasto\s*card[ií]aco|resistencia\s*vascular|gradiente\s*alv[eé]olo|mismatch\s*v\/q|shunt\s*intrapulmonar|sdra|s[ií]ndrome\s*de\s*dificultad\s*respiratoria|presi[oó]n\s*capilar\s*pulmonar|fena|muddy\s*brown|anion\s*gap|mudpiles|f[oó]rmula\s*de\s*winters|acidosis\s*tubular\s*renal|siadh|mielin[oó]lisis\s*pontina|desmielinizaci[oó]n\s*osm[oó]tica|hiperpotasemia\s*onda\s*t|gasa\s*>=|hipertensi[oó]n\s*portal|encefalopat[ií]a\s*hep[aá]tica|asterixis|cetoacidosis\s*diab[eé]tica|estado\s*hiperosmolar|hepcidina|ferroportina|asincron[ií]a\s*n[uú]cleo|coagulaci[oó]n\s*intravascular\s*diseminada/i.test(fullText);
   const isInfectology = /infectolog|medicina\s*tropical|parasitolog|par[áa]sito|protozoo|helminto|chagas|triatoma|amastigote|tripomastigote|promastigote|lutzomyia|anopheles|malaria|plasmodium|leishmania|tuberculosis|bacilo\s*de\s*koch|ziehl/i.test(fullText);
   const isPharmacologyII = /farmacol|terap[eé]utic|antibi[oó]tic|antimicrobian|betalact[aá]m|penicilin|cefalosporin|ceftriaxona|cefotaxima|ceftazidima|cefepima|ceftarolina|carbapenem|meropenem|imipenem|ertapenem|vancomicina|teicoplanina|daptomicina|aminogluc[oó]sid|gentamicina|amikacina|macr[oó]lid|azitromicina|claritromicina|clindamicina|linezolid|quinolona|fluoroquinolona|ciprofloxacino|levofloxacino|moxifloxacino|rifampicina|cotrimoxazol|anfotericina|fluconazol|voriconazol|caspofungina|aciclovir|valaciclovir|ganciclovir|foscarnet|oseltamivir|metronidazol|albendazol|ivermectina|praziquantel|primaquina|ant[ií]doto|intoxicaci[oó]n|naloxona|flumazenil|atropina|pralidoxima|acetilciste[ií]na|metformina|sulfonilurea|glibenclamida|isglt2|dapagliflozina|empagliflozina|glp-1|semaglutida|insulina|levotiroxina|metimazol|propiltiouracilo|omeprazol|ondansetr[oó]n|metoclopramida|toxicolog/i.test(fullText);
   const isMicrobiologyII = /micolog|virolog|hongo|micosis|levadura|hifa|conidio|sabouraud|ergosterol|dim[oó]rfic|histoplasma|coccidioides|paracoccidioides|sporothrix|esporotric|blastomyces|tinea|dermatofit|trichophyton|microsporum|epidermophyton|pitiriasis|malassezia|cromoblastomicosis|fonsecaea|esclerote|medlar|candida|albicans|tubo\s*germinativo|criptococ|cryptococcus|tinta\s*china|capsular|aspergillus|aspergiloma|galactomanano|aflatoxina|mucor|rhizopus|cenoc[ií]tic|pneumocystis|jirovecii|gomori|grocott|virales|viri[oó]n|c[aá]pside|herpes|herpesvir|varicela|z[oó]ster|citomegalovirus|cmv|epstein|ebv|mononucleosis|downey|hepatitis\s*[a-e]|hbsag|antihbs|hbeag|antihbc|influenza|ortomixovir|hemaglutinina|neuraminidasa|antigenic\s*drift|antigenic\s*shift|sincitial|croup|sarampi[oó]n|koplik|parotiditis|arbovirus|fiebre\s*amarilla|chikungunya|zika|rabia|negri|retrovirus|vih|gp120|gp41|poliovirus|coxsackie/i.test(fullText);
@@ -197,7 +257,7 @@ function getSmartSystemPrompt(questionText = '', options = [], userCustomPrompt 
   const isSemiology = /semiolog|ausculta|palpa|percusi[oó]n|inspecci[oó]n|fr[eé]mito|estridor|sibilancia|estertor|crepito|soplo|t[oó]rax|murmullo|vesicular|laringotraqueal|neumot[oó]rax|derrame\s*pleural|matidez|sonoridad|timpanismo|traube|argente|sur[oó]s|s[ií]ndrome\s*pleural|atelectasia|campana\s*del\s*estetoscopio|estetoscopio|respirar\s*como\s*cansado/i.test(fullText);
   const isEmbryology = /embriolog|organog[eé]nesis|capa\s*germinativ|ectodermo|mesodermo|endodermo|cresta\s*neural|bolsa\s*far[íi]ngea|arco\s*far[íi]ngeo|hendidura\s*far[íi]ngea|somita|wolff|m[uü]ller|tabicamiento|cardiopat[íi]a\s*cong[eé]nita|rotaci[oó]n\s*intestinal|semana\s*embrionar|teratog|yema\s*ureteral|pulmones\s*estan\s*llenos/i.test(fullText);
   const isAnatomy = /anatom|bulbo|m[eé]dula\s*oblonga|enc[eé]falo|burdach|cuneiforme|goll|gracilis|arteria|vena|nervio|par\s*craneal|v[íi]a\s*piramidal|lemnisco|scarpa|calot|velpeau|m[uú]sculo|hueso|v[eé]rtebra|fosa|tri[áa]ngulo|conducto|inervaci[oó]n|vascularizaci[oó]n/i.test(fullText);
-  const isKTypeOrGeneralMed = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|f[áa]rmaco/i.test(fullText);
+  const isKTypeOrGeneralMed = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|c[eé]lula|tejido|f[áa]rmaco/i.test(fullText);
 
   // 2. Comprobar si el prompt del usuario es por defecto o heredado de una versión anterior
   const isLegacyDefault = !trimmed ||
@@ -205,6 +265,7 @@ function getSmartSystemPrompt(questionText = '', options = [], userCustomPrompt 
 
   // 3. Proteger contra desajuste de materia: si el prompt guardado pertenece a otra materia
   const isMismatchedRole = trimmed.length > 0 && (
+    (isPathophysiology && !/fisiopatolog|porth|robbins|patolog[ií]a\s*funcional|hammer/i.test(promptLower)) ||
     (isPharmacologyII && !/farmacol|terap[eé]utic|katzung|goodman|fl[oó]rez|vel[aá]zquez/i.test(promptLower)) ||
     (isMicrobiologyII && !/microbiolog|micolog|virolog|bonifaz|murray|jawetz|arenas|fields/i.test(promptLower)) ||
     (isInfectology && !/infectolog|mandell|botero|parasit/i.test(promptLower)) ||
@@ -222,6 +283,7 @@ function getSmartSystemPrompt(questionText = '', options = [], userCustomPrompt 
 
   // 5. Asignar el prompt canónico de máxima precisión según la materia detectada
   if (isMTC) return MTC_PROMPT;
+  if (isPathophysiology) return PATHOPHYSIOLOGY_PROMPT;
   if (isInfectology) return INFECTOLOGY_PROMPT;
   if (isPharmacologyII) return PHARMACOLOGY_II_PROMPT;
   if (isMicrobiologyII) return MICROBIOLOGY_II_PROMPT;
@@ -236,6 +298,7 @@ function getSmartSystemPrompt(questionText = '', options = [], userCustomPrompt 
 
 module.exports = {
   getSmartSystemPrompt,
+  PATHOPHYSIOLOGY_PROMPT,
   PHARMACOLOGY_II_PROMPT,
   MICROBIOLOGY_II_PROMPT,
   GENETICS_PROMPT,
