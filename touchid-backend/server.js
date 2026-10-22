@@ -79,6 +79,24 @@ function penalizeModel(modelName, durationMs = 120000) {
   modelPenaltyUntil.set(modelName, Date.now() + durationMs);
   console.warn(`[CIRCUIT-BREAKER] Modelo ${modelName} penalizado por ${durationMs / 1000}s debido a alta latencia/timeout/503.`);
 }
+const keyPenaltyUntil = new Map(); // apiKey -> timestamp hasta cuando está en cooldown
+
+function isKeyHealthy(apiKey) {
+  const exp = keyPenaltyUntil.get(apiKey);
+  if (!exp) return true;
+  if (Date.now() > exp) {
+    keyPenaltyUntil.delete(apiKey);
+    return true;
+  }
+  return false;
+}
+
+function penalizeKey(apiKey, durationMs = 20000) {
+  keyPenaltyUntil.set(apiKey, Date.now() + durationMs);
+  const masked = apiKey ? apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4) : 'key';
+  console.warn(`[CIRCUIT-BREAKER] Clave ${masked} en cooldown por ${durationMs / 1000}s debido a 429 quota.`);
+}
+
 
 let lastConnectionFailure = 0;
 const FAILURE_COOLDOWN_MS = 30000;
@@ -524,14 +542,12 @@ app.post('/solve', async (req, res) => {
       ? [
           { name: 'gemini-2.5-flash-lite', timeoutMs: 3200 },
           { name: 'gemini-3.5-flash',      timeoutMs: 4500 },
-          { name: 'gemini-2.5-flash',      timeoutMs: 5500 },
-          { name: 'gemini-3.5-flash-lite', timeoutMs: 4000 }
+          { name: 'gemini-2.5-flash',      timeoutMs: 5500 }
         ]
       : [
           { name: 'gemini-2.5-flash-lite', timeoutMs: 2800 },
           { name: 'gemini-3.5-flash',      timeoutMs: 4000 },
-          { name: 'gemini-2.5-flash',      timeoutMs: 5000 },
-          { name: 'gemini-3.5-flash-lite', timeoutMs: 3500 }
+          { name: 'gemini-2.5-flash',      timeoutMs: 5000 }
         ];
 
     // Modelos sanos primero, penalizados al final como último recurso
@@ -546,11 +562,17 @@ app.post('/solve', async (req, res) => {
     // Rotación Round-Robin aleatoria sobre las API Keys disponibles
     const startKeyIdx = Math.floor(Math.random() * rawApiKeys.length);
 
-    keyLoop: for (let k = 0; k < rawApiKeys.length; k++) {
-      const activeKey = rawApiKeys[(startKeyIdx + k) % rawApiKeys.length];
+    modelLoop: for (const modelCfg of activeModels) {
+      const { name: model, timeoutMs } = modelCfg;
 
-      for (const modelCfg of activeModels) {
-        const { name: model, timeoutMs } = modelCfg;
+      keyLoop: for (let k = 0; k < rawApiKeys.length; k++) {
+        const activeKey = rawApiKeys[(startKeyIdx + k) % rawApiKeys.length];
+        const keyNum = (startKeyIdx + k) % rawApiKeys.length + 1;
+
+        if (!isKeyHealthy(activeKey) && rawApiKeys.length > 1) {
+          continue keyLoop; // saltar clave en cooldown si hay otras disponibles
+        }
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const startTime = Date.now();
@@ -566,20 +588,31 @@ app.post('/solve', async (req, res) => {
           clearTimeout(timeoutId);
           const elapsed = Date.now() - startTime;
 
-          if (geminiRes.status === 503 || geminiRes.status === 429) {
-            lastError = `Clave ${(startKeyIdx + k) % rawApiKeys.length + 1} - Modelo ${model} (HTTP ${geminiRes.status}): cuota/demanda saturada.`;
-            console.warn(`⚠️ [QUOTA/503] Clave ${(startKeyIdx + k) % rawApiKeys.length + 1} agotó cuota o modelo ${model} saturado. Penalizando...`);
+          // HTTP 429: Cuota de la CLAVE agotada (RPM/TPM). NO penalizar el modelo.
+          if (geminiRes.status === 429) {
+            console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} agotó cuota en Google. Cooldown 20s. Modelo ${model} sigue activo.`);
+            penalizeKey(activeKey, 20000);
+            if (rawApiKeys.length === 1) {
+              // Si solo hay 1 clave, breve espera de 1.2s para vaciar el bucket y reintentar
+              await new Promise(r => setTimeout(r, 1200));
+            }
+            continue keyLoop; // Probar siguiente clave con el MISMO modelo rápido
+          }
+
+          // HTTP 503: Demanda/saturación del MODELO en Google. Penalizar el modelo.
+          if (geminiRes.status === 503) {
+            lastError = `Modelo ${model} (HTTP 503): sobrecargado en Google.`;
+            console.warn(`⚠️ [MODEL-503] Modelo ${model} saturado en Google. Penalizando modelo por 2 min...`);
             penalizeModel(model, 120000);
-            continue;
+            break keyLoop; // Salta al siguiente modelo
           }
 
           if (!geminiRes.ok) {
             const errText = await geminiRes.text();
-            lastError = `Clave ${(startKeyIdx + k) % rawApiKeys.length + 1} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
-            continue;
+            lastError = `Clave ${keyNum} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+            continue keyLoop;
           }
 
-          // Si respondió 200 OK pero tardó demasiado (> 3.5s), penalizar para que la siguiente vaya a uno más rápido
           if (elapsed > 3500) {
             penalizeModel(model, 90000);
           }
@@ -588,16 +621,16 @@ app.post('/solve', async (req, res) => {
           const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
           if (candidateText) {
             parsedResult = JSON.parse(candidateText.trim());
-            console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${(startKeyIdx + k) % rawApiKeys.length + 1})`);
-            break keyLoop;
+            console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${keyNum})`);
+            break modelLoop;
           }
         } catch (err) {
           clearTimeout(timeoutId);
           if (err.name === 'AbortError') {
-            console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms sin responder. Abortando y penalizando...`);
+            console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms sin responder. Penalizando modelo...`);
             lastError = `Modelo ${model} abortado por SLA timeout (${timeoutMs}ms)`;
             penalizeModel(model, 180000);
-            continue;
+            break keyLoop; // Modelo congelado -> salta de inmediato al siguiente modelo
           }
           lastError = err.message;
         }
