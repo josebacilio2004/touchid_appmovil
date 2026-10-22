@@ -552,14 +552,16 @@ app.post('/solve', async (req, res) => {
     // 3. Matriz de Modelos Ordenada por Benchmark Empírico + SLA Timeout
     const baseModels = isKType
       ? [
-          { name: 'gemini-2.5-flash-lite', timeoutMs: 3200 },
-          { name: 'gemini-3.5-flash',      timeoutMs: 4500 },
-          { name: 'gemini-2.5-flash',      timeoutMs: 5500 }
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 3200 },
+          { name: 'gemini-2.5-flash',         timeoutMs: 4500 },
+          { name: 'gemini-flash-lite-latest',  timeoutMs: 5000 },
+          { name: 'gemini-3.5-flash',         timeoutMs: 5500 }
         ]
       : [
-          { name: 'gemini-2.5-flash-lite', timeoutMs: 2800 },
-          { name: 'gemini-3.5-flash',      timeoutMs: 4000 },
-          { name: 'gemini-2.5-flash',      timeoutMs: 5000 }
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 2800 },
+          { name: 'gemini-2.5-flash',         timeoutMs: 4000 },
+          { name: 'gemini-flash-lite-latest',  timeoutMs: 4500 },
+          { name: 'gemini-3.5-flash',         timeoutMs: 5000 }
         ];
 
     // Modelos sanos primero, penalizados al final como último recurso
