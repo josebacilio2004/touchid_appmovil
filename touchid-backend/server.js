@@ -615,11 +615,19 @@ app.post('/solve', async (req, res) => {
               clearTimeout(timeoutId);
               const elapsed = Date.now() - startTime;
 
-              // HTTP 429: Cuota de la CLAVE agotada (RPM/TPM). NO penalizar el modelo.
+              // HTTP 429: Cuota agotada (RPM por minuto o límite diario RPD del modelo)
               if (geminiRes.status === 429) {
                 const errText = await geminiRes.text();
-                lastError = `Google API Quota (HTTP 429 en Clave ${keyNum}): ${errText}`;
-                console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} agotó cuota en Google. Cooldown 25s. Modelo ${model} sigue activo.`);
+                lastError = `Google API Quota (HTTP 429 en Clave ${keyNum} / ${model}): ${errText}`;
+
+                const isModelDailyLimit = errText.includes('PerModel') || errText.includes('limit: 20');
+                if (isModelDailyLimit) {
+                  console.warn(`⚠️ [MODEL-DAILY-LIMIT] Modelo ${model} agotó su cuota diaria gratuita (limit: 20) en Google. Penalizando modelo por 1h...`);
+                  penalizeModel(model, 3600000); // Saltear este modelo por 1 hora
+                  break keyLoop; // Saltar de inmediato al siguiente modelo
+                }
+
+                console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} agotó cuota RPM en Google. Cooldown 25s. Modelo ${model} sigue activo.`);
                 penalizeKey(activeKey, 25000);
 
                 if (targetKeys.length > 1) {
