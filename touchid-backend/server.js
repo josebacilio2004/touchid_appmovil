@@ -497,6 +497,18 @@ app.post('/solve', async (req, res) => {
       }
     }
 
+    // 1.1 COALESCENCIA: Si ya hay una consulta idéntica resolviéndose en paralelo, unirse a su promesa
+    if (inFlightRequests.has(canonicalSig)) {
+      console.log(`[IN-FLIGHT-COALESCE] Reutilizando solicitud en vuelo para: "${effectiveQuestion.substring(0, 35)}..."`);
+      try {
+        const sharedResult = await inFlightRequests.get(canonicalSig);
+        const mapped = mapCachedAnswerToStudentOptions(sharedResult, options);
+        if (mapped) return res.json(mapped);
+      } catch (_) {
+        // Fallback a ejecución independiente si la compartida falló
+      }
+    }
+
     // 2. Detección Inteligente K-Type y Prompt Médico Especializado
     const isKType = isKTypeQuestion(effectiveQuestion, options);
     const systemInstructionText = getSmartSystemPrompt(effectiveQuestion, options, systemPrompt);
@@ -557,107 +569,141 @@ app.post('/solve', async (req, res) => {
     ];
 
     let parsedResult = null;
-    let lastError = null;
 
-    // Rotación Round-Robin aleatoria sobre las API Keys disponibles
-    const startKeyIdx = Math.floor(Math.random() * rawApiKeys.length);
+    // Ejecutor asíncrono registrado en inFlightRequests para soportar coalescencia
+    const solveExecutionPromise = (async () => {
+      let candidateResult = null;
+      let lastError = null;
 
-    modelLoop: for (const modelCfg of activeModels) {
-      const { name: model, timeoutMs } = modelCfg;
+      // Pases de recuperación ante saturación 429
+      const maxPasses = rawApiKeys.length > 1 ? 1 : 3;
 
-      keyLoop: for (let k = 0; k < rawApiKeys.length; k++) {
-        const activeKey = rawApiKeys[(startKeyIdx + k) % rawApiKeys.length];
-        const keyNum = (startKeyIdx + k) % rawApiKeys.length + 1;
-
-        if (!isKeyHealthy(activeKey) && rawApiKeys.length > 1) {
-          continue keyLoop; // saltar clave en cooldown si hay otras disponibles
+      for (let pass = 0; pass < maxPasses; pass++) {
+        if (pass > 0) {
+          const backoffWait = pass * 2000;
+          console.warn(`⏳ [RATE-LIMIT-BACKOFF] Esperando ${backoffWait}ms para pase de reintento #${pass}...`);
+          await new Promise(r => setTimeout(r, backoffWait));
         }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        const startTime = Date.now();
+        modelLoop: for (const modelCfg of activeModels) {
+          const { name: model, timeoutMs } = modelCfg;
 
-        try {
-          const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-            signal: controller.signal
-          });
+          // Filtrar claves disponibles (saludables primero)
+          const healthyKeys = rawApiKeys.filter(k => isKeyHealthy(k));
+          const targetKeys = (healthyKeys.length > 0 || pass > 0)
+            ? (healthyKeys.length > 0 ? healthyKeys : rawApiKeys)
+            : rawApiKeys;
 
-          clearTimeout(timeoutId);
-          const elapsed = Date.now() - startTime;
+          const startKeyIdx = Math.floor(Math.random() * targetKeys.length);
 
-          // HTTP 429: Cuota de la CLAVE agotada (RPM/TPM). NO penalizar el modelo.
-          if (geminiRes.status === 429) {
-            console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} agotó cuota en Google. Cooldown 20s. Modelo ${model} sigue activo.`);
-            penalizeKey(activeKey, 20000);
-            if (rawApiKeys.length === 1) {
-              // Si solo hay 1 clave, breve espera de 1.2s para vaciar el bucket y reintentar
-              await new Promise(r => setTimeout(r, 1200));
+          keyLoop: for (let k = 0; k < targetKeys.length; k++) {
+            const activeKey = targetKeys[(startKeyIdx + k) % targetKeys.length];
+            const keyNum = rawApiKeys.indexOf(activeKey) + 1;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            const startTime = Date.now();
+
+            try {
+              const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+                signal: controller.signal
+              });
+
+              clearTimeout(timeoutId);
+              const elapsed = Date.now() - startTime;
+
+              // HTTP 429: Cuota de la CLAVE agotada (RPM/TPM). NO penalizar el modelo.
+              if (geminiRes.status === 429) {
+                const errText = await geminiRes.text();
+                lastError = `Google API Quota (HTTP 429 en Clave ${keyNum}): ${errText}`;
+                console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} agotó cuota en Google. Cooldown 25s. Modelo ${model} sigue activo.`);
+                penalizeKey(activeKey, 25000);
+
+                if (targetKeys.length > 1) {
+                  continue keyLoop; // Probar siguiente clave con el MISMO modelo rápido
+                } else {
+                  break keyLoop; // Romper para no quemar otros modelos en este pase con la misma clave saturada
+                }
+              }
+
+              // HTTP 503: Demanda/saturación del MODELO en Google. Penalizar el modelo.
+              if (geminiRes.status === 503) {
+                lastError = `Modelo ${model} (HTTP 503): sobrecargado en Google.`;
+                console.warn(`⚠️ [MODEL-503] Modelo ${model} saturado en Google. Penalizando modelo por 2 min...`);
+                penalizeModel(model, 120000);
+                break keyLoop; // Salta al siguiente modelo
+              }
+
+              if (!geminiRes.ok) {
+                const errText = await geminiRes.text();
+                lastError = `Clave ${keyNum} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+                continue keyLoop;
+              }
+
+              if (elapsed > 3500) {
+                penalizeModel(model, 90000);
+              }
+
+              const geminiData = await geminiRes.json();
+              const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (candidateText) {
+                candidateResult = JSON.parse(candidateText.trim());
+                console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${keyNum})`);
+                break modelLoop;
+              }
+            } catch (err) {
+              clearTimeout(timeoutId);
+              if (err.name === 'AbortError') {
+                console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms sin responder. Penalizando modelo...`);
+                lastError = `Modelo ${model} abortado por SLA timeout (${timeoutMs}ms)`;
+                penalizeModel(model, 180000);
+                break keyLoop; // Modelo congelado -> salta de inmediato al siguiente modelo
+              }
+              lastError = err.message;
             }
-            continue keyLoop; // Probar siguiente clave con el MISMO modelo rápido
           }
 
-          // HTTP 503: Demanda/saturación del MODELO en Google. Penalizar el modelo.
-          if (geminiRes.status === 503) {
-            lastError = `Modelo ${model} (HTTP 503): sobrecargado en Google.`;
-            console.warn(`⚠️ [MODEL-503] Modelo ${model} saturado en Google. Penalizando modelo por 2 min...`);
-            penalizeModel(model, 120000);
-            break keyLoop; // Salta al siguiente modelo
-          }
+          if (candidateResult) break;
+        }
 
-          if (!geminiRes.ok) {
-            const errText = await geminiRes.text();
-            lastError = `Clave ${keyNum} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
-            continue keyLoop;
-          }
+        if (candidateResult) break;
+      }
 
-          if (elapsed > 3500) {
-            penalizeModel(model, 90000);
-          }
+      if (!candidateResult) {
+        throw new Error(lastError || 'No se pudo obtener respuesta válida de Gemini tras agotar reintentos.');
+      }
 
-          const geminiData = await geminiRes.json();
-          const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidateText) {
-            parsedResult = JSON.parse(candidateText.trim());
-            console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${keyNum})`);
-            break modelLoop;
-          }
-        } catch (err) {
-          clearTimeout(timeoutId);
-          if (err.name === 'AbortError') {
-            console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms sin responder. Penalizando modelo...`);
-            lastError = `Modelo ${model} abortado por SLA timeout (${timeoutMs}ms)`;
-            penalizeModel(model, 180000);
-            break keyLoop; // Modelo congelado -> salta de inmediato al siguiente modelo
-          }
-          lastError = err.message;
+      // 4. Mapeo Determinista Post-LLM para Preguntas K-Type
+      let finalResult = candidateResult;
+      if (isKType && finalResult.propositions) {
+        finalResult = resolveKTypeDeterministically(finalResult, options);
+      } else {
+        const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
+        if (!finalResult.correct_option_letter && finalResult.correct_option_index !== undefined && finalResult.correct_option_index >= 0) {
+          finalResult.correct_option_letter = alphabet[finalResult.correct_option_index] || 'A';
         }
       }
-    }
 
-    if (!parsedResult) {
-      throw new Error(lastError || 'No se pudo obtener respuesta válida de Gemini.');
-    }
+      // 5. Almacenar en Caché Semántico L1 en RAM
+      l1Cache.set(canonicalSig, {
+        ...finalResult,
+        canonical_answer_text: finalResult.correct_option_text,
+        is_k_type: isKType,
+        true_indices: finalResult.true_indices || []
+      });
 
-    // 4. Mapeo Determinista Post-LLM para Preguntas K-Type
-    if (isKType && parsedResult.propositions) {
-      parsedResult = resolveKTypeDeterministically(parsedResult, options);
-    } else {
-      const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
-      if (!parsedResult.correct_option_letter && parsedResult.correct_option_index !== undefined && parsedResult.correct_option_index >= 0) {
-        parsedResult.correct_option_letter = alphabet[parsedResult.correct_option_index] || 'A';
-      }
-    }
+      return finalResult;
+    })();
 
-    // 5. Almacenar en Caché Semántico L1 en RAM
-    l1Cache.set(canonicalSig, {
-      ...parsedResult,
-      canonical_answer_text: parsedResult.correct_option_text,
-      is_k_type: isKType,
-      true_indices: parsedResult.true_indices || []
-    });
+    inFlightRequests.set(canonicalSig, solveExecutionPromise);
+    try {
+      parsedResult = await solveExecutionPromise;
+    } finally {
+      inFlightRequests.delete(canonicalSig);
+    }
 
     // Descontar 1 crédito si no es ilimitado y la base de datos está disponible
     if (!isUnlimited && database) {
