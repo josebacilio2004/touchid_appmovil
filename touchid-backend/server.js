@@ -60,6 +60,26 @@ async function seedUnlimitedUser(database) {
   }
 }
 
+// ============================================================================
+// ESTADO GLOBAL DE SALUD DE MODELOS (CIRCUIT BREAKER LIGERO EN RAM)
+// ============================================================================
+const modelPenaltyUntil = new Map(); // modelName -> timestamp hasta cuando está castigado
+
+function isModelHealthy(modelName) {
+  const penaltyExp = modelPenaltyUntil.get(modelName);
+  if (!penaltyExp) return true;
+  if (Date.now() > penaltyExp) {
+    modelPenaltyUntil.delete(modelName);
+    return true;
+  }
+  return false;
+}
+
+function penalizeModel(modelName, durationMs = 120000) {
+  modelPenaltyUntil.set(modelName, Date.now() + durationMs);
+  console.warn(`[CIRCUIT-BREAKER] Modelo ${modelName} penalizado por ${durationMs / 1000}s debido a alta latencia/timeout/503.`);
+}
+
 let lastConnectionFailure = 0;
 const FAILURE_COOLDOWN_MS = 30000;
 
@@ -499,44 +519,86 @@ app.post('/solve', async (req, res) => {
       }
     };
 
-    // 3. Matriz de Modelos de Producción Saneada y Pool Multi-Key
-    const models = [
-      'gemini-3.5-flash-lite',
-      'gemini-flash-lite-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-3.5-flash',
-      'gemini-2.5-flash',
-      'gemini-2.5-flash-lite'
+    // 3. Matriz de Modelos Ordenada por Benchmark Empírico + SLA Timeout
+    const baseModels = isKType
+      ? [
+          { name: 'gemini-2.5-flash-lite', timeoutMs: 3200 },
+          { name: 'gemini-3.5-flash',      timeoutMs: 4500 },
+          { name: 'gemini-2.5-flash',      timeoutMs: 5500 },
+          { name: 'gemini-3.5-flash-lite', timeoutMs: 4000 }
+        ]
+      : [
+          { name: 'gemini-2.5-flash-lite', timeoutMs: 2800 },
+          { name: 'gemini-3.5-flash',      timeoutMs: 4000 },
+          { name: 'gemini-2.5-flash',      timeoutMs: 5000 },
+          { name: 'gemini-3.5-flash-lite', timeoutMs: 3500 }
+        ];
+
+    // Modelos sanos primero, penalizados al final como último recurso
+    const activeModels = [
+      ...baseModels.filter(m => isModelHealthy(m.name)),
+      ...baseModels.filter(m => !isModelHealthy(m.name))
     ];
 
     let parsedResult = null;
     let lastError = null;
 
-    keyLoop: for (let kIdx = 0; kIdx < rawApiKeys.length; kIdx++) {
-      const activeKey = rawApiKeys[kIdx];
-      for (const model of models) {
+    // Rotación Round-Robin aleatoria sobre las API Keys disponibles
+    const startKeyIdx = Math.floor(Math.random() * rawApiKeys.length);
+
+    keyLoop: for (let k = 0; k < rawApiKeys.length; k++) {
+      const activeKey = rawApiKeys[(startKeyIdx + k) % rawApiKeys.length];
+
+      for (const modelCfg of activeModels) {
+        const { name: model, timeoutMs } = modelCfg;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const startTime = Date.now();
+
         try {
           const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
           });
 
-          if (geminiRes.ok) {
-            const geminiData = await geminiRes.json();
-            const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (candidateText) {
-              parsedResult = JSON.parse(candidateText.trim());
-              break keyLoop;
-            }
-          } else {
+          clearTimeout(timeoutId);
+          const elapsed = Date.now() - startTime;
+
+          if (geminiRes.status === 503 || geminiRes.status === 429) {
+            lastError = `Clave ${(startKeyIdx + k) % rawApiKeys.length + 1} - Modelo ${model} (HTTP ${geminiRes.status}): cuota/demanda saturada.`;
+            console.warn(`⚠️ [QUOTA/503] Clave ${(startKeyIdx + k) % rawApiKeys.length + 1} agotó cuota o modelo ${model} saturado. Penalizando...`);
+            penalizeModel(model, 120000);
+            continue;
+          }
+
+          if (!geminiRes.ok) {
             const errText = await geminiRes.text();
-            lastError = `Clave ${kIdx + 1} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
-            if (geminiRes.status === 429) {
-              console.warn(`⚠️ [QUOTA-EXCEEDED-429] Clave ${kIdx + 1} agotó cuota en ${model}. Rotando...`);
-            }
+            lastError = `Clave ${(startKeyIdx + k) % rawApiKeys.length + 1} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+            continue;
+          }
+
+          // Si respondió 200 OK pero tardó demasiado (> 3.5s), penalizar para que la siguiente vaya a uno más rápido
+          if (elapsed > 3500) {
+            penalizeModel(model, 90000);
+          }
+
+          const geminiData = await geminiRes.json();
+          const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) {
+            parsedResult = JSON.parse(candidateText.trim());
+            console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${(startKeyIdx + k) % rawApiKeys.length + 1})`);
+            break keyLoop;
           }
         } catch (err) {
+          clearTimeout(timeoutId);
+          if (err.name === 'AbortError') {
+            console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms sin responder. Abortando y penalizando...`);
+            lastError = `Modelo ${model} abortado por SLA timeout (${timeoutMs}ms)`;
+            penalizeModel(model, 180000);
+            continue;
+          }
           lastError = err.message;
         }
       }
