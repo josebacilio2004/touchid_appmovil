@@ -2906,9 +2906,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   ),
                   if (_isSearchingInPage)
                     _buildInPageSearchBar(),
-                  if (_loadingProgress < 100 || _isLoading)
+                  if (_loadingProgress < 100)
                     LinearProgressIndicator(
-                      value: _isLoading ? null : (_loadingProgress / 100.0),
+                      value: _loadingProgress / 100.0,
                       minHeight: 2.5,
                       backgroundColor: const Color(0xFF1F1F1F),
                       valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8AB4F8)),
