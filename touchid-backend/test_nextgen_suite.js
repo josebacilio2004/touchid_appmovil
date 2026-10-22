@@ -102,6 +102,12 @@ assert(promptGenetics.includes('Thompson & Thompson'), 'Selecciona prompt de Gen
 const promptSemiology = getSmartSystemPrompt('al palpar el frémito vocal y auscultar el murmullo vesicular en el tórax', []);
 assert(promptSemiology.includes('Argente-Álvarez'), 'Selecciona prompt de Semiología Médica y Exploración del Tórax');
 
+const promptPharmacologyII = getSmartSystemPrompt('mecanismo de acción de vancomicina unida a d-ala-d-ala y cefalosporinas de quinta generación ceftarolina mrsa', []);
+assert(promptPharmacologyII.includes('Goodman & Gilman'), 'Selecciona prompt de Farmacología Médica y Terapéutica Clínica II');
+
+const promptMicrobiologyII = getSmartSystemPrompt('hongo dimórfico histoplasma capsulatum y esférulas de coccidioides en micología médica con virus de la hepatitis b hbsag', []);
+assert(promptMicrobiologyII.includes('Murray Microbiología Médica'), 'Selecciona prompt de Microbiología Médica II: Micología y Virología');
+
 // Prueba de compatibilidad con versiones anteriores del APK
 const legacyPromptTest = getSmartSystemPrompt('en embriología qué arco faríngeo forma el timo', [], 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.');
 assert(legacyPromptTest.includes('Langman'), 'Actualiza automáticamente prompt por defecto de APKs viejos a Langman (Embriología)');
