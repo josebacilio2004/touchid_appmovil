@@ -9,6 +9,7 @@ require('dotenv').config();
 const { isKTypeQuestion, K_TYPE_RESPONSE_SCHEMA, resolveKTypeDeterministically } = require('./engines/kTypeSolver');
 const { getSmartSystemPrompt } = require('./engines/medicalPrompts');
 const { l1Cache, inFlightRequests, buildCanonicalSignature, mapCachedAnswerToStudentOptions } = require('./engines/orchestratorService');
+const { whatsappCrmService } = require('./engines/whatsappCrmService');
 
 const app = express();
 app.use(cors());
@@ -193,6 +194,7 @@ async function getDb() {
     
     // Auto-sembrar usuario ilimitado en segundo plano
     seedUnlimitedUser(db).catch(console.error);
+    whatsappCrmService.init(db).catch(err => console.warn('⚠️ Error al iniciar WhatsApp CRM:', err.message));
 
     return db;
   } catch (err) {
@@ -486,24 +488,59 @@ app.post('/solve', async (req, res) => {
       }
     }
 
-    // 1. FAST-PATH: Verificar en Caché Semántico L1 (Memoria RAM < 1ms)
+    let parsedResult = null;
     const canonicalSig = buildCanonicalSignature(effectiveQuestion, options);
-    const cachedHit = l1Cache.get(canonicalSig);
-    if (cachedHit) {
-      const mapped = mapCachedAnswerToStudentOptions(cachedHit, options);
-      if (mapped) {
-        console.log(`[CACHE-L1-HIT] Resuelto en <1ms: "${mapped.correct_option_letter}"`);
-        return res.json(mapped);
+
+    // 0. VERIFIED DB BANK: Si la pregunta fue corregida/verificada en question_bank, usar la respuesta oficial verificada
+    if (database && options && options.length > 0) {
+      try {
+        const verifiedDoc = await database.collection('question_bank').findOne({
+          question: effectiveQuestion.trim(),
+          verified: true
+        });
+        if (verifiedDoc && verifiedDoc.answerText) {
+          const mappedVerified = mapCachedAnswerToStudentOptions({
+            canonical_answer_text: verifiedDoc.answerText,
+            correct_option_text: verifiedDoc.answerText,
+            explanation: verifiedDoc.explanation || 'Respuesta verificada en banco oficial.',
+            subject: verifiedDoc.course || 'Fisiología II'
+          }, options);
+          if (mappedVerified) {
+            console.log(`[DB-VERIFIED-HIT] Resuelto con banco corregido: "${mappedVerified.correct_option_letter}" -> "${mappedVerified.correct_option_text}"`);
+            l1Cache.set(canonicalSig, {
+              ...mappedVerified,
+              canonical_answer_text: verifiedDoc.answerText,
+              is_k_type: false
+            });
+            parsedResult = mappedVerified;
+          }
+        }
+      } catch (vErr) {
+        console.warn('Error consultando question_bank verificado:', vErr.message);
+      }
+    }
+
+    // 1. FAST-PATH: Verificar en Caché Semántico L1 (Memoria RAM < 1ms)
+    if (!parsedResult) {
+      const cachedHit = l1Cache.get(canonicalSig);
+      if (cachedHit) {
+        const mapped = mapCachedAnswerToStudentOptions(cachedHit, options);
+        if (mapped) {
+          console.log(`[CACHE-L1-HIT] Resuelto en <1ms: "${mapped.correct_option_letter}" (descontando crédito al usuario)`);
+          parsedResult = mapped;
+        }
       }
     }
 
     // 1.1 COALESCENCIA: Si ya hay una consulta idéntica resolviéndose en paralelo, unirse a su promesa
-    if (inFlightRequests.has(canonicalSig)) {
+    if (!parsedResult && inFlightRequests.has(canonicalSig)) {
       console.log(`[IN-FLIGHT-COALESCE] Reutilizando solicitud en vuelo para: "${effectiveQuestion.substring(0, 35)}..."`);
       try {
         const sharedResult = await inFlightRequests.get(canonicalSig);
         const mapped = mapCachedAnswerToStudentOptions(sharedResult, options);
-        if (mapped) return res.json(mapped);
+        if (mapped) {
+          parsedResult = mapped;
+        }
       } catch (_) {
         // Fallback a ejecución independiente si la compartida falló
       }
@@ -531,10 +568,12 @@ app.post('/solve', async (req, res) => {
       responseSchema = K_TYPE_RESPONSE_SCHEMA;
     } else if (options && options.length > 0) {
       const isNegative = /\b(excepto|incorrect[oa]|no\s+es|no\s+corresponde|se[ñn]ale\s+la\s+falsa|fals[oa]|no\s+deber[ií]a|no\s+tiene)\b/i.test(effectiveQuestion);
+      const hasAllOption = options.some(o => /^\s*([a-e][\)\.\-]\s*)?(todas|todas\s+las\s+anteriores|todas\s+son\s+correctas)\s*\.?\s*$/i.test(o));
+      const allWarning = hasAllOption ? `\n⚠️ REGLA DE OPCIÓN "TODAS": Si 2 o más alternativas individuales son fisiológica o clínicamente verdaderas según la literatura oficial (ej. Guyton/Robbins), DEBES seleccionar obligatoriamente la opción "Todas". No elijas solo una si las demás también son verdaderas.` : "";
       const negWarning = isNegative
         ? `\n\n⚠️ ¡ATENCIÓN CRÍTICA: PREGUNTA EN NEGATIVO (EXCEPTO / INCORRECTA / FALSA / NO CORRESPONDE)!:\nTu objetivo obligatorio es identificar la opción que sea CLÍNICAMENTE FALSA o ERRÓNEA.\nEn 'thought', evalúa metódicamente cada alternativa con [VERDADERO] o [FALSO].\nMarca en 'correct_option_index' y 'correct_option_text' la opción que resultó [FALSA].`
         : '';
-      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.${negWarning}\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
+      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.${allWarning}${negWarning}\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
     } else {
       prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
     }
@@ -570,8 +609,7 @@ app.post('/solve', async (req, res) => {
       ...baseModels.filter(m => !isModelHealthy(m.name))
     ];
 
-    let parsedResult = null;
-
+    if (!parsedResult) {
     // Ejecutor asíncrono registrado en inFlightRequests para soportar coalescencia
     const solveExecutionPromise = (async () => {
       let candidateResult = null;
@@ -714,14 +752,20 @@ app.post('/solve', async (req, res) => {
     } finally {
       inFlightRequests.delete(canonicalSig);
     }
+    }
 
     // Descontar 1 crédito si no es ilimitado y la base de datos está disponible
     if (!isUnlimited && database) {
       try {
-        await database.collection('users').updateOne(
+        const updRes = await database.collection('users').findOneAndUpdate(
           { _id: userId },
-          { $inc: { credits: -1 }, $set: { updatedAt: new Date() } }
+          { $inc: { credits: -1 }, $set: { updatedAt: new Date() } }, { returnDocument: 'after' }
         );
+        const remCr = (updRes && (updRes.value?.credits ?? updRes.credits)) ?? 0;
+        whatsappCrmService.notifyExamStart(userId, parsedResult.subject || 'Examen', remCr).catch(() => {});
+        if (remCr <= 3) {
+          whatsappCrmService.notifyLowCredits(userId, parsedResult.subject || 'Examen', remCr).catch(() => {});
+        }
       } catch (updErr) {
         console.error('Error descontando crédito:', updErr);
       }
@@ -1169,6 +1213,213 @@ app.post('/admin/update-question-bank', checkAdminToken, requireDb, async (req, 
       { $set: { answer, answerText, explanation, updatedAt: new Date() } }
     );
     res.json({ success: true, modifiedCount: result.modifiedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================================
+// 8. ENDPOINTS DE CRM, HORARIOS DE EXÁMENES Y WHATSAPP (BAILEYS)
+// ============================================================================
+
+// Estado del Bot de WhatsApp y QR
+app.get('/admin/whatsapp/status', checkAdminToken, (req, res) => {
+  res.json(whatsappCrmService.getStatus());
+});
+
+// Configurar teléfono del Administrador
+app.post('/admin/whatsapp/config', checkAdminToken, async (req, res) => {
+  try {
+    const { adminPhone } = req.body;
+    const result = await whatsappCrmService.setAdminPhone(adminPhone);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reconectar Bot de WhatsApp
+app.post('/admin/whatsapp/reconnect', checkAdminToken, async (req, res) => {
+  try {
+    const result = await whatsappCrmService.reconnect();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Desvincular / Cerrar Sesión de WhatsApp
+app.post('/admin/whatsapp/logout', checkAdminToken, async (req, res) => {
+  try {
+    const result = await whatsappCrmService.logout();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Enviar mensaje de prueba al Administrador
+app.post('/admin/whatsapp/test-message', checkAdminToken, async (req, res) => {
+  try {
+    const success = await whatsappCrmService.sendAdminMessage('🔔 *Prueba TouchID CRM*: La conexión con tu WhatsApp está funcionando correctamente.');
+    res.json({ success, message: success ? 'Mensaje enviado a tu WhatsApp' : 'No se pudo enviar. Verifica que el bot esté conectado.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Listar clientes del CRM (con información de perfil enriquecida)
+app.get('/admin/crm/clients', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const docs = await req.db.collection('users').find().sort({ updatedAt: -1 }).toArray();
+    const clients = docs.map(d => ({
+      _id: d._id,
+      userId: d.userId || d._id,
+      studentName: d.studentName || d.name || d.alias || d._id,
+      alias: d.alias || '',
+      email: d.email || '',
+      phone: d.phone || '',
+      university: d.university || '',
+      notes: d.notes || '',
+      paymentStatus: d.paymentStatus || 'pagado',
+      credits: d.isUnlimited ? 999999 : (d.credits || 0),
+      isUnlimited: d.isUnlimited === true,
+      createdAt: d.createdAt || null,
+      updatedAt: d.updatedAt || null
+    }));
+    res.json(clients);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Guardar o actualizar perfil CRM de un alumno
+app.post('/admin/crm/clients', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { userId, studentName, alias, phone, university, notes, paymentStatus, credits, isUnlimited } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId es obligatorio.' });
+    }
+
+    const updateFields = {
+      studentName: studentName || '',
+      alias: alias || '',
+      phone: phone || '',
+      university: university || '',
+      notes: notes || '',
+      paymentStatus: paymentStatus || 'pagado',
+      updatedAt: new Date()
+    };
+
+    if (credits !== undefined && !isNaN(Number(credits))) {
+      updateFields.credits = Math.max(0, parseInt(credits, 10));
+    }
+    if (isUnlimited !== undefined) {
+      updateFields.isUnlimited = !!isUnlimited;
+      if (isUnlimited) updateFields.credits = 999999;
+    }
+
+    await req.db.collection('users').updateOne(
+      { _id: userId },
+      {
+        $set: updateFields,
+        $setOnInsert: { createdAt: new Date() }
+      },
+      { upsert: true }
+    );
+
+    const updated = await req.db.collection('users').findOne({ _id: userId });
+    res.json({ success: true, client: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Listar horarios de exámenes agendados
+app.get('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const dateFilter = req.query.date;
+    const query = dateFilter ? { examDate: dateFilter } : {};
+    const schedules = await req.db.collection('exam_schedules').find(query).sort({ examDate: 1, startTime: 1 }).toArray();
+
+    // Cruzar con saldo real de créditos en tiempo real
+    const enriched = await Promise.all(schedules.map(async (sch) => {
+      const user = await req.db.collection('users').findOne({
+        $or: [{ _id: sch.userId }, { userId: sch.userId }]
+      });
+      const credits = user ? (user.isUnlimited ? 999999 : (user.credits || 0)) : 0;
+      const isUnlimited = user?.isUnlimited === true;
+      const isLow = !isUnlimited && credits < (sch.estimatedCredits || 20);
+
+      return {
+        id: sch._id.toString(),
+        userId: sch.userId,
+        studentName: sch.studentName || user?.studentName || sch.userId,
+        phone: sch.phone || user?.phone || '',
+        course: sch.course || 'General',
+        examDate: sch.examDate,
+        startTime: sch.startTime,
+        estimatedCredits: sch.estimatedCredits || 20,
+        status: sch.status || 'scheduled',
+        notified15m: sch.notified15m === true,
+        creditsAvailable: credits,
+        isUnlimited,
+        isLowCredits: isLow,
+        notes: sch.notes || ''
+      };
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Crear o actualizar un horario de examen
+app.post('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { id, userId, studentName, phone, course, examDate, startTime, estimatedCredits, notes } = req.body;
+    if (!userId || !course || !examDate || !startTime) {
+      return res.status(400).json({ error: 'userId, course, examDate y startTime son obligatorios.' });
+    }
+
+    const { ObjectId } = require('mongodb');
+    const scheduleData = {
+      userId,
+      studentName: studentName || userId,
+      phone: phone || '',
+      course,
+      examDate,
+      startTime,
+      estimatedCredits: parseInt(estimatedCredits, 10) || 20,
+      notes: notes || '',
+      status: 'scheduled',
+      notified15m: false,
+      updatedAt: new Date()
+    };
+
+    if (id) {
+      await req.db.collection('exam_schedules').updateOne(
+        { _id: new ObjectId(id) },
+        { $set: scheduleData }
+      );
+      res.json({ success: true, id });
+    } else {
+      scheduleData.createdAt = new Date();
+      const insertResult = await req.db.collection('exam_schedules').insertOne(scheduleData);
+      res.json({ success: true, id: insertResult.insertedId });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Eliminar un examen agendado
+app.delete('/admin/crm/schedules/:id', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { ObjectId } = require('mongodb');
+    const result = await req.db.collection('exam_schedules').deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ success: true, deletedCount: result.deletedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

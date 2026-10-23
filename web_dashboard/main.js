@@ -1,4 +1,5 @@
 // JS Lógica Principal - TouchID Web Dashboard (Opción B Backend)
+import './crm.js';
 
 // Estado global de la aplicación
 let backendUrl = localStorage.getItem('touchid_backend_url') || 'https://touchid-backend.onrender.com';

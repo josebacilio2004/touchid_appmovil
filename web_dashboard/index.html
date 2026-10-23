@@ -50,6 +50,10 @@
           <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H6V4h2v8l2.5-1.5L13 12V4h5v16z"/></svg>
           Licencias Prepago
         </a>
+        <a href="#crm" class="nav-item" id="nav-crm">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.34 5L2 22l5.22-1.31C8.61 21.49 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+          CRM & WhatsApp
+        </a>
         <a href="#history" class="nav-item" id="nav-history">
           <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 1 1 7 7 7.07 7.07 0 0 1-6-3H4.26a8.99 8.99 0 1 0 8.74-16zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
           Historial
@@ -504,6 +508,179 @@
           </div>
         </section>
 
+        <!-- SECCIÓN CRM Y CONTROL WHATSAPP (BAILEYS) -->
+        <section id="tab-crm" class="tab-content">
+          <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 20px;">
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Estado Bot WhatsApp</span>
+              <span class="stat-value" id="crm-wa-status-text" style="font-size: 18px; color: #94a3b8;">Verificando...</span>
+              <span class="stat-trend neutral" id="crm-wa-status-sub">Motor Baileys</span>
+            </div>
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Exámenes Agendados Hoy</span>
+              <span class="stat-value" id="crm-stat-today-exams" style="font-size: 24px; color: #60a5fa;">0</span>
+              <span class="stat-trend positive">Monitoreo activo</span>
+            </div>
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Alumnos con Examen Hoy</span>
+              <span class="stat-value" id="crm-stat-today-students" style="font-size: 24px; color: #34d399;">0</span>
+              <span class="stat-trend neutral">En agenda</span>
+            </div>
+            <div class="stat-card" style="padding: 16px 20px;">
+              <span class="stat-label">Alumnos Faltos de Créditos</span>
+              <span class="stat-value" id="crm-stat-low-credits" style="font-size: 24px; color: #f87171;">0</span>
+              <span class="stat-trend negative">Riesgo de corte</span>
+            </div>
+          </div>
+
+          <!-- FILA 1: ESTADO WHATSAPP BAILEYS + CONFIGURACIÓN DE TU TELÉFONO -->
+          <div class="config-grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); margin-bottom: 24px;">
+            <!-- Tarjeta Conexión WhatsApp -->
+            <div class="card config-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h2 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                  <span>📱 Vinculación WhatsApp (Baileys)</span>
+                </h2>
+                <span class="pulse-indicator" id="crm-wa-badge" style="font-size: 11px;">Cargando...</span>
+              </div>
+              <p class="card-subtitle">Conecta tu WhatsApp mediante código QR para recibir alertas automáticas y controlar el sistema mediante comandos.</p>
+              
+              <div id="crm-wa-qr-container" style="display: none; text-align: center; margin: 15px 0; padding: 15px; background: rgba(15, 23, 42, 0.8); border: 1px dashed rgba(96, 165, 250, 0.4); border-radius: 10px;">
+                <p style="font-size: 13px; color: #93c5fd; font-weight: 600; margin-bottom: 10px;">
+                  📲 Escanea este código desde WhatsApp > Ajustes > Dispositivos vinculados:
+                </p>
+                <img id="crm-wa-qr-img" src="" alt="Código QR WhatsApp" style="width: 220px; height: 220px; border-radius: 8px; background: #fff; padding: 8px; margin: 0 auto; display: block;">
+                <p style="font-size: 11.5px; color: #94a3b8; margin-top: 8px;">El código se actualiza automáticamente.</p>
+              </div>
+
+              <div id="crm-wa-connected-box" style="display: none; padding: 14px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; margin: 15px 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 24px;">✅</span>
+                  <div>
+                    <strong style="color: #34d399; font-size: 14px; display: block;">Bot de WhatsApp Vinculado y Activo</strong>
+                    <span id="crm-wa-connected-number" style="font-size: 13px; color: #e2e8f0; font-family: monospace;">Número: +...</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px;">
+                <button type="button" class="btn btn-primary" id="crm-wa-refresh-btn" style="flex: 1; height: 40px; font-size: 13px;">Reconectar / QR</button>
+                <button type="button" class="btn" id="crm-wa-test-btn" style="flex: 1; height: 40px; font-size: 13px; background: rgba(59, 130, 246, 0.2); color: #60a5fa;">Probar Mensaje</button>
+                <button type="button" class="btn" id="crm-wa-logout-btn" style="height: 40px; font-size: 13px; background: rgba(239, 68, 68, 0.15); color: #f87171;">Desvincular</button>
+              </div>
+            </div>
+
+            <!-- Configuración de Teléfono Admin -->
+            <div class="card config-card">
+              <h2>⚙️ Ajustes de Notificaciones y Comandos</h2>
+              <p class="card-subtitle">Define a qué número de WhatsApp deben llegar las alertas de exámenes próximos y créditos bajos.</p>
+              
+              <form id="crm-admin-phone-form" class="dashboard-form">
+                <div class="form-group">
+                  <label for="crm-admin-phone-input">Tu Número de WhatsApp (con código de país, ej: 51987654321)</label>
+                  <input type="text" id="crm-admin-phone-input" placeholder="ej: 51987654321" required style="width: 100%; box-sizing: border-box;">
+                </div>
+                <button type="submit" class="btn btn-primary" id="crm-admin-phone-save-btn" style="width: 100%; height: 40px;">Guardar Teléfono Admin</button>
+              </form>
+
+              <div style="margin-top: 18px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                <span style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 6px;">Comandos que puedes escribir en tu WhatsApp:</span>
+                <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+                  <li><code>/hoy</code> o <code>/agenda</code> : Ver exámenes del día y créditos</li>
+                  <li><code>/buscar [alumno]</code> : Ficha y saldo de un alumno</li>
+                  <li><code>/recargar [alumno] [créditos]</code> : Recarga al instante</li>
+                  <li><code>/licencia [créditos]</code> : Genera código prepago</li>
+                  <li><code>/agendar [alumno] | [curso] | [hora]</code> : Registrar examen</li>
+                  <li><code>/vivo</code> : Monitorear alumnos respondiendo ahora</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- FILA 2: AGENDA DE EXÁMENES -->
+          <div class="card table-card" style="margin-bottom: 24px;">
+            <div class="card-header search-header" style="flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h2 style="font-size: 1.15rem; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                  <span>📅 Agenda de Horarios de Exámenes</span>
+                  <span class="badge-credits standard" id="crm-schedules-badge">0 Programados</span>
+                </h2>
+                <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 3px;">
+                  El sistema cruzará automáticamente los horarios con el saldo real de créditos y te avisará por WhatsApp 15 min antes de cada examen.
+                </p>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="date" id="crm-schedule-date-filter" style="padding: 8px 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; font-size: 13px;">
+                <button type="button" class="btn" id="crm-schedule-today-btn" style="padding: 8px 12px; font-size: 13px;">Ver Hoy</button>
+                <button type="button" class="btn btn-primary" id="crm-schedule-new-btn" style="padding: 8px 14px; font-size: 13px;">+ Programar Examen</button>
+              </div>
+            </div>
+
+            <div class="table-container">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Fecha & Hora</th>
+                    <th>Estudiante / Alumno</th>
+                    <th>Curso / Materia</th>
+                    <th>Créditos Requeridos</th>
+                    <th>Saldo Actual en DB</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="crm-schedules-table-body">
+                  <tr>
+                    <td colspan="7" class="table-placeholder">Cargando agenda de exámenes...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- FILA 3: DIRECTORIO CRM DE ESTUDIANTES -->
+          <div class="card table-card">
+            <div class="card-header search-header" style="flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h2 style="font-size: 1.15rem; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                  <span>👥 Directorio CRM de Estudiantes</span>
+                  <span class="pulse-indicator" style="font-size: 11px;">En Tiempo Real</span>
+                </h2>
+                <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 3px;">
+                  Asocia los IDs de cuentas a nombres reales, teléfonos de WhatsApp y universidades para control rápido.
+                </p>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <div class="search-box">
+                  <input type="text" id="crm-clients-search" placeholder="Buscar por alumno, teléfono o ID...">
+                </div>
+                <button type="button" class="btn btn-primary" id="crm-client-new-btn" style="padding: 8px 14px; font-size: 13px;">+ Nuevo Alumno</button>
+              </div>
+            </div>
+
+            <div class="table-container">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Estudiante (Nombre / Alias)</th>
+                    <th>ID de Cuenta / Dispositivo</th>
+                    <th>Teléfono WhatsApp</th>
+                    <th>Universidad / Carrera</th>
+                    <th>Saldo de Créditos</th>
+                    <th>Notas</th>
+                    <th>Acciones Rápidas</th>
+                  </tr>
+                </thead>
+                <tbody id="crm-clients-table-body">
+                  <tr>
+                    <td colspan="7" class="table-placeholder">Cargando directorio de estudiantes...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <!-- SECCIÓN 6: CONFIGURACIÓN -->
         <section id="tab-config" class="tab-content">
           <div class="config-grid">
@@ -551,6 +728,93 @@
 
       </div>
     </main>
+  </div>
+
+  <!-- MODAL: PROGRAMAR EXAMEN -->
+  <div id="modal-schedule" class="lock-screen-overlay" style="display: none; z-index: 9999; background: rgba(0,0,0,0.75);">
+    <div class="lock-card" style="max-width: 480px; text-align: left;">
+      <h2 style="color: #60a5fa; margin-bottom: 8px;">📅 Programar Examen</h2>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">Registra el horario en que un estudiante rendirá su examen para activar alertas automáticas por WhatsApp.</p>
+      
+      <form id="modal-schedule-form" class="dashboard-form">
+        <input type="hidden" id="sch-id">
+        <div class="form-group">
+          <label for="sch-user-id">ID de Cuenta / Dispositivo</label>
+          <input type="text" id="sch-user-id" placeholder="ej: cbaciliod o correo" required>
+        </div>
+        <div class="form-group">
+          <label for="sch-student-name">Nombre Real del Alumno (opcional)</label>
+          <input type="text" id="sch-student-name" placeholder="ej: Camila Bacilio">
+        </div>
+        <div class="form-group">
+          <label for="sch-course">Curso / Materia</label>
+          <input type="text" id="sch-course" placeholder="ej: Semiología Médica, Microbiología" required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label for="sch-date">Fecha del Examen</label>
+            <input type="date" id="sch-date" required>
+          </div>
+          <div class="form-group">
+            <label for="sch-time">Hora de Inicio (24h)</label>
+            <input type="time" id="sch-time" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="sch-credits">Créditos Estimados (preguntas)</label>
+          <input type="number" id="sch-credits" min="1" value="20" required>
+        </div>
+        <div class="form-group">
+          <label for="sch-notes">Notas / Observaciones</label>
+          <input type="text" id="sch-notes" placeholder="ej: Examen parcial UDABOL">
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="submit" class="btn btn-primary" style="flex: 1; height: 42px;">Guardar en Agenda</button>
+          <button type="button" class="btn" id="modal-schedule-cancel" style="flex: 1; height: 42px; background: rgba(255,255,255,0.1); color: #cbd5e1;">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR ALUMNO CRM -->
+  <div id="modal-client" class="lock-screen-overlay" style="display: none; z-index: 9999; background: rgba(0,0,0,0.75);">
+    <div class="lock-card" style="max-width: 480px; text-align: left;">
+      <h2 style="color: #34d399; margin-bottom: 8px;">👤 Ficha de Estudiante CRM</h2>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">Asocia los datos reales del estudiante a su cuenta TouchID.</p>
+      
+      <form id="modal-client-form" class="dashboard-form">
+        <div class="form-group">
+          <label for="cli-user-id">ID de Cuenta / Dispositivo (Único)</label>
+          <input type="text" id="cli-user-id" placeholder="ej: 74934503@continental.edu.pe o ID" required>
+        </div>
+        <div class="form-group">
+          <label for="cli-student-name">Nombre Completo del Alumno</label>
+          <input type="text" id="cli-student-name" placeholder="ej: Camila Bacilio" required>
+        </div>
+        <div class="form-group">
+          <label for="cli-phone">Teléfono WhatsApp (con cód. país)</label>
+          <input type="text" id="cli-phone" placeholder="ej: 51987654321">
+        </div>
+        <div class="form-group">
+          <label for="cli-university">Universidad / Carrera</label>
+          <input type="text" id="cli-university" placeholder="ej: UDABOL - Medicina">
+        </div>
+        <div class="form-group">
+          <label for="cli-credits">Saldo de Créditos</label>
+          <input type="number" id="cli-credits" min="0" step="1" placeholder="ej: 50">
+        </div>
+        <div class="form-group">
+          <label for="cli-notes">Notas / Estado de Pago</label>
+          <input type="text" id="cli-notes" placeholder="ej: Pagado por Yape, grupo 3">
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="submit" class="btn btn-primary" style="flex: 1; height: 42px;">Guardar Ficha</button>
+          <button type="button" class="btn" id="modal-client-cancel" style="flex: 1; height: 42px; background: rgba(255,255,255,0.1); color: #cbd5e1;">Cancelar</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script type="module" src="./main.js"></script>
