@@ -64,7 +64,7 @@ async function seedUnlimitedUser(database) {
 // ============================================================================
 // ESTADO GLOBAL DE SALUD DE MODELOS (CIRCUIT BREAKER LIGERO EN RAM)
 // ============================================================================
-const modelPenaltyUntil = new Map(); // modelName -> timestamp hasta cuando está castigado
+const modelPenaltyUntil = new Map(); // modelName -> timestamp hasta cuando está castigado por latencia/timeout/503
 
 function isModelHealthy(modelName) {
   const penaltyExp = modelPenaltyUntil.get(modelName);
@@ -80,7 +80,8 @@ function penalizeModel(modelName, durationMs = 120000) {
   modelPenaltyUntil.set(modelName, Date.now() + durationMs);
   console.warn(`[CIRCUIT-BREAKER] Modelo ${modelName} penalizado por ${durationMs / 1000}s debido a alta latencia/timeout/503.`);
 }
-const keyPenaltyUntil = new Map(); // apiKey -> timestamp hasta cuando está en cooldown
+
+const keyPenaltyUntil = new Map(); // apiKey -> timestamp hasta cuando está en cooldown RPM
 
 function isKeyHealthy(apiKey) {
   const exp = keyPenaltyUntil.get(apiKey);
@@ -95,7 +96,33 @@ function isKeyHealthy(apiKey) {
 function penalizeKey(apiKey, durationMs = 20000) {
   keyPenaltyUntil.set(apiKey, Date.now() + durationMs);
   const masked = apiKey ? apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4) : 'key';
-  console.warn(`[CIRCUIT-BREAKER] Clave ${masked} en cooldown por ${durationMs / 1000}s debido a 429 quota.`);
+  console.warn(`[CIRCUIT-BREAKER] Clave ${masked} en cooldown por ${durationMs / 1000}s debido a 429 quota RPM.`);
+}
+
+// Cuota diaria agotada por par (Clave + Modelo) independiente de la penalización por latencia
+const keyModelDailyLimitUntil = new Map(); // "${apiKey}::${modelName}" -> timestamp
+
+function isKeyModelDailyExhausted(apiKey, modelName) {
+  const pairKey = `${apiKey}::${modelName}`;
+  const exp = keyModelDailyLimitUntil.get(pairKey);
+  if (!exp) return false;
+  if (Date.now() > exp) {
+    keyModelDailyLimitUntil.delete(pairKey);
+    return false;
+  }
+  return true;
+}
+
+function penalizeKeyModelDaily(apiKey, modelName, durationMs = 12 * 3600 * 1000) {
+  const pairKey = `${apiKey}::${modelName}`;
+  keyModelDailyLimitUntil.set(pairKey, Date.now() + durationMs);
+  const masked = apiKey ? apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4) : 'key';
+  console.warn(`[DAILY-QUOTA-PAIR] Par (${masked} + ${modelName}) agotó cuota diaria gratuita. Aislado por ${Math.round(durationMs / 3600000)}h.`);
+}
+
+function isModelDailyExhaustedOnAllKeys(modelName, apiKeys = []) {
+  if (!apiKeys || apiKeys.length === 0) return false;
+  return apiKeys.every(k => isKeyModelDailyExhausted(k, modelName));
 }
 
 
@@ -603,10 +630,14 @@ app.post('/solve', async (req, res) => {
           { name: 'gemini-3.5-flash',         timeoutMs: 5000 }
         ];
 
-    // Modelos sanos primero, penalizados al final como último recurso
+    // Separar estrictamente:
+    // 1) Modelos sanos con al menos 1 clave con cuota diaria disponible
+    // 2) Modelos penalizados por latencia (>3.5s/timeout) pero con cuota diaria disponible
+    // 3) Modelos con cuota diaria agotada en TODAS las claves (solo como último recurso extremo)
     const activeModels = [
-      ...baseModels.filter(m => isModelHealthy(m.name)),
-      ...baseModels.filter(m => !isModelHealthy(m.name))
+      ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && isModelHealthy(m.name)),
+      ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && !isModelHealthy(m.name)),
+      ...baseModels.filter(m => isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys))
     ];
 
     if (!parsedResult) {
@@ -615,12 +646,12 @@ app.post('/solve', async (req, res) => {
       let candidateResult = null;
       let lastError = null;
 
-      // Pases de recuperación ante saturación 429
-      const maxPasses = rawApiKeys.length > 1 ? 1 : 3;
+      // Pases de recuperación ante saturación 429 (2 pases en multi-key para evitar 500 transitorios)
+      const maxPasses = rawApiKeys.length > 1 ? 2 : 3;
 
       for (let pass = 0; pass < maxPasses; pass++) {
         if (pass > 0) {
-          const backoffWait = pass * 2000;
+          const backoffWait = pass * 1500;
           console.warn(`⏳ [RATE-LIMIT-BACKOFF] Esperando ${backoffWait}ms para pase de reintento #${pass}...`);
           await new Promise(r => setTimeout(r, backoffWait));
         }
@@ -628,11 +659,16 @@ app.post('/solve', async (req, res) => {
         modelLoop: for (const modelCfg of activeModels) {
           const { name: model, timeoutMs } = modelCfg;
 
-          // Filtrar claves disponibles (saludables primero)
-          const healthyKeys = rawApiKeys.filter(k => isKeyHealthy(k));
-          const targetKeys = (healthyKeys.length > 0 || pass > 0)
-            ? (healthyKeys.length > 0 ? healthyKeys : rawApiKeys)
-            : rawApiKeys;
+          // Excluir claves que ya agotaron su cuota diaria (limit: 20) en ESTE modelo específico
+          const keysWithDailyQuota = rawApiKeys.filter(k => !isKeyModelDailyExhausted(k, model));
+          if (keysWithDailyQuota.length === 0 && pass === 0) {
+            continue modelLoop; // En el primer pase, saltar modelos sin ninguna clave con cuota diaria
+          }
+          const candidatePool = keysWithDailyQuota.length > 0 ? keysWithDailyQuota : rawApiKeys;
+
+          // Dentro de las claves con cuota diaria, priorizar las que no están en cooldown RPM (25s)
+          const healthyKeys = candidatePool.filter(k => isKeyHealthy(k));
+          const targetKeys = healthyKeys.length > 0 ? healthyKeys : candidatePool;
 
           const startKeyIdx = Math.floor(Math.random() * targetKeys.length);
 
@@ -655,16 +691,16 @@ app.post('/solve', async (req, res) => {
               clearTimeout(timeoutId);
               const elapsed = Date.now() - startTime;
 
-              // HTTP 429: Cuota agotada (RPM por minuto o límite diario RPD del modelo)
+              // HTTP 429: Cuota agotada (RPM por minuto o límite diario RPD del par Clave+Modelo)
               if (geminiRes.status === 429) {
                 const errText = await geminiRes.text();
                 lastError = `Google API Quota (HTTP 429 en Clave ${keyNum} / ${model}): ${errText}`;
 
-                const isModelDailyLimit = errText.includes('PerModel') || errText.includes('limit: 20');
+                const isModelDailyLimit = errText.includes('PerModel') || errText.includes('PerDay') || errText.includes('limit: 20');
                 if (isModelDailyLimit) {
-                  console.warn(`⚠️ [MODEL-DAILY-LIMIT] Modelo ${model} agotó su cuota diaria gratuita (limit: 20) en Google. Penalizando modelo por 1h...`);
-                  penalizeModel(model, 3600000); // Saltear este modelo por 1 hora
-                  break keyLoop; // Saltar de inmediato al siguiente modelo
+                  console.warn(`⚠️ [MODEL-DAILY-LIMIT] Clave ${keyNum} agotó su cuota diaria gratuita (limit: 20) en ${model}. Penalizando par (Clave ${keyNum} + ${model}) por 12h y rotando a la siguiente clave...`);
+                  penalizeKeyModelDaily(activeKey, model, 12 * 3600 * 1000);
+                  continue keyLoop; // Probar inmediatamente Clave 2, 3, 4 en este MISMO modelo rápido
                 }
 
                 console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} agotó cuota RPM en Google. Cooldown 25s. Modelo ${model} sigue activo.`);

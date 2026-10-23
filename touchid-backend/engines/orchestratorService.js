@@ -68,15 +68,34 @@ function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = []) {
     }
   }
 
-  // 2. Coincidencia por texto normalizado de la respuesta
+  // 2. Coincidencia por texto normalizado de la respuesta en 2 pasadas estrictas
   const targetNorm = normalizeText(cachedEntry.canonical_answer_text || cachedEntry.correct_option_text || '');
   let bestIndex = -1;
 
-  for (let i = 0; i < studentOptions.length; i++) {
-    const optNorm = normalizeText(studentOptions[i]);
-    if (optNorm === targetNorm || (targetNorm.length > 3 && (optNorm.includes(targetNorm) || targetNorm.includes(optNorm)))) {
-      bestIndex = i;
-      break;
+  // Pasada 1 (Prioridad Absoluta): Únicamente coincidencia exacta
+  // Evita falsos positivos como "fisis" en "apofisis" o "...IL-25" en "...IL-25, IL-4"
+  if (targetNorm.length > 0) {
+    for (let i = 0; i < studentOptions.length; i++) {
+      const optNorm = normalizeText(studentOptions[i]);
+      if (optNorm === targetNorm) {
+        bestIndex = i;
+        break;
+      }
+    }
+  }
+
+  // Pasada 2 (Fallback): Solo si ninguna opción coincidió exactamente, buscar subcadena eligiendo la longitud más cercana a targetNorm
+  if (bestIndex === -1 && targetNorm.length > 3) {
+    let minLenDiff = Infinity;
+    for (let i = 0; i < studentOptions.length; i++) {
+      const optNorm = normalizeText(studentOptions[i]);
+      if (optNorm.length > 0 && (optNorm.includes(targetNorm) || targetNorm.includes(optNorm))) {
+        const lenDiff = Math.abs(optNorm.length - targetNorm.length);
+        if (lenDiff < minLenDiff) {
+          minLenDiff = lenDiff;
+          bestIndex = i;
+        }
+      }
     }
   }
 
