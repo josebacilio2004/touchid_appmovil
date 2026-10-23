@@ -10,6 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="alternate icon" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./favicon.svg">
   <link rel="stylesheet" href="./index.css">
   <style>
     /* Estilos específicos para el simulador interactivo */
@@ -342,6 +344,17 @@
       opacity: 0.92;
       transform: translateY(-2px);
       box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+    }
+    .touchid-auto-marked {
+      background: #dcfce7 !important;
+      border-left: 4px solid #16a34a !important;
+      border-radius: 6px !important;
+      animation: pulseMark 0.6s ease-in-out !important;
+    }
+    @keyframes pulseMark {
+      0% { transform: scale(1); background: #bbf7d0; }
+      50% { transform: scale(1.015); background: #86efac; }
+      100% { transform: scale(1); background: #dcfce7; }
     }
     .btn-next {
       background: #3b82f6;
@@ -981,11 +994,27 @@
         <!-- Generado dinámicamente -->
       </div>
 
-      <!-- BOTÓN VERDE SIGUIENTE -->
-      <div style="margin-bottom: 24px;">
+      <!-- BOTÓN VERDE SIGUIENTE Y BOTÓN RESOLVER CON IA -->
+      <div style="margin-bottom: 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
         <button id="udabol-btn-next" type="button" class="udabol-btn-siguiente">
           <span>✔</span> Siguiente
         </button>
+        <button id="udabol-btn-ai-solve" type="button" class="btn-ai-solve" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; padding: 11px 22px; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.45); border: none;">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/></svg>
+          ⚡ Resolver con IA (TouchID Next-Gen)
+        </button>
+      </div>
+
+      <!-- TARJETA DE JUSTIFICACIÓN Y RESULTADO IA EN UDABOL -->
+      <div id="udabol-ai-feedback-box" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; text-align: left;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+          <strong style="color: #166534; font-size: 0.92rem; display: flex; align-items: center; gap: 6px;">
+            <span>🧠</span> Diagnóstico & Fundamento Médico (TouchID Next-Gen):
+          </strong>
+          <span id="udabol-ai-badge" style="background: #bbf7d0; color: #14532d; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">K-Type Resuelto</span>
+        </div>
+        <p id="udabol-ai-explanation" style="font-size: 0.9rem; color: #1e293b; margin: 0; line-height: 1.5; font-weight: 600;"></p>
+        <div id="udabol-ai-thought" style="font-size: 0.8rem; color: #475569; margin-top: 6px; padding: 6px 10px; background: rgba(255,255,255,0.7); border-radius: 6px;"></div>
       </div>
 
       <!-- LÍNEA DIVISORIA -->
@@ -1290,6 +1319,9 @@
       const q = currentCategory.questions[currentQuestionIndex];
       const totalQ = currentCategory.questions.length;
 
+      const feedbackBox = document.getElementById('udabol-ai-feedback-box');
+      if (feedbackBox) feedbackBox.style.display = 'none';
+
       udabolSessionTitle.textContent = currentCategory.sessionName || 'Examen 2-2025';
       udabolSubjectTitle.textContent = currentCategory.subjectCode || currentCategory.title;
       udabolQStatement.textContent = q.question;
@@ -1360,6 +1392,88 @@
         finishQuiz();
       }
     });
+
+    // Resolver con IA en Vista UDABOL (TouchID Next-Gen)
+    async function solveUdabolWithAi() {
+      const q = currentCategory.questions[currentQuestionIndex];
+      const btn = document.getElementById('udabol-btn-ai-solve');
+      const feedbackBox = document.getElementById('udabol-ai-feedback-box');
+      const expEl = document.getElementById('udabol-ai-explanation');
+      const thoughtEl = document.getElementById('udabol-ai-thought');
+      const badgeEl = document.getElementById('udabol-ai-badge');
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span style="animation: spin 1s infinite linear;">⌛</span> Analizando con Motor K-Type...';
+      }
+
+      try {
+        const defaultBackend = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://127.0.0.1:3001'
+          : 'https://touchid-backend.onrender.com';
+        const backendUrl = localStorage.getItem('touchid_backend_url') || defaultBackend;
+
+        const response = await fetch(`${backendUrl}/solve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: 'unlimited_user_touchid',
+            question: q.question,
+            options: q.options
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let targetIdx = data.correct_option_index;
+
+          if (targetIdx !== undefined && targetIdx >= 0) {
+            userAnswers[currentQuestionIndex] = targetIdx;
+            
+            // Marcar radio nativo en la vista UDABOL
+            const radios = udabolOptionsBox.querySelectorAll('input[type="radio"]');
+            radios.forEach((r, idx) => {
+              const row = r.closest('label');
+              if (idx === targetIdx) {
+                r.checked = true;
+                if (row) {
+                  row.classList.add('touchid-auto-marked');
+                  row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              } else if (row) {
+                row.classList.remove('touchid-auto-marked');
+              }
+            });
+
+            // Mostrar retroalimentación explicativa médica
+            if (feedbackBox) {
+              feedbackBox.style.display = 'block';
+              if (expEl) expEl.textContent = `✅ Alternativa ${data.correct_option_letter} (${data.correct_option_text}): ${data.explanation}`;
+              if (thoughtEl && data.thought) thoughtEl.textContent = `Cadena de pensamiento médica: ${data.thought}`;
+              if (badgeEl) badgeEl.textContent = data.from_cache ? '⚡ Resuelto desde Caché L1 (<15ms)' : '🧠 Resuelto por Motor K-Type';
+            }
+          }
+        } else {
+          alert('Error del servidor: ' + response.statusText);
+        }
+      } catch (err) {
+        console.error('Error al resolver UDABOL con IA:', err);
+        alert('No se pudo conectar con el backend local: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/></svg>
+            ⚡ Resolver con IA (TouchID Next-Gen)
+          `;
+        }
+      }
+    }
+
+    const udabolBtnAiSolve = document.getElementById('udabol-btn-ai-solve');
+    if (udabolBtnAiSolve) {
+      udabolBtnAiSolve.addEventListener('click', solveUdabolWithAi);
+    }
 
     udabolBtnFinish.addEventListener('click', () => {
       if (confirm('Esta seguro que desea terminar el intento?')) {
@@ -1473,7 +1587,10 @@
       btnAiSolve.innerHTML = '<span style="animation: spin 1s infinite linear;">⌛</span> Analizando...';
 
       try {
-        const backendUrl = localStorage.getItem('touchid_backend_url') || 'https://touchid-backend.onrender.com';
+        const defaultBackend = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://127.0.0.1:3001'
+          : 'https://touchid-backend.onrender.com';
+        const backendUrl = localStorage.getItem('touchid_backend_url') || defaultBackend;
         const response = await fetch(`${backendUrl}/solve`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

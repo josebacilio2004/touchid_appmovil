@@ -5,6 +5,11 @@ const fs = require('fs');
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 
+// Motores Next-Gen v3.0 (K-Type, Caché L1 y Prompts Médicos Ultra-Densos)
+const { isKTypeQuestion, K_TYPE_RESPONSE_SCHEMA, resolveKTypeDeterministically } = require('./engines/kTypeSolver');
+const { getSmartSystemPrompt } = require('./engines/medicalPrompts');
+const { l1Cache, inFlightRequests, buildCanonicalSignature, mapCachedAnswerToStudentOptions } = require('./engines/orchestratorService');
+
 const app = express();
 app.use(cors());
 // Límite de 50MB para soportar HTML crudo completo de contingencia de plataformas como UDABOL
@@ -54,6 +59,44 @@ async function seedUnlimitedUser(database) {
     console.warn('⚠️ No se pudo auto-sembrar usuario ilimitado:', err.message);
   }
 }
+
+// ============================================================================
+// ESTADO GLOBAL DE SALUD DE MODELOS (CIRCUIT BREAKER LIGERO EN RAM)
+// ============================================================================
+const modelPenaltyUntil = new Map(); // modelName -> timestamp hasta cuando está castigado
+
+function isModelHealthy(modelName) {
+  const penaltyExp = modelPenaltyUntil.get(modelName);
+  if (!penaltyExp) return true;
+  if (Date.now() > penaltyExp) {
+    modelPenaltyUntil.delete(modelName);
+    return true;
+  }
+  return false;
+}
+
+function penalizeModel(modelName, durationMs = 120000) {
+  modelPenaltyUntil.set(modelName, Date.now() + durationMs);
+  console.warn(`[CIRCUIT-BREAKER] Modelo ${modelName} penalizado por ${durationMs / 1000}s debido a alta latencia/timeout/503.`);
+}
+const keyPenaltyUntil = new Map(); // apiKey -> timestamp hasta cuando está en cooldown
+
+function isKeyHealthy(apiKey) {
+  const exp = keyPenaltyUntil.get(apiKey);
+  if (!exp) return true;
+  if (Date.now() > exp) {
+    keyPenaltyUntil.delete(apiKey);
+    return true;
+  }
+  return false;
+}
+
+function penalizeKey(apiKey, durationMs = 20000) {
+  keyPenaltyUntil.set(apiKey, Date.now() + durationMs);
+  const masked = apiKey ? apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4) : 'key';
+  console.warn(`[CIRCUIT-BREAKER] Clave ${masked} en cooldown por ${durationMs / 1000}s debido a 429 quota.`);
+}
+
 
 let lastConnectionFailure = 0;
 const FAILURE_COOLDOWN_MS = 30000;
@@ -368,8 +411,8 @@ app.post('/solve', async (req, res) => {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const rawApiKeys = (process.env.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
+    if (rawApiKeys.length === 0) {
       return res.status(500).json({ error: 'GEMINI_API_KEY no configurada en el servidor Render.' });
     }
 
@@ -443,25 +486,57 @@ app.post('/solve', async (req, res) => {
       }
     }
 
-    let prompt = '';
-    if (options && options.length > 0) {
-      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
-    } else {
-      prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
+    // 1. FAST-PATH: Verificar en Caché Semántico L1 (Memoria RAM < 1ms)
+    const canonicalSig = buildCanonicalSignature(effectiveQuestion, options);
+    const cachedHit = l1Cache.get(canonicalSig);
+    if (cachedHit) {
+      const mapped = mapCachedAnswerToStudentOptions(cachedHit, options);
+      if (mapped) {
+        console.log(`[CACHE-L1-HIT] Resuelto en <1ms: "${mapped.correct_option_letter}"`);
+        return res.json(mapped);
+      }
     }
 
-    const isMtcQuery = /mtc|tr[áa]nsito|conductor|licencia|brevete|veh[íi]culo|carril|calzada|acera|berma|velocidad|sem[áa]foro|infracci[óo]n|papeleta|intersecci[óo]n|rotonda|adelantar|estacionar/i.test(effectiveQuestion);
-    const isRomanOrMedical = /\b(I|II|III|IV|V)\b\s*[\.\:\-\)]|\b(I\s*y\s*II|II\s*y\s*III|I,\s*II|todas\s*son\s*correctas|solo\s*I|solo\s*II)\b|fisiolog|androstenodiona|testosterona|estr[óo]geno|aromatasa|hormon|enzim|histolog|parasit|bacteri|virolog|psiquiatr|paciente|diagn[óo]stico|tratamiento|cl[íi]nic|s[íi]ntoma|fisiopatolog|c[eé]lula|tejido|bacil|virus|par[áa]sito|f[áa]rmaco/i.test(`${effectiveQuestion} ${(options || []).join(' ')}`);
-
-    let systemInstructionText = systemPrompt;
-    if (!systemInstructionText || systemInstructionText.trim() === '') {
-      if (isMtcQuery) {
-        systemInstructionText = 'Actúa como evaluador oficial del Examen Nacional de Conducir del MTC (Perú). Responde con el 100% de precisión según el Texto Único Ordenado del Reglamento Nacional de Tránsito (D.S. 016-2009-MTC, D.S. 025-2021-MTC y modificatorias) y el Balotario Oficial de Preguntas del MTC. Presta extrema atención a límites de velocidad vigentes en calles/avenidas, reglas de preferencia de paso y preguntas trampa.';
-      } else if (isRomanOrMedical) {
-        systemInstructionText = 'Actúa como evaluador experto de exámenes médicos y fisiológicos de alta exigencia (Fisiología I/II, Medicina Interna, ENAM, MIR). Para cada pregunta: 1) Identifica el concepto fisiológico/farmacológico exacto. 2) Analiza rigurosamente cada alternativa descartando distractores engañosos. 3) Selecciona con 100% de precisión científica la alternativa correcta y su índice exacto.';
-      } else {
-        systemInstructionText = 'Actúa como un evaluador académico de élite y responde con el 100% de precisión analizando rigurosamente todas las alternativas y descartando distractores.';
+    // 1.1 COALESCENCIA: Si ya hay una consulta idéntica resolviéndose en paralelo, unirse a su promesa
+    if (inFlightRequests.has(canonicalSig)) {
+      console.log(`[IN-FLIGHT-COALESCE] Reutilizando solicitud en vuelo para: "${effectiveQuestion.substring(0, 35)}..."`);
+      try {
+        const sharedResult = await inFlightRequests.get(canonicalSig);
+        const mapped = mapCachedAnswerToStudentOptions(sharedResult, options);
+        if (mapped) return res.json(mapped);
+      } catch (_) {
+        // Fallback a ejecución independiente si la compartida falló
       }
+    }
+
+    // 2. Detección Inteligente K-Type y Prompt Médico Especializado
+    const isKType = isKTypeQuestion(effectiveQuestion, options);
+    const systemInstructionText = getSmartSystemPrompt(effectiveQuestion, options, systemPrompt);
+
+    let prompt = '';
+    let responseSchema = {
+      type: 'OBJECT',
+      properties: {
+        thought: { type: 'STRING' },
+        correct_option_index: { type: 'INTEGER' },
+        correct_option_text: { type: 'STRING' },
+        explanation: { type: 'STRING' },
+        subject: { type: 'STRING' }
+      },
+      required: ['correct_option_index', 'correct_option_text', 'explanation', 'subject']
+    };
+
+    if (isKType) {
+      prompt = `Pregunta K-Type (Patrón de Respuestas Combinadas):\n"${effectiveQuestion}"\n\nAlternativas Disponibles:\n${(options || []).map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción K-Type Obligatoria:\n1) Extrae y evalúa cada proposición numerada (1, 2, 3, 4, etc.) de forma 100% aislada e independiente.\n2) En 'fact_check', cita la estructura anatómica o concepto exacto que valida o invalida la proposición. Determina si es verdadera (true) o falsa (false).\n3) En 'true_indices', lista únicamente los números de las proposiciones verdaderas.\n4) Sugiere la letra y explica brevemente en máximo 15 palabras.`;
+      responseSchema = K_TYPE_RESPONSE_SCHEMA;
+    } else if (options && options.length > 0) {
+      const isNegative = /\b(excepto|incorrect[oa]|no\s+es|no\s+corresponde|se[ñn]ale\s+la\s+falsa|fals[oa]|no\s+deber[ií]a|no\s+tiene)\b/i.test(effectiveQuestion);
+      const negWarning = isNegative
+        ? `\n\n⚠️ ¡ATENCIÓN CRÍTICA: PREGUNTA EN NEGATIVO (EXCEPTO / INCORRECTA / FALSA / NO CORRESPONDE)!:\nTu objetivo obligatorio es identificar la opción que sea CLÍNICAMENTE FALSA o ERRÓNEA.\nEn 'thought', evalúa metódicamente cada alternativa con [VERDADERO] o [FALSO].\nMarca en 'correct_option_index' y 'correct_option_text' la opción que resultó [FALSA].`
+        : '';
+      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.${negWarning}\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
+    } else {
+      prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
     }
 
     const requestBody = {
@@ -470,58 +545,174 @@ app.post('/solve', async (req, res) => {
       generationConfig: {
         temperature: 0.0,
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            thought: { type: 'STRING' },
-            correct_option_index: { type: 'INTEGER' },
-            correct_option_text: { type: 'STRING' },
-            explanation: { type: 'STRING' },
-            subject: { type: 'STRING' }
-          },
-          required: ['correct_option_index', 'correct_option_text', 'explanation', 'subject']
-        }
+        responseSchema: responseSchema
       }
     };
 
-    const models = [
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-2.5-flash-lite',
-      'gemini-flash-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-1.5-flash'
+    // 3. Matriz de Modelos Ordenada por Benchmark Empírico + SLA Timeout
+    const baseModels = isKType
+      ? [
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 3200 },
+          { name: 'gemini-2.5-flash',         timeoutMs: 4500 },
+          { name: 'gemini-flash-lite-latest',  timeoutMs: 5000 },
+          { name: 'gemini-3.5-flash',         timeoutMs: 5500 }
+        ]
+      : [
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 2800 },
+          { name: 'gemini-2.5-flash',         timeoutMs: 4000 },
+          { name: 'gemini-flash-lite-latest',  timeoutMs: 4500 },
+          { name: 'gemini-3.5-flash',         timeoutMs: 5000 }
+        ];
+
+    // Modelos sanos primero, penalizados al final como último recurso
+    const activeModels = [
+      ...baseModels.filter(m => isModelHealthy(m.name)),
+      ...baseModels.filter(m => !isModelHealthy(m.name))
     ];
 
     let parsedResult = null;
-    let lastError = null;
 
-    for (const model of models) {
-      try {
-        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
-        });
+    // Ejecutor asíncrono registrado en inFlightRequests para soportar coalescencia
+    const solveExecutionPromise = (async () => {
+      let candidateResult = null;
+      let lastError = null;
 
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidateText) {
-            parsedResult = JSON.parse(candidateText.trim());
-            break;
-          }
-        } else {
-          const errText = await geminiRes.text();
-          lastError = `Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+      // Pases de recuperación ante saturación 429
+      const maxPasses = rawApiKeys.length > 1 ? 1 : 3;
+
+      for (let pass = 0; pass < maxPasses; pass++) {
+        if (pass > 0) {
+          const backoffWait = pass * 2000;
+          console.warn(`⏳ [RATE-LIMIT-BACKOFF] Esperando ${backoffWait}ms para pase de reintento #${pass}...`);
+          await new Promise(r => setTimeout(r, backoffWait));
         }
-      } catch (err) {
-        lastError = err.message;
-      }
-    }
 
-    if (!parsedResult) {
-      throw new Error(lastError || 'No se pudo obtener respuesta válida de Gemini.');
+        modelLoop: for (const modelCfg of activeModels) {
+          const { name: model, timeoutMs } = modelCfg;
+
+          // Filtrar claves disponibles (saludables primero)
+          const healthyKeys = rawApiKeys.filter(k => isKeyHealthy(k));
+          const targetKeys = (healthyKeys.length > 0 || pass > 0)
+            ? (healthyKeys.length > 0 ? healthyKeys : rawApiKeys)
+            : rawApiKeys;
+
+          const startKeyIdx = Math.floor(Math.random() * targetKeys.length);
+
+          keyLoop: for (let k = 0; k < targetKeys.length; k++) {
+            const activeKey = targetKeys[(startKeyIdx + k) % targetKeys.length];
+            const keyNum = rawApiKeys.indexOf(activeKey) + 1;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            const startTime = Date.now();
+
+            try {
+              const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+                signal: controller.signal
+              });
+
+              clearTimeout(timeoutId);
+              const elapsed = Date.now() - startTime;
+
+              // HTTP 429: Cuota agotada (RPM por minuto o límite diario RPD del modelo)
+              if (geminiRes.status === 429) {
+                const errText = await geminiRes.text();
+                lastError = `Google API Quota (HTTP 429 en Clave ${keyNum} / ${model}): ${errText}`;
+
+                const isModelDailyLimit = errText.includes('PerModel') || errText.includes('limit: 20');
+                if (isModelDailyLimit) {
+                  console.warn(`⚠️ [MODEL-DAILY-LIMIT] Modelo ${model} agotó su cuota diaria gratuita (limit: 20) en Google. Penalizando modelo por 1h...`);
+                  penalizeModel(model, 3600000); // Saltear este modelo por 1 hora
+                  break keyLoop; // Saltar de inmediato al siguiente modelo
+                }
+
+                console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} agotó cuota RPM en Google. Cooldown 25s. Modelo ${model} sigue activo.`);
+                penalizeKey(activeKey, 25000);
+
+                if (targetKeys.length > 1) {
+                  continue keyLoop; // Probar siguiente clave con el MISMO modelo rápido
+                } else {
+                  break keyLoop; // Romper para no quemar otros modelos en este pase con la misma clave saturada
+                }
+              }
+
+              // HTTP 503: Demanda/saturación del MODELO en Google. Penalizar el modelo.
+              if (geminiRes.status === 503) {
+                lastError = `Modelo ${model} (HTTP 503): sobrecargado en Google.`;
+                console.warn(`⚠️ [MODEL-503] Modelo ${model} saturado en Google. Penalizando modelo por 2 min...`);
+                penalizeModel(model, 120000);
+                break keyLoop; // Salta al siguiente modelo
+              }
+
+              if (!geminiRes.ok) {
+                const errText = await geminiRes.text();
+                lastError = `Clave ${keyNum} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+                continue keyLoop;
+              }
+
+              if (elapsed > 3500) {
+                penalizeModel(model, 90000);
+              }
+
+              const geminiData = await geminiRes.json();
+              const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (candidateText) {
+                candidateResult = JSON.parse(candidateText.trim());
+                console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${keyNum})`);
+                break modelLoop;
+              }
+            } catch (err) {
+              clearTimeout(timeoutId);
+              if (err.name === 'AbortError') {
+                console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms sin responder. Penalizando modelo...`);
+                lastError = `Modelo ${model} abortado por SLA timeout (${timeoutMs}ms)`;
+                penalizeModel(model, 180000);
+                break keyLoop; // Modelo congelado -> salta de inmediato al siguiente modelo
+              }
+              lastError = err.message;
+            }
+          }
+
+          if (candidateResult) break;
+        }
+
+        if (candidateResult) break;
+      }
+
+      if (!candidateResult) {
+        throw new Error(lastError || 'No se pudo obtener respuesta válida de Gemini tras agotar reintentos.');
+      }
+
+      // 4. Mapeo Determinista Post-LLM para Preguntas K-Type
+      let finalResult = candidateResult;
+      if (isKType && finalResult.propositions) {
+        finalResult = resolveKTypeDeterministically(finalResult, options);
+      } else {
+        const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
+        if (!finalResult.correct_option_letter && finalResult.correct_option_index !== undefined && finalResult.correct_option_index >= 0) {
+          finalResult.correct_option_letter = alphabet[finalResult.correct_option_index] || 'A';
+        }
+      }
+
+      // 5. Almacenar en Caché Semántico L1 en RAM
+      l1Cache.set(canonicalSig, {
+        ...finalResult,
+        canonical_answer_text: finalResult.correct_option_text,
+        is_k_type: isKType,
+        true_indices: finalResult.true_indices || []
+      });
+
+      return finalResult;
+    })();
+
+    inFlightRequests.set(canonicalSig, solveExecutionPromise);
+    try {
+      parsedResult = await solveExecutionPromise;
+    } finally {
+      inFlightRequests.delete(canonicalSig);
     }
 
     // Descontar 1 crédito si no es ilimitado y la base de datos está disponible
@@ -711,7 +902,21 @@ app.post('/admin/licenses', checkAdminToken, requireDb, async (req, res) => {
 
 app.get('/admin/history', checkAdminToken, requireDb, async (req, res) => {
   try {
-    const docs = await req.db.collection('history').find().sort({ timestamp: -1 }).limit(100).toArray();
+    const limit = parseInt(req.query.limit) || 100;
+    const skip = parseInt(req.query.skip) || 0;
+    const search = req.query.search;
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { question: { $regex: search, $options: 'i' } },
+          { explanation: { $regex: search, $options: 'i' } },
+          { answerText: { $regex: search, $options: 'i' } },
+          { subject: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+    const docs = await req.db.collection('history').find(query).sort({ timestamp: -1 }).skip(skip).limit(limit).toArray();
     const history = docs.map(doc => ({
       id: doc._id.toString(),
       question: doc.question,
@@ -730,6 +935,38 @@ app.get('/admin/history', checkAdminToken, requireDb, async (req, res) => {
       timestamp: doc.timestamp ? (doc.timestamp.toISOString ? doc.timestamp.toISOString() : doc.timestamp) : null
     }));
     res.json(history);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Endpoint administrativo para extraer todas las preguntas de Microbiología / Bacteriología de history y question_bank
+app.get('/admin/export-microbiology', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const microRegex = /microbio|bacteri|gram|coco|bacil|espiroqueta|peptidoglican|teicoico|endotoxina|lipopolisac|staphylococcus|streptococcus|pneumoniae|enterococcus|neisseria|bacillus|clostridium|tetani|botulinum|perfringens|listeria|corynebacterium|escherichia|klebsiella|proteus|salmonella|shigella|yersinia|pseudomonas|vibrio|helicobacter|campylobacter|haemophilus|mycobacterium|tuberculosis|chlamydia|mycoplasma|treponema|cultivo|antibiograma|agar|cefalosporina|penicilina|vancomicina|carbapenem/i;
+
+    const historyDocs = await req.db.collection('history').find({
+      $or: [
+        { question: { $regex: microRegex } },
+        { explanation: { $regex: microRegex } },
+        { subject: { $regex: microRegex } }
+      ]
+    }).sort({ timestamp: -1 }).toArray();
+
+    const qbDocs = await req.db.collection('question_bank').find({
+      $or: [
+        { question: { $regex: microRegex } },
+        { explanation: { $regex: microRegex } },
+        { course: { $regex: microRegex } }
+      ]
+    }).sort({ timestamp: -1 }).toArray();
+
+    res.json({
+      historyCount: historyDocs.length,
+      qbCount: qbDocs.length,
+      history: historyDocs,
+      questionBank: qbDocs
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -917,6 +1154,21 @@ app.delete('/admin/question-bank/:id', checkAdminToken, requireDb, async (req, r
     const { ObjectId } = require('mongodb');
     const result = await req.db.collection('question_bank').deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint administrativo para actualizar la respuesta de una pregunta en el banco
+app.post('/admin/update-question-bank', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { course, question, answer, answerText, explanation } = req.body;
+    const query = course ? { course, question } : { question };
+    const result = await req.db.collection('question_bank').updateMany(
+      query,
+      { $set: { answer, answerText, explanation, updatedAt: new Date() } }
+    );
+    res.json({ success: true, modifiedCount: result.modifiedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../models/quiz_models.dart';
@@ -468,6 +469,20 @@ class QuizExtractorService {
     );
   }
 
+  static final Random _random = Random();
+
+  /// Genera un retraso biométrico estocástico natural (Box-Muller)
+  /// media = 220ms, sigma = 45ms (acotado entre 110ms y 380ms) para evitar detección heurística de bots.
+  static Future<void> _applyHumanizedJitter() async {
+    try {
+      final u1 = _random.nextDouble().clamp(0.0001, 0.9999);
+      final u2 = _random.nextDouble();
+      final z = sqrt(-2.0 * log(u1)) * cos(2.0 * pi * u2);
+      final delayMs = (220.0 + z * 45.0).round().clamp(110, 380);
+      await Future.delayed(Duration(milliseconds: delayMs));
+    } catch (_) {}
+  }
+
   /// Inyecta un script JavaScript en el [WebViewController] activo para
   /// marcar automáticamente la alternativa ganadora en el DOM.
   /// Simula eventos nativos (focus, change, input, click) tanto en el input
@@ -572,6 +587,27 @@ class QuizExtractorService {
       }
     }
 
+    // ESTRATEGIA 4: Fallback a contenedores clickeables de opciones (.option-item, .udabol-option-row, .opcion, [role="radio"])
+    if (!targetElement) {
+      var customOptions = Array.from(doc.querySelectorAll('.option-item, .udabol-option-row, .opcion, [role="radio"], .answer div, li.option'));
+      if (customOptions.length > 0) {
+        if (targetText && targetText.length > 1) {
+          var cleanT = targetText.toLowerCase();
+          for (var c = 0; c < customOptions.length; c++) {
+            var cTxt = clean(customOptions[c].innerText || customOptions[c].textContent).toLowerCase();
+            if (cTxt.indexOf(cleanT) !== -1 || cleanT.indexOf(cTxt) !== -1) {
+              targetElement = customOptions[c];
+              targetIdx = c;
+              break;
+            }
+          }
+        }
+        if (!targetElement && targetIdx >= 0 && targetIdx < customOptions.length) {
+          targetElement = customOptions[targetIdx];
+        }
+      }
+    }
+
     if (targetElement) {
       // 1. Desplazar hacia la opción
       try {
@@ -579,8 +615,10 @@ class QuizExtractorService {
       } catch(_) {}
 
       // 2. Foco y marcado directo
-      targetElement.focus();
-      targetElement.checked = true;
+      try { targetElement.focus(); } catch(_) {}
+      if (targetElement.tagName === 'INPUT') {
+        targetElement.checked = true;
+      }
 
       // 3. Despacho de eventos nativos para frameworks reactivos y Moodle/UDABOL
       try {
@@ -588,16 +626,14 @@ class QuizExtractorService {
         targetElement.dispatchEvent(new Event('change', { bubbles: true }));
       } catch(_) {}
 
-      // 4. Disparar click sobre el label si existe, o directamente en el radio
-      if (labelElement) {
+      // 4. Disparar click sobre el elemento principal y su label
+      try {
+        targetElement.click();
+      } catch(_) {}
+
+      if (labelElement && labelElement !== targetElement) {
         try {
           labelElement.click();
-        } catch(_) {
-          targetElement.click();
-        }
-      } else {
-        try {
-          targetElement.click();
         } catch(_) {}
       }
 
@@ -633,6 +669,9 @@ class QuizExtractorService {
 ''';
 
     try {
+      // Retardo biométrico estocástico con distribución Gaussiana Box-Muller (Fase 5.2)
+      await _applyHumanizedJitter();
+
       final rawResult = await controller.runJavaScriptReturningResult(autoMarkJs);
       String cleanResult = rawResult.toString().trim();
 
