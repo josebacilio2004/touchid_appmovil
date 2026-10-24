@@ -1528,10 +1528,12 @@ app.post('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) =>
         { _id: new ObjectId(id) },
         { $set: scheduleData }
       );
+      whatsappCrmService.notifyExamScheduled({ ...scheduleData, _id: id }).catch(() => {});
       res.json({ success: true, id });
     } else {
       scheduleData.createdAt = new Date();
       const insertResult = await req.db.collection('exam_schedules').insertOne(scheduleData);
+      whatsappCrmService.notifyExamScheduled({ ...scheduleData, _id: insertResult.insertedId }).catch(() => {});
       res.json({ success: true, id: insertResult.insertedId });
     }
   } catch (err) {

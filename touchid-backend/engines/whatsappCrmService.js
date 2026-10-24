@@ -1,23 +1,45 @@
-const { default: makeWASocket, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, DisconnectReason, jidNormalizedUser } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const QRCode = require('qrcode');
 const { useMongoAuthState } = require('./mongoBaileysAuth');
 
-// Helper para zona horaria de Bolivia / Sudamérica (America/La_Paz, UTC-4)
-function getBoliviaDateStr(d = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/La_Paz' }).format(d);
-}
-
-function getBoliviaTime(d = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-GB', { 
-    timeZone: 'America/La_Paz', 
+// Helper para obtener fecha y hora en zona horaria local de Perú/Bolivia (America/Lima, UTC-5)
+function getLocalTimeInfo(timeZone = 'America/Lima') {
+  const now = new Date();
+  const dateStr = new Intl.DateTimeFormat('en-CA', { timeZone }).format(now); // "YYYY-MM-DD"
+  const timeParts = new Intl.DateTimeFormat('en-GB', { 
+    timeZone, 
     hour: '2-digit', 
     minute: '2-digit', 
     hour12: false 
-  }).formatToParts(d);
-  const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
-  const minute = parseInt(parts.find(p => p.type === 'minute').value, 10);
-  return { hour, minute, totalMins: hour * 60 + minute };
+  }).formatToParts(now);
+  const hour = parseInt(timeParts.find(p => p.type === 'hour').value, 10);
+  const minute = parseInt(timeParts.find(p => p.type === 'minute').value, 10);
+  return { 
+    dateStr, 
+    timeStr: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+    hour, 
+    minute, 
+    totalMins: hour * 60 + minute,
+    now 
+  };
+}
+
+// Extraer texto plano de cualquier estructura de mensaje de WhatsApp (efímero, vista previa, multimedia, etc.)
+function extractMessageText(msgObj) {
+  if (!msgObj) return '';
+  const m = msgObj.ephemeralMessage?.message ||
+            msgObj.viewOnceMessage?.message ||
+            msgObj.viewOnceMessageV2?.message ||
+            msgObj.documentWithCaptionMessage?.message ||
+            msgObj;
+  return (
+    m.conversation ||
+    m.extendedTextMessage?.text ||
+    m.imageMessage?.caption ||
+    m.videoMessage?.caption ||
+    ''
+  );
 }
 
 class WhatsAppCrmService {
@@ -32,6 +54,7 @@ class WhatsAppCrmService {
     this.schedulerInterval = null;
     this.recentLowCreditAlerts = new Map(); // userId -> timestamp de último aviso
     this.recentExamStartAlerts = new Map(); // userId -> timestamp de último aviso
+    this.sentBotMessageIds = new Set(); // Evitar responderse a sí mismo en bucle
     this.isReconnecting = false;
   }
 
@@ -146,8 +169,8 @@ class WhatsAppCrmService {
       });
 
       // Escuchar mensajes entrantes (comandos de WhatsApp)
+      // Procesar tanto 'notify' como 'append' (mensajes enviados desde el propio celular / chat consigo mismo)
       sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        if (type !== 'notify') return;
         for (const msg of messages) {
           if (!msg.message) continue;
           await this.handleIncomingMessage(msg);
@@ -163,13 +186,32 @@ class WhatsAppCrmService {
   }
 
   /**
+   * Obtener el JID limpio del Administrador
+   */
+  getAdminJid() {
+    if (this.adminPhone) {
+      const clean = this.adminPhone.replace(/[^\d]/g, '');
+      return `${clean}@s.whatsapp.net`;
+    }
+    if (this.connectedNumber) {
+      const clean = this.connectedNumber.replace(/[^\d]/g, '');
+      return `${clean}@s.whatsapp.net`;
+    }
+    if (this.sock?.user?.id) {
+      return jidNormalizedUser(this.sock.user.id);
+    }
+    return null;
+  }
+
+  /**
    * Verificar si un mensaje proviene del administrador
    */
   isAdminMessage(msg) {
     if (msg.key.fromMe) return true; // Enviado desde tu propio WhatsApp
-    const sender = (msg.key.participant || msg.key.remoteJid || '').replace(/@.+/, '');
-    const cleanAdmin = (this.adminPhone || '').replace(/[^\d]/g, '');
-    if (cleanAdmin && sender.includes(cleanAdmin)) return true;
+    const remote = (msg.key.remoteJid || '').replace(/@.+/, '').replace(/[^\d]/g, '');
+    const sender = (msg.key.participant || '').replace(/@.+/, '').replace(/[^\d]/g, '');
+    const cleanAdmin = (this.adminPhone || this.connectedNumber || '').replace(/[^\d]/g, '');
+    if (cleanAdmin && (remote.includes(cleanAdmin) || sender.includes(cleanAdmin))) return true;
     return false;
   }
 
@@ -178,17 +220,17 @@ class WhatsAppCrmService {
    */
   async handleIncomingMessage(msg) {
     try {
+      const msgId = msg.key?.id;
+      // Evitar procesar mensajes enviados por el propio bot
+      if (msgId && this.sentBotMessageIds.has(msgId)) return;
+
       const remoteJid = msg.key.remoteJid;
       if (!remoteJid || remoteJid.endsWith('@g.us')) {
-        // Ignorar grupos a menos que sea comando directo
+        // Ignorar grupos
       }
 
       // Extraer texto del mensaje
-      const body = msg.message.conversation ||
-                   msg.message.extendedTextMessage?.text ||
-                   msg.message.imageMessage?.caption ||
-                   '';
-
+      const body = extractMessageText(msg.message);
       const trimmed = body.trim();
       if (!trimmed.startsWith('/')) return; // Solo comandos
 
@@ -198,8 +240,24 @@ class WhatsAppCrmService {
         return;
       }
 
+      // Determinar JID de destino para la respuesta
+      const normalizedRemote = jidNormalizedUser(remoteJid);
+      const targetJid = normalizedRemote || this.getAdminJid();
+
       const reply = async (text) => {
-        await this.sock.sendMessage(remoteJid, { text });
+        if (!targetJid) return;
+        try {
+          const sent = await this.sock.sendMessage(targetJid, { text });
+          if (sent?.key?.id) {
+            this.sentBotMessageIds.add(sent.key.id);
+            if (this.sentBotMessageIds.size > 200) {
+              const first = this.sentBotMessageIds.values().next().value;
+              this.sentBotMessageIds.delete(first);
+            }
+          }
+        } catch (err) {
+          console.error('[WHATSAPP-CRM] Error enviando respuesta:', err.message);
+        }
       };
 
       const [commandRaw, ...argsList] = trimmed.split(/\s+/);
@@ -245,7 +303,7 @@ class WhatsAppCrmService {
           break;
 
         default:
-          await reply(`❓ Comando no reconocido: *${command}*\nEscribe */ayuda* para ver la lista de comandos.`);
+          await reply(`❓ Comando no reconocido: *${command}*\nEscribe */ayuda* para ver la lista de comandos disponibles.`);
           break;
       }
     } catch (err) {
@@ -260,7 +318,7 @@ class WhatsAppCrmService {
       `• */buscar <nombre/id>* - Ficha del alumno, teléfono y saldo.\n` +
       `• */recargar <id/nombre> <créditos>* - Asignar créditos directo (ej: */recargar camila 50*).\n` +
       `• */licencia <créditos>* - Generar código prepago (ej: */licencia 100*).\n` +
-      `• */agendar <alumno> | <curso> | <hora>* - Programar examen hoy (ej: */agendar Camila | Semiología | 16:30*).\n` +
+      `• */agendar <alumno> | <curso> | <hora>* - Programar examen (ej: */agendar Camila | Semiología | 20:00*).\n` +
       `• */vivo* - Alumnos respondiendo preguntas ahora.\n` +
       `• */saldo <alumno>* - Consulta rápida de saldo.\n`
     );
@@ -269,18 +327,18 @@ class WhatsAppCrmService {
   // --- COMANDO: /hoy /agenda ---
   async handleCmdAgenda(reply) {
     if (!this.db) return reply('⚠️ Base de datos no disponible.');
-    const todayStr = getBoliviaDateStr();
+    const { dateStr } = getLocalTimeInfo('America/Lima');
 
     const exams = await this.db.collection('exam_schedules')
-      .find({ examDate: todayStr })
+      .find({ examDate: dateStr })
       .sort({ startTime: 1 })
       .toArray();
 
     if (exams.length === 0) {
-      return reply(`📅 *Agenda de Hoy (${todayStr})*\n\nNo hay exámenes programados para hoy.\nPuedes registrar uno con:\n*/agendar Nombre | Curso | 16:00*`);
+      return reply(`📅 *Agenda de Hoy (${dateStr})*\n\nNo hay exámenes programados para hoy.\nPuedes registrar uno con:\n*/agendar Nombre | Curso | 20:00*`);
     }
 
-    let msg = `📅 *Exámenes de Hoy (${todayStr})* (${exams.length})\n\n`;
+    let msg = `📅 *Exámenes de Hoy (${dateStr})* (${exams.length})\n\n`;
 
     for (const ex of exams) {
       // Buscar saldo actual del alumno en users
@@ -440,8 +498,8 @@ class WhatsAppCrmService {
     if (!args || !args.includes('|')) {
       return reply(
         `⚠️ Formato incorrecto. Usa separador vertical |\n` +
-        `Ejemplo: */agendar Camila | Semiología | 16:30*\n` +
-        `O con fecha: */agendar Camila | Microbiología | 2026-10-24 10:00*`
+        `Ejemplo: */agendar Camila | Semiología | 20:00*\n` +
+        `O con fecha: */agendar Camila | Microbiología | 2026-10-29 20:00*`
       );
     }
     if (!this.db) return reply('⚠️ Base de datos no disponible.');
@@ -451,7 +509,7 @@ class WhatsAppCrmService {
     const course = parts[1] || 'General';
     const timeRaw = parts[2] || '12:00';
 
-    let examDate = getBoliviaDateStr();
+    let examDate = getLocalTimeInfo('America/Lima').dateStr;
     let startTime = timeRaw;
 
     if (timeRaw.includes('-') && timeRaw.includes(' ')) {
@@ -566,20 +624,47 @@ class WhatsAppCrmService {
   // ============================================================================
 
   /**
-   * Planificador ejecutado cada 60s para alertar exámenes 15 min antes
+   * Notificar al Administrador inmediatamente cuando se programa un examen (desde la Web o WhatsApp)
+   */
+  async notifyExamScheduled(sch) {
+    if (!this.db || this.status !== 'connected') return;
+    try {
+      // Obtener saldo actual del alumno
+      const user = await this.db.collection('users').findOne({
+        $or: [{ _id: sch.userId }, { userId: sch.userId }]
+      });
+      const credits = user ? (user.isUnlimited ? '∞ Ilimitado' : (user.credits || 0)) : 0;
+      const isLow = !user?.isUnlimited && typeof credits === 'number' && credits < (sch.estimatedCredits || 20);
+
+      const msg = 
+        `📅 *NUEVO EXAMEN AGENDADO*\n\n` +
+        `👤 Alumno: *${sch.studentName || sch.userId}*\n` +
+        `🆔 ID: \`${sch.userId}\`\n` +
+        `📚 Curso: *${sch.course}*\n` +
+        `📆 Fecha: *${sch.examDate}*\n` +
+        `⏰ Hora: *${sch.startTime}*\n` +
+        `💰 Saldo actual: *${credits} créditos* ${isLow ? '⚠️ *(FALTAN CRÉDITOS)*' : '✅'}\n` +
+        (sch.notes ? `📝 Notas: _${sch.notes}_\n` : '') +
+        `\n🔔 El sistema te avisará automáticamente 15 minutos antes de la hora por aquí.`;
+
+      await this.sendAdminMessage(msg);
+    } catch (err) {
+      console.warn('⚠️ [WHATSAPP-CRM] Error notificando examen agendado:', err.message);
+    }
+  }
+
+  /**
+   * Planificador ejecutado cada 60s para alertar exámenes 15 min antes (ajustado a zona horaria local)
    */
   async runExamAlertScheduler() {
     if (!this.db || this.status !== 'connected') return;
 
     try {
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-      const currentHours = now.getHours();
-      const currentMinutes = now.getMinutes();
-      const currentTotalMins = currentHours * 60 + currentMinutes;
+      // Usar hora local de Perú / UTC-5
+      const { dateStr: localDateStr, totalMins: currentTotalMins } = getLocalTimeInfo('America/Lima');
 
       const upcomingExams = await this.db.collection('exam_schedules').find({
-        examDate: todayStr,
+        examDate: localDateStr,
         notified15m: { $ne: true }
       }).toArray();
 
@@ -630,7 +715,7 @@ class WhatsAppCrmService {
   }
 
   /**
-   * Hook para alertar al Admin cuando un alumno entra a responder su primer pregunta del examen
+   * Hook para alertar al Admin cuando un alumno entra a responder su primera pregunta del examen
    */
   async notifyExamStart(userId, subject, creditsLeft) {
     if (!this.db || this.status !== 'connected') return;
@@ -693,17 +778,17 @@ class WhatsAppCrmService {
   async sendAdminMessage(text) {
     if (!this.sock || this.status !== 'connected') return false;
     try {
-      let targetJid = null;
-      if (this.adminPhone) {
-        const cleanNumber = this.adminPhone.replace(/[^\d]/g, '');
-        targetJid = `${cleanNumber}@s.whatsapp.net`;
-      } else if (this.sock.user?.id) {
-        targetJid = this.sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      }
-
+      const targetJid = this.getAdminJid();
       if (!targetJid) return false;
 
-      await this.sock.sendMessage(targetJid, { text });
+      const sent = await this.sock.sendMessage(targetJid, { text });
+      if (sent?.key?.id) {
+        this.sentBotMessageIds.add(sent.key.id);
+        if (this.sentBotMessageIds.size > 200) {
+          const first = this.sentBotMessageIds.values().next().value;
+          this.sentBotMessageIds.delete(first);
+        }
+      }
       return true;
     } catch (err) {
       console.warn('⚠️ [WHATSAPP-CRM] Error enviando mensaje al admin:', err.message);
