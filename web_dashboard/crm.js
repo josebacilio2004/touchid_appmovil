@@ -55,6 +55,8 @@ const schCourse = document.getElementById('sch-course');
 const schDate = document.getElementById('sch-date');
 const schTime = document.getElementById('sch-time');
 const schCredits = document.getElementById('sch-credits');
+const schPhone = document.getElementById('sch-phone');
+const schNotifyStudent = document.getElementById('sch-notify-student');
 const schNotes = document.getElementById('sch-notes');
 
 const modalClient = document.getElementById('modal-client');
@@ -346,6 +348,47 @@ function renderSchedulesTable(schedules) {
   });
 }
 
+// Escuchar cambios manuales de estado en la tabla de agenda
+if (crmSchedulesTableBody) {
+  crmSchedulesTableBody.addEventListener('change', async (e) => {
+    const select = e.target.closest('.schedule-status-select');
+    if (!select) return;
+    const id = select.getAttribute('data-id');
+    const newStatus = select.value;
+    const token = getAdminToken();
+
+    select.style.opacity = '0.5';
+    try {
+      const res = await fetch(`${getBackendUrl()}/admin/crm/schedules/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': token
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (res.ok) {
+        select.style.borderColor = '#34d399';
+        setTimeout(() => { select.style.borderColor = ''; }, 1200);
+        const item = allSchedulesCache.find(s => s.id === id);
+        if (item) {
+          item.status = newStatus;
+          item.manualStatus = true;
+        }
+      } else {
+        alert('Error al actualizar el estado.');
+        loadCrmSchedules();
+      }
+    } catch (err) {
+      alert('Error de conexión: ' + err.message);
+      loadCrmSchedules();
+    } finally {
+      select.style.opacity = '1';
+    }
+  });
+}
+
 // Botones de filtro de fecha
 if (crmScheduleTodayBtn && crmScheduleDateFilter) {
   const todayStr = getLocalDateStr();
@@ -392,6 +435,8 @@ if (modalScheduleForm) {
       course: schCourse.value.trim(),
       examDate: schDate.value,
       startTime: schTime.value,
+      phone: schPhone ? schPhone.value.trim() : '',
+      notifyStudent: schNotifyStudent ? schNotifyStudent.checked : true,
       estimatedCredits: parseInt(schCredits.value, 10) || 20,
       notes: schNotes.value.trim()
     };
@@ -629,6 +674,8 @@ if (crmClientsTableBody) {
         schIdInput.value = '';
         schUserId.value = userId;
         schStudentName.value = studentName || userId;
+        const client = typeof allClientsCache !== 'undefined' ? allClientsCache.find(c => c.userId === userId || c._id === userId) : null;
+        if (schPhone && client && client.phone) schPhone.value = client.phone;
         schDate.value = getLocalDateStr();
         modalSchedule.style.display = 'flex';
       }

@@ -320,7 +320,9 @@ class WhatsAppCrmService {
       `• */licencia <créditos>* - Generar código prepago (ej: */licencia 100*).\n` +
       `• */agendar <alumno> | <curso> | <hora>* - Programar examen (ej: */agendar Camila | Semiología | 20:00*).\n` +
       `• */vivo* - Alumnos respondiendo preguntas ahora.\n` +
-      `• */saldo <alumno>* - Consulta rápida de saldo.\n`
+      `• */saldo <alumno>* - Consulta rápida de saldo.
+• */resumen* - Reporte completo del día y créditos.
+• */cancelar <alumno/curso>* - Cancelar examen agendado.\n`
     );
   }
 
