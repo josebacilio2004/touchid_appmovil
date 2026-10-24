@@ -858,7 +858,25 @@ app.post('/solve', async (req, res) => {
       }
     }
 
-    res.json(parsedResult);
+    // Blindaje anti-colisión de subcadenas para APKs móviles ya instaladas:
+    // Si otra alternativa contiene a la respuesta correcta como subcadena (ej. "Apófisis" contiene "fisis" o
+    // "Carcinoma de células escamosas y melanoma vulvar" contiene "Carcinoma de células escamosas"),
+    // enviamos la letra (longitud 1) en correct_option_text para que el WebView salte el indexOf parcial (Estrategia 1)
+    // y marque directamente el radio exacto por índice (Estrategia 2).
+    const responsePayload = { ...parsedResult };
+    if (Array.isArray(options) && options.length > 1 && parsedResult && parsedResult.correct_option_text && parsedResult.correct_option_letter) {
+      const targetLower = String(parsedResult.correct_option_text).trim().toLowerCase();
+      const hasSubstringCollision = options.some((opt, idx) => {
+        if (idx === parsedResult.correct_option_index) return false;
+        const optLower = String(opt || '').trim().toLowerCase();
+        return optLower.length > 0 && targetLower.length > 3 && (optLower.includes(targetLower) || targetLower.includes(optLower));
+      });
+      if (hasSubstringCollision) {
+        responsePayload.correct_option_text = parsedResult.correct_option_letter;
+      }
+    }
+
+    res.json(responsePayload);
   } catch (e) {
     console.error('Error al resolver:', e);
     res.status(500).json({ error: e.message || 'Error interno del servidor.' });
