@@ -148,7 +148,8 @@ function buildGenerationConfig(modelCfg, activeSchema) {
 // Verificación en Sombra Asíncrona (Fire-and-Forget Anti-Poisoning)
 async function triggerShadowVerification(db, question, options, isKType, canonicalSig, rawApiKeys) {
   try {
-    const verifyModel = 'gemini-2.5-flash';
+    const verifyCandidateModels = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-3.5-flash'];
+    let verifyModel = verifyCandidateModels.find(m => (rawApiKeys || []).some(k => !isKeyModelDailyExhausted(k, m) && isKeyHealthy(k))) || verifyCandidateModels[0];
     const candidateKeys = (rawApiKeys || []).filter(k => !isKeyModelDailyExhausted(k, verifyModel) && isKeyHealthy(k));
     if (candidateKeys.length === 0) return;
 
@@ -705,29 +706,32 @@ app.post('/solve', async (req, res) => {
       prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "subject": "1 word", "is_negative_question": false, "clinical_key_pearl": "pearl", "options_evaluation": [], "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words" }`;
     }
 
-    // 3. Matriz de Modelos Ordenada por Benchmark Empírico + SLA Timeout
+    // 3. Matriz de Modelos Multi-Tier Ordenada por Disponibilidad Empírica y SLA Timeout
+    // Prioridad Absoluta #1: gemini-3-flash-preview (Comprobado 100% operativo en todas las claves, alta precisión)
     const baseModels = isKType
       ? [
-          { name: 'gemini-2.5-flash',         timeoutMs: 4800, thinkingBudget: 512 },
-          { name: 'gemini-3.5-flash',         timeoutMs: 5200, thinkingBudget: 512 },
-          { name: 'gemini-2.5-flash-lite',    timeoutMs: 3200, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest',  timeoutMs: 4000, thinkingBudget: 0 }
+          { name: 'gemini-3-flash-preview',   timeoutMs: 6500, thinkingBudget: 512 },
+          { name: 'gemini-3.1-flash-lite',    timeoutMs: 4500, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash-lite',    timeoutMs: 5000, thinkingBudget: 0 },
+          { name: 'gemini-2.5-flash',         timeoutMs: 6000, thinkingBudget: 512 },
+          { name: 'gemini-3.5-flash',         timeoutMs: 6000, thinkingBudget: 512 },
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 4500, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest',  timeoutMs: 5500, thinkingBudget: 0 }
         ]
       : [
-          { name: 'gemini-2.5-flash',         timeoutMs: 4200, thinkingBudget: 384 },
-          { name: 'gemini-3.5-flash',         timeoutMs: 4600, thinkingBudget: 384 },
-          { name: 'gemini-2.5-flash-lite',    timeoutMs: 2800, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest',  timeoutMs: 3500, thinkingBudget: 0 }
+          { name: 'gemini-3-flash-preview',   timeoutMs: 5500, thinkingBudget: 384 },
+          { name: 'gemini-3.1-flash-lite',    timeoutMs: 4200, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash-lite',    timeoutMs: 4500, thinkingBudget: 0 },
+          { name: 'gemini-2.5-flash',         timeoutMs: 5200, thinkingBudget: 384 },
+          { name: 'gemini-3.5-flash',         timeoutMs: 5200, thinkingBudget: 384 },
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 4200, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest',  timeoutMs: 5000, thinkingBudget: 0 }
         ];
 
-    // Separar estrictamente:
-    // 1) Modelos sanos con al menos 1 clave con cuota diaria disponible
-    // 2) Modelos penalizados por latencia (>3.5s/timeout) pero con cuota diaria disponible
-    // 3) Modelos con cuota diaria agotada en TODAS las claves (solo como último recurso extremo)
+    // Separar estrictamente modelos con cuota disponible (sanos primero, luego en cooldown RPM/latencia)
     const activeModels = [
       ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && isModelHealthy(m.name)),
-      ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && !isModelHealthy(m.name)),
-      ...baseModels.filter(m => isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys))
+      ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && !isModelHealthy(m.name))
     ];
 
     if (!parsedResult) {
@@ -752,7 +756,7 @@ app.post('/solve', async (req, res) => {
 
           // Excluir claves que ya agotaron su cuota diaria (limit: 20) en ESTE modelo específico
           const keysWithDailyQuota = rawApiKeys.filter(k => !isKeyModelDailyExhausted(k, model));
-          if (keysWithDailyQuota.length === 0 && pass === 0) {
+          if (keysWithDailyQuota.length === 0) {
             continue modelLoop; // En el primer pase, saltar modelos sin ninguna clave con cuota diaria
           }
           const candidatePool = keysWithDailyQuota.length > 0 ? keysWithDailyQuota : rawApiKeys;
@@ -814,7 +818,7 @@ app.post('/solve', async (req, res) => {
               if (geminiRes.status === 503) {
                 lastError = `Modelo ${model} (HTTP 503): sobrecargado en Google.`;
                 console.warn(`⚠️ [MODEL-503] Modelo ${model} saturado en Google. Penalizando modelo por 2 min...`);
-                penalizeModel(model, 120000);
+                penalizeModel(model, 30000);
                 break keyLoop; // Salta al siguiente modelo
               }
 
@@ -844,7 +848,7 @@ app.post('/solve', async (req, res) => {
               if (err.name === 'AbortError') {
                 console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms sin responder. Penalizando modelo...`);
                 lastError = `Modelo ${model} abortado por SLA timeout (${timeoutMs}ms)`;
-                penalizeModel(model, 180000);
+                penalizeModel(model, 45000);
                 break keyLoop; // Modelo congelado -> salta de inmediato al siguiente modelo
               }
               lastError = err.message;
@@ -873,7 +877,7 @@ app.post('/solve', async (req, res) => {
       }
 
       // 5. Almacenar en Caché Semántico L1 en RAM y question_bank con protección anti-poisoning
-      const isHighPrecision = (usedModelName === 'gemini-2.5-flash' || usedModelName === 'gemini-3.5-flash');
+      const isHighPrecision = (usedModelName === 'gemini-3-flash-preview' || usedModelName === 'gemini-2.5-flash' || usedModelName === 'gemini-3.5-flash');
 
       if (isHighPrecision) {
         l1Cache.set(canonicalSig, {
