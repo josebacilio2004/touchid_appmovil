@@ -126,6 +126,116 @@ function isModelDailyExhaustedOnAllKeys(modelName, apiKeys = []) {
   return apiKeys.every(k => isKeyModelDailyExhausted(k, modelName));
 }
 
+// Constructor dinámico de generationConfig con soporte para Thinking Budget
+function buildGenerationConfig(modelCfg, activeSchema) {
+  const config = {
+    temperature: 0.0,
+    topP: 0.1,
+    topK: 1,
+    responseMimeType: 'application/json',
+    responseSchema: activeSchema
+  };
+
+  if (modelCfg && modelCfg.thinkingBudget > 0 && modelCfg.name && modelCfg.name.includes('flash') && !modelCfg.name.includes('lite')) {
+    config.thinkingConfig = {
+      thinkingBudget: modelCfg.thinkingBudget
+    };
+  }
+
+  return config;
+}
+
+// Verificación en Sombra Asíncrona (Fire-and-Forget Anti-Poisoning)
+async function triggerShadowVerification(db, question, options, isKType, canonicalSig, rawApiKeys) {
+  try {
+    const verifyModel = 'gemini-2.5-flash';
+    const candidateKeys = (rawApiKeys || []).filter(k => !isKeyModelDailyExhausted(k, verifyModel) && isKeyHealthy(k));
+    if (candidateKeys.length === 0) return;
+
+    const key = candidateKeys[0];
+    const systemPromptText = getSmartSystemPrompt(question, options);
+    const schema = isKType ? K_TYPE_RESPONSE_SCHEMA : CLINICAL_REASONING_SCHEMA;
+
+    let shadowPrompt = '';
+    if (isKType) {
+      shadowPrompt = `Auditoría Médica de Verificación K-Type:\n"${question}"\nOpciones:\n${(options || []).map((o, i) => `${i}) ${o}`).join('\n')}`;
+    } else {
+      shadowPrompt = `Auditoría Médica de Certificación Clínica:\n"${question}"\nOpciones:\n${(options || []).map((o, i) => `${i}) ${o}`).join('\n')}\nEvalúa cada opción con 'options_evaluation' y determina la respuesta con 100% de certeza bibliográfica.`;
+    }
+
+    const body = {
+      contents: [{ parts: [{ text: shadowPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPromptText }] },
+      generationConfig: {
+        temperature: 0.0,
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        thinkingConfig: { thinkingBudget: 512 }
+      }
+    };
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${verifyModel}:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return;
+
+    let shadowResult = JSON.parse(text.trim());
+    if (!isKType) {
+      shadowResult = enforceNegativeQuestionConsistency(shadowResult, options);
+    }
+
+    const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const resolvedIdx = shadowResult.correct_option_index;
+    if (typeof resolvedIdx !== 'number' || resolvedIdx < 0 || resolvedIdx >= options.length) return;
+
+    const letter = alphabet[resolvedIdx] || 'A';
+    const answerText = options[resolvedIdx] || shadowResult.correct_option_text;
+
+    l1Cache.set(canonicalSig, {
+      ...shadowResult,
+      correct_option_index: resolvedIdx,
+      correct_option_letter: letter,
+      correct_option_text: answerText,
+      canonical_answer_text: answerText,
+      is_k_type: isKType,
+      verified: true,
+      modelUsed: verifyModel
+    });
+
+    if (db) {
+      await db.collection('question_bank').updateOne(
+        { question: question.trim() },
+        {
+          $set: {
+            question: question.trim(),
+            options: options || [],
+            answer: letter,
+            bestAnswer: answerText,
+            correctAnswer: letter,
+            explanation: shadowResult.explanation || 'Certificado por Shadow Verification',
+            verified: true,
+            verifiedBy: verifyModel,
+            updatedAt: new Date()
+          },
+          $setOnInsert: { createdAt: new Date() }
+        },
+        { upsert: true }
+      );
+      console.log(`[SHADOW-VERIFY] ✅ Pregunta certificada en background por ${verifyModel}: "${answerText}"`);
+    }
+  } catch (err) {
+    // Silencioso en background
+  }
+}
+
+
 
 let lastConnectionFailure = 0;
 const FAILURE_COOLDOWN_MS = 30000;
