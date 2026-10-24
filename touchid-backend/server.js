@@ -1389,14 +1389,35 @@ app.post('/admin/crm/clients', checkAdminToken, requireDb, async (req, res) => {
   }
 });
 
-// Listar horarios de exámenes agendados
+// Helpers de zona horaria Bolivia para control de exámenes
+function getBoliviaDateStr(d = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/La_Paz' }).format(d);
+}
+
+function getBoliviaTime(d = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', { 
+    timeZone: 'America/La_Paz', 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    hour12: false 
+  }).formatToParts(d);
+  const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute').value, 10);
+  return { hour, minute, totalMins: hour * 60 + minute };
+}
+
+// Listar horarios de exámenes agendados con control de estados dinámico
 app.get('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => {
   try {
     const dateFilter = req.query.date;
     const query = dateFilter ? { examDate: dateFilter } : {};
     const schedules = await req.db.collection('exam_schedules').find(query).sort({ examDate: 1, startTime: 1 }).toArray();
 
-    // Cruzar con saldo real de créditos en tiempo real
+    const now = new Date();
+    const boliviaDate = getBoliviaDateStr(now);
+    const { totalMins: nowMins } = getBoliviaTime(now);
+
+    // Cruzar con saldo real de créditos y calcular estado dinámico
     const enriched = await Promise.all(schedules.map(async (sch) => {
       const user = await req.db.collection('users').findOne({
         $or: [{ _id: sch.userId }, { userId: sch.userId }]
@@ -1404,6 +1425,37 @@ app.get('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => 
       const credits = user ? (user.isUnlimited ? 999999 : (user.credits || 0)) : 0;
       const isUnlimited = user?.isUnlimited === true;
       const isLow = !isUnlimited && credits < (sch.estimatedCredits || 20);
+
+      // Control inteligente de estado
+      let computedStatus = sch.status || 'scheduled';
+      if (computedStatus !== 'cancelled') {
+        // Verificar si el alumno ya realizó preguntas para esta fecha
+        const dayStart = new Date(`${sch.examDate}T00:00:00.000Z`);
+        const dayEnd = new Date(dayStart.getTime() + 30 * 3600000); // 30h window covering timezone
+        const questionsToday = await req.db.collection('history').countDocuments({
+          userId: sch.userId,
+          timestamp: { $gte: dayStart, $lte: dayEnd }
+        });
+
+        const [sH, sM] = (sch.startTime || '12:00').split(':').map(n => parseInt(n, 10));
+        const examMins = (isNaN(sH) ? 12 : sH) * 60 + (isNaN(sM) ? 0 : sM);
+
+        if (questionsToday >= Math.min(sch.estimatedCredits || 20, 10)) {
+          computedStatus = 'completed';
+        } else if (sch.examDate < boliviaDate) {
+          computedStatus = 'completed';
+        } else if (sch.examDate === boliviaDate) {
+          if (nowMins >= examMins + 90) {
+            computedStatus = 'completed';
+          } else if (nowMins >= examMins - 15) {
+            computedStatus = 'in_progress';
+          } else {
+            computedStatus = 'scheduled';
+          }
+        } else {
+          computedStatus = 'scheduled';
+        }
+      }
 
       return {
         id: sch._id.toString(),
@@ -1414,7 +1466,7 @@ app.get('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => 
         examDate: sch.examDate,
         startTime: sch.startTime,
         estimatedCredits: sch.estimatedCredits || 20,
-        status: sch.status || 'scheduled',
+        status: computedStatus,
         notified15m: sch.notified15m === true,
         creditsAvailable: credits,
         isUnlimited,
@@ -1424,6 +1476,25 @@ app.get('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => 
     }));
 
     res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cambiar estado de un examen agendado manualmente (scheduled, in_progress, completed, cancelled)
+app.patch('/admin/crm/schedules/:id/status', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const allowed = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: 'Estado no válido. Permitidos: ' + allowed.join(', ') });
+    }
+    const { ObjectId } = require('mongodb');
+    await req.db.collection('exam_schedules').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { status, updatedAt: new Date() } }
+    );
+    res.json({ success: true, status });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

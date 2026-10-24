@@ -70,6 +70,14 @@ const cliNotes = document.getElementById('cli-notes');
 let allClientsCache = [];
 let allSchedulesCache = [];
 
+// Helper para fecha local del navegador (evita saltos al día siguiente por UTC)
+export function getLocalDateStr(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // ============================================================================
 // 1. GESTIÓN DEL BOT DE WHATSAPP (BAILEYS)
 // ============================================================================
@@ -296,9 +304,22 @@ function renderSchedulesTable(schedules) {
         ? `<span class="badge-credits standard" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 700;">⚠️ ${sch.creditsAvailable} cr (FALTAN)</span>`
         : `<span class="badge-credits standard" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">✅ ${sch.creditsAvailable} cr (OK)</span>`;
 
-    const statusBadge = sch.notified15m
-      ? `<span style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: rgba(59, 130, 246, 0.2); color: #60a5fa;">🔔 Avisado 15m</span>`
-      : `<span style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); color: #94a3b8;">🕒 Pendiente</span>`;
+    let statusBadge = '';
+    if (sch.status === 'completed') {
+      statusBadge = `<span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #34d399; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.4);">✅ Realizado</span>`;
+    } else if (sch.status === 'in_progress') {
+      statusBadge = `<span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(245, 158, 11, 0.25); color: #fbbf24; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.5);">⚡ En curso</span>`;
+    } else if (sch.status === 'cancelled') {
+      statusBadge = `<span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">❌ Cancelado</span>`;
+    } else if (sch.notified15m) {
+      statusBadge = `<span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);">🔔 Avisado 15m</span>`;
+    } else {
+      statusBadge = `<span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.15);">🕒 Pendiente</span>`;
+    }
+
+    const toggleStatusBtn = sch.status === 'completed'
+      ? `<button class="btn btn-sm btn-change-status" data-id="${sch.id}" data-status="scheduled" title="Reabrir examen a pendiente" style="padding: 4px 8px; font-size: 11px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 4px; cursor: pointer; margin-right: 4px;">Reabrir</button>`
+      : `<button class="btn btn-sm btn-change-status" data-id="${sch.id}" data-status="completed" title="Marcar examen como realizado" style="padding: 4px 8px; font-size: 11px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; cursor: pointer; margin-right: 4px;">Completar</button>`;
 
     const studentDisplay = sch.phone
       ? `<a href="https://wa.me/${sch.phone.replace(/[^\d]/g, '')}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 600;">${sch.studentName} ↗</a>`
@@ -327,7 +348,7 @@ function renderSchedulesTable(schedules) {
 
 // Botones de filtro de fecha
 if (crmScheduleTodayBtn && crmScheduleDateFilter) {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateStr();
   crmScheduleDateFilter.value = todayStr;
 
   crmScheduleTodayBtn.addEventListener('click', () => {
@@ -346,7 +367,7 @@ if (crmScheduleNewBtn) {
     if (modalSchedule) {
       modalScheduleForm.reset();
       schIdInput.value = '';
-      schDate.value = crmScheduleDateFilter ? crmScheduleDateFilter.value : new Date().toISOString().split('T')[0];
+      schDate.value = crmScheduleDateFilter ? crmScheduleDateFilter.value : getLocalDateStr();
       modalSchedule.style.display = 'flex';
     }
   });
@@ -608,7 +629,7 @@ if (crmClientsTableBody) {
         schIdInput.value = '';
         schUserId.value = userId;
         schStudentName.value = studentName || userId;
-        schDate.value = new Date().toISOString().split('T')[0];
+        schDate.value = getLocalDateStr();
         modalSchedule.style.display = 'flex';
       }
       return;

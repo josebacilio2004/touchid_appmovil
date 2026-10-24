@@ -3,6 +3,23 @@ const pino = require('pino');
 const QRCode = require('qrcode');
 const { useMongoAuthState } = require('./mongoBaileysAuth');
 
+// Helper para zona horaria de Bolivia / Sudamérica (America/La_Paz, UTC-4)
+function getBoliviaDateStr(d = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/La_Paz' }).format(d);
+}
+
+function getBoliviaTime(d = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', { 
+    timeZone: 'America/La_Paz', 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    hour12: false 
+  }).formatToParts(d);
+  const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute').value, 10);
+  return { hour, minute, totalMins: hour * 60 + minute };
+}
+
 class WhatsAppCrmService {
   constructor() {
     this.sock = null;
@@ -252,7 +269,7 @@ class WhatsAppCrmService {
   // --- COMANDO: /hoy /agenda ---
   async handleCmdAgenda(reply) {
     if (!this.db) return reply('⚠️ Base de datos no disponible.');
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getBoliviaDateStr();
 
     const exams = await this.db.collection('exam_schedules')
       .find({ examDate: todayStr })
@@ -434,7 +451,7 @@ class WhatsAppCrmService {
     const course = parts[1] || 'General';
     const timeRaw = parts[2] || '12:00';
 
-    let examDate = new Date().toISOString().split('T')[0];
+    let examDate = getBoliviaDateStr();
     let startTime = timeRaw;
 
     if (timeRaw.includes('-') && timeRaw.includes(' ')) {
