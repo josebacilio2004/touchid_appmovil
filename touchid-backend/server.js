@@ -7,6 +7,7 @@ require('dotenv').config();
 
 // Motores Next-Gen v3.0 (K-Type, Caché L1 y Prompts Médicos Ultra-Densos)
 const { isKTypeQuestion, K_TYPE_RESPONSE_SCHEMA, resolveKTypeDeterministically } = require('./engines/kTypeSolver');
+const { CLINICAL_REASONING_SCHEMA, enforceNegativeQuestionConsistency } = require('./schemas/clinicalReasoningSchema');
 const { getSmartSystemPrompt } = require('./engines/medicalPrompts');
 const { l1Cache, inFlightRequests, buildCanonicalSignature, mapCachedAnswerToStudentOptions } = require('./engines/orchestratorService');
 const { whatsappCrmService } = require('./engines/whatsappCrmService');
@@ -578,56 +579,35 @@ app.post('/solve', async (req, res) => {
     const systemInstructionText = getSmartSystemPrompt(effectiveQuestion, options, systemPrompt);
 
     let prompt = '';
-    let responseSchema = {
-      type: 'OBJECT',
-      properties: {
-        thought: { type: 'STRING' },
-        correct_option_index: { type: 'INTEGER' },
-        correct_option_text: { type: 'STRING' },
-        explanation: { type: 'STRING' },
-        subject: { type: 'STRING' }
-      },
-      required: ['correct_option_index', 'correct_option_text', 'explanation', 'subject']
-    };
+    let responseSchema = isKType ? K_TYPE_RESPONSE_SCHEMA : CLINICAL_REASONING_SCHEMA;
 
     if (isKType) {
       prompt = `Pregunta K-Type (Patrón de Respuestas Combinadas):\n"${effectiveQuestion}"\n\nAlternativas Disponibles:\n${(options || []).map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción K-Type Obligatoria:\n1) Extrae y evalúa cada proposición numerada (1, 2, 3, 4, etc.) de forma 100% aislada e independiente.\n2) En 'fact_check', cita la estructura anatómica o concepto exacto que valida o invalida la proposición. Determina si es verdadera (true) o falsa (false).\n3) En 'true_indices', lista únicamente los números de las proposiciones verdaderas.\n4) Sugiere la letra y explica brevemente en máximo 15 palabras.`;
-      responseSchema = K_TYPE_RESPONSE_SCHEMA;
     } else if (options && options.length > 0) {
       const isNegative = /\b(excepto|incorrect[oa]|no\s+es|no\s+corresponde|se[ñn]ale\s+la\s+falsa|fals[oa]|no\s+deber[ií]a|no\s+tiene)\b/i.test(effectiveQuestion);
       const hasAllOption = options.some(o => /^\s*([a-e][\)\.\-]\s*)?(todas|todas\s+las\s+anteriores|todas\s+son\s+correctas)\s*\.?\s*$/i.test(o));
-      const allWarning = hasAllOption ? `\n⚠️ REGLA DE OPCIÓN "TODAS": Si 2 o más alternativas individuales son fisiológica o clínicamente verdaderas según la literatura oficial (ej. Guyton/Robbins), DEBES seleccionar obligatoriamente la opción "Todas". No elijas solo una si las demás también son verdaderas.` : "";
+      const allWarning = hasAllOption ? `\n⚠️ REGLA DE OPCIÓN "TODAS": Si 2 o más alternativas individuales son verdaderas según la literatura médica canónica, DEBES seleccionar obligatoriamente la opción "Todas".` : "";
       const negWarning = isNegative
-        ? `\n\n⚠️ ¡ATENCIÓN CRÍTICA: PREGUNTA EN NEGATIVO (EXCEPTO / INCORRECTA / FALSA / NO CORRESPONDE)!:\nTu objetivo obligatorio es identificar la opción que sea CLÍNICAMENTE FALSA o ERRÓNEA.\nEn 'thought', evalúa metódicamente cada alternativa con [VERDADERO] o [FALSO].\nMarca en 'correct_option_index' y 'correct_option_text' la opción que resultó [FALSA].`
-        : '';
-      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción: Analiza el concepto fundamental y evalúa cada distractor descartando los incorrectos antes de seleccionar la alternativa correcta.${allWarning}${negWarning}\nResponde estrictamente en JSON estructurado: { "thought": "análisis y descarte breve de opciones", "correct_option_index": int, "correct_option_text": "text", "explanation": "max 5 words", "subject": "1 word" }`;
+        ? `\n\n⚠️ ¡ATENCIÓN: PREGUNTA EN NEGATIVO (EXCEPTO / INCORRECTA / FALSA / NO CORRESPONDE)!:\nTu objetivo obligatorio es identificar la opción que sea CLÍNICAMENTE FALSA o ERRÓNEA.\nEn 'options_evaluation', audita cada alternativa marcando 'verdict': 'VERDADERO' o 'FALSO'.\nMarca en 'correct_option_index' y 'correct_option_text' la opción que resultó [FALSA].`
+        : `\n\nEn 'options_evaluation', audita metódicamente cada alternativa con 'verdict': 'VERDADERO' o 'FALSO' y 'trap_check' (revisa cifras exactas, anatomía y clasificaciones temporales) antes de marcar 'correct_option_index'.`;
+      prompt = `Pregunta: "${effectiveQuestion}"\nOpciones:\n${options.map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción Clínica:${allWarning}${negWarning}\nResponde estrictamente en JSON cumpliendo el esquema con 'options_evaluation' obligatorio.`;
     } else {
-      prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "thought": "análisis breve", "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words", "subject": "1 word" }`;
+      prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "subject": "1 word", "is_negative_question": false, "clinical_key_pearl": "pearl", "options_evaluation": [], "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words" }`;
     }
-
-    const requestBody = {
-      contents: [{ parts: [{ text: prompt }] }],
-      systemInstruction: { parts: [{ text: systemInstructionText }] },
-      generationConfig: {
-        temperature: 0.0,
-        responseMimeType: 'application/json',
-        responseSchema: responseSchema
-      }
-    };
 
     // 3. Matriz de Modelos Ordenada por Benchmark Empírico + SLA Timeout
     const baseModels = isKType
       ? [
-          { name: 'gemini-2.5-flash-lite',    timeoutMs: 3200 },
-          { name: 'gemini-2.5-flash',         timeoutMs: 4500 },
-          { name: 'gemini-flash-lite-latest',  timeoutMs: 5000 },
-          { name: 'gemini-3.5-flash',         timeoutMs: 5500 }
+          { name: 'gemini-2.5-flash',         timeoutMs: 4800, thinkingBudget: 512 },
+          { name: 'gemini-3.5-flash',         timeoutMs: 5200, thinkingBudget: 512 },
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 3200, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest',  timeoutMs: 4000, thinkingBudget: 0 }
         ]
       : [
-          { name: 'gemini-2.5-flash-lite',    timeoutMs: 2800 },
-          { name: 'gemini-2.5-flash',         timeoutMs: 4000 },
-          { name: 'gemini-flash-lite-latest',  timeoutMs: 4500 },
-          { name: 'gemini-3.5-flash',         timeoutMs: 5000 }
+          { name: 'gemini-2.5-flash',         timeoutMs: 4200, thinkingBudget: 384 },
+          { name: 'gemini-3.5-flash',         timeoutMs: 4600, thinkingBudget: 384 },
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 2800, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest',  timeoutMs: 3500, thinkingBudget: 0 }
         ];
 
     // Separar estrictamente:
@@ -642,6 +622,7 @@ app.post('/solve', async (req, res) => {
 
     if (!parsedResult) {
     // Ejecutor asíncrono registrado en inFlightRequests para soportar coalescencia
+    let usedModelName = null;
     const solveExecutionPromise = (async () => {
       let candidateResult = null;
       let lastError = null;
@@ -681,6 +662,12 @@ app.post('/solve', async (req, res) => {
             const startTime = Date.now();
 
             try {
+              const requestBody = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstructionText }] },
+                generationConfig: buildGenerationConfig(modelCfg, responseSchema)
+              };
+
               const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -735,6 +722,10 @@ app.post('/solve', async (req, res) => {
               const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
               if (candidateText) {
                 candidateResult = JSON.parse(candidateText.trim());
+                if (!isKType) {
+                  candidateResult = enforceNegativeQuestionConsistency(candidateResult, options);
+                }
+                usedModelName = model;
                 console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${keyNum})`);
                 break modelLoop;
               }
@@ -771,13 +762,53 @@ app.post('/solve', async (req, res) => {
         }
       }
 
-      // 5. Almacenar en Caché Semántico L1 en RAM
-      l1Cache.set(canonicalSig, {
-        ...finalResult,
-        canonical_answer_text: finalResult.correct_option_text,
-        is_k_type: isKType,
-        true_indices: finalResult.true_indices || []
-      });
+      // 5. Almacenar en Caché Semántico L1 en RAM y question_bank con protección anti-poisoning
+      const isHighPrecision = (usedModelName === 'gemini-2.5-flash' || usedModelName === 'gemini-3.5-flash');
+
+      if (isHighPrecision) {
+        l1Cache.set(canonicalSig, {
+          ...finalResult,
+          canonical_answer_text: finalResult.correct_option_text,
+          is_k_type: isKType,
+          true_indices: finalResult.true_indices || [],
+          verified: true,
+          modelUsed: usedModelName
+        });
+
+        if (database && options && options.length > 0) {
+          database.collection('question_bank').updateOne(
+            { question: effectiveQuestion.trim() },
+            {
+              $set: {
+                question: effectiveQuestion.trim(),
+                options: options || [],
+                answer: finalResult.correct_option_letter,
+                bestAnswer: finalResult.correct_option_text,
+                correctAnswer: finalResult.correct_option_letter,
+                explanation: finalResult.explanation || '',
+                verified: true,
+                verifiedBy: usedModelName,
+                updatedAt: new Date()
+              },
+              $setOnInsert: { createdAt: new Date() }
+            },
+            { upsert: true }
+          ).catch(() => {});
+        }
+      } else {
+        // Modelo Lite (por contingencia): TTL corto de 3 minutos en RAM
+        l1Cache.set(canonicalSig, {
+          ...finalResult,
+          canonical_answer_text: finalResult.correct_option_text,
+          is_k_type: isKType,
+          true_indices: finalResult.true_indices || [],
+          verified: false,
+          modelUsed: usedModelName
+        }, { ttl: 1000 * 60 * 3 });
+
+        // Verificación en sombra asíncrona en segundo plano (fire-and-forget)
+        triggerShadowVerification(database, effectiveQuestion, options, isKType, canonicalSig, rawApiKeys).catch(() => {});
+      }
 
       return finalResult;
     })();
@@ -1389,14 +1420,14 @@ app.post('/admin/crm/clients', checkAdminToken, requireDb, async (req, res) => {
   }
 });
 
-// Helpers de zona horaria Bolivia para control de exámenes
-function getBoliviaDateStr(d = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/La_Paz' }).format(d);
+// Helpers de zona horaria Perú / Sudamérica para control de exámenes
+function getPeruDateStr(d = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(d);
 }
 
-function getBoliviaTime(d = new Date()) {
+function getPeruTime(d = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', { 
-    timeZone: 'America/La_Paz', 
+    timeZone: 'America/Lima', 
     hour: '2-digit', 
     minute: '2-digit', 
     hour12: false 
@@ -1414,8 +1445,8 @@ app.get('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => 
     const schedules = await req.db.collection('exam_schedules').find(query).sort({ examDate: 1, startTime: 1 }).toArray();
 
     const now = new Date();
-    const boliviaDate = getBoliviaDateStr(now);
-    const { totalMins: nowMins } = getBoliviaTime(now);
+    const peruDate = getPeruDateStr(now);
+    const { totalMins: nowMins } = getPeruTime(now);
 
     // Cruzar con saldo real de créditos y calcular estado dinámico
     const enriched = await Promise.all(schedules.map(async (sch) => {
@@ -1426,33 +1457,25 @@ app.get('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => 
       const isUnlimited = user?.isUnlimited === true;
       const isLow = !isUnlimited && credits < (sch.estimatedCredits || 20);
 
-      // Control inteligente de estado
+      // Control de estado: Si fue fijado manualmente por el admin, respetarlo siempre
       let computedStatus = sch.status || 'scheduled';
-      if (computedStatus !== 'cancelled') {
-        // Verificar si el alumno ya realizó preguntas para esta fecha
-        const dayStart = new Date(`${sch.examDate}T00:00:00.000Z`);
-        const dayEnd = new Date(dayStart.getTime() + 30 * 3600000); // 30h window covering timezone
-        const questionsToday = await req.db.collection('history').countDocuments({
-          userId: sch.userId,
-          timestamp: { $gte: dayStart, $lte: dayEnd }
-        });
-
+      if (!sch.manualStatus && computedStatus !== 'cancelled') {
         const [sH, sM] = (sch.startTime || '12:00').split(':').map(n => parseInt(n, 10));
         const examMins = (isNaN(sH) ? 12 : sH) * 60 + (isNaN(sM) ? 0 : sM);
 
-        if (questionsToday >= Math.min(sch.estimatedCredits || 20, 10)) {
+        if (sch.examDate < peruDate) {
           computedStatus = 'completed';
-        } else if (sch.examDate < boliviaDate) {
-          computedStatus = 'completed';
-        } else if (sch.examDate === boliviaDate) {
-          if (nowMins >= examMins + 90) {
-            computedStatus = 'completed';
-          } else if (nowMins >= examMins - 15) {
+        } else if (sch.examDate === peruDate) {
+          if (nowMins < examMins - 15) {
+            // Aún falta para el examen: Pendiente
+            computedStatus = 'scheduled';
+          } else if (nowMins >= examMins - 15 && nowMins <= examMins + 120) {
             computedStatus = 'in_progress';
           } else {
-            computedStatus = 'scheduled';
+            computedStatus = 'completed';
           }
         } else {
+          // Fecha futura: Siempre Pendiente
           computedStatus = 'scheduled';
         }
       }
@@ -1467,6 +1490,8 @@ app.get('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => 
         startTime: sch.startTime,
         estimatedCredits: sch.estimatedCredits || 20,
         status: computedStatus,
+        manualStatus: sch.manualStatus === true,
+        notifyStudent: sch.notifyStudent === true,
         notified15m: sch.notified15m === true,
         creditsAvailable: credits,
         isUnlimited,
@@ -1492,7 +1517,7 @@ app.patch('/admin/crm/schedules/:id/status', checkAdminToken, requireDb, async (
     const { ObjectId } = require('mongodb');
     await req.db.collection('exam_schedules').updateOne(
       { _id: new ObjectId(req.params.id) },
-      { $set: { status, updatedAt: new Date() } }
+      { $set: { status, manualStatus: true, updatedAt: new Date() } }
     );
     res.json({ success: true, status });
   } catch (err) {
@@ -1503,7 +1528,7 @@ app.patch('/admin/crm/schedules/:id/status', checkAdminToken, requireDb, async (
 // Crear o actualizar un horario de examen
 app.post('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) => {
   try {
-    const { id, userId, studentName, phone, course, examDate, startTime, estimatedCredits, notes } = req.body;
+    const { id, userId, studentName, phone, course, examDate, startTime, estimatedCredits, notes, notifyStudent, status } = req.body;
     if (!userId || !course || !examDate || !startTime) {
       return res.status(400).json({ error: 'userId, course, examDate y startTime son obligatorios.' });
     }
@@ -1518,7 +1543,9 @@ app.post('/admin/crm/schedules', checkAdminToken, requireDb, async (req, res) =>
       startTime,
       estimatedCredits: parseInt(estimatedCredits, 10) || 20,
       notes: notes || '',
-      status: 'scheduled',
+      status: status || 'scheduled',
+      notifyStudent: notifyStudent === true,
+      manualStatus: !!status,
       notified15m: false,
       updatedAt: new Date()
     };
