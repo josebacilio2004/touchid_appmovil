@@ -582,7 +582,7 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   }
 
   // 11. ANATOMÍA HUMANA Y NEUROANATOMÍA (Latarjet / Rouvière / Netter)
-  if (/par\s*craneal|nervio\s*(olfatorio|optico|oculomotor|troclear|trig[eé]mino|abducens|facial|vestibulococlear|glosofar[ií]ngeo|vago|accesorio|hipogloso)|l[aá]mina\s*cribosa|conducto\s*[oó]ptico|fisura\s*orbitaria|foramen\s*(redondo|oval|espinoso|yugular)|pol[ií]gono\s*de\s*willis|arteria\s*(cerebral\s*media|cerebral\s*anterior|comunicante\s*anterior)|afasia\s*de\s*(broca|wernicke)/i.test(fullText)) {
+  if (/anatom[ií]a|par\s*craneal|nervio\s*(mandibular|maxilar|oft[aá]lmico|trig[eé]mino|facial|vago|hipogloso|glosofar|ci[aá]tico|radial|mediano|cubital|femoral)|foramen\b|agujero\s*(rasgado|oval|redondo|cond[ií]leo|óptico)|base\s*del\s*cr[aá]neo|l[aá]mina\s*cribosa|conducto\s*[oó]ptico|fisura\s*orbitaria|pol[ií]gono\s*de\s*willis|arteria\s*(cerebral|car[oó]tida|men[ií]ngea|basilar|vertebral)|tri[aá]ngulo\s*(carot[ií]deo|femoral|scarpa)|m[uú]sculo\b|tend[oó]n\b|inervaci[oó]n|irrigaci[oó]n|afasia\s*de\s*(broca|wernicke)/i.test(fullText)) {
     matchedModules.push(ANATOMY_PROMPT);
   }
 
