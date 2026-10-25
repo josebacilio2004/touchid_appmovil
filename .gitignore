@@ -30,6 +30,7 @@ dist/
 *.env
 touchid-backend/*.json
 !touchid-backend/package.json
+!touchid-backend/package-lock.json
 
 # Binaries
 *.apk

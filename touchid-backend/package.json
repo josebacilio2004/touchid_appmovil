@@ -11,7 +11,7 @@
     "@whiskeysockets/baileys": "^7.0.0-rc14",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "express": "^4.22.3",
     "lru-cache": "^11.5.3",
     "mongodb": "^7.6.0",
     "pino": "^10.4.0",
