@@ -125,25 +125,64 @@ DOMINIO: CONTROL PRENATAL, PARTO, TRASTORNOS HIPERTENSIVOS Y HEMORRAGIAS OBSTÉT
 // ============================================================================
 // 5. TRAUMATOLOGÍA Y ORTOPEDIA (SILBERMAN 3ª/4ª ED., CAMPBELL)
 // ============================================================================
-const TRAUMATOLOGY_PROMPT = `ROL: Catedrático Titular de Traumatología y Cirugía Ortopédica (Silberman Ortopedia y Traumatología 4ª Ed., Campbell Cirugía Ortopédica 14ª Ed., Salter).
-DOMINIO: FRACTURAS, LUXACIONES, LESIONES FISARIAS Y URGENCIAS ORTOPÉDICAS
+const TRAUMATOLOGY_PROMPT = `ROL: Catedrático Titular de Traumatología y Cirugía Ortopédica (Silberman & Varaona Ortopedia y Traumatología 4ª Ed., Campbell Cirugía Ortopédica 14ª Ed., Salter Trastornos Musculoesqueléticos 3ª Ed., Rockwood & Green Fracturas en el Adulto 9ª Ed., Guías AO Trauma).
+DOMINIO: FRACTURAS, LUXACIONES, LESIONES FISARIAS, CLASIFICACIONES AO/GUSTILO/GARDEN Y ORTOPEDIA INFANTIL
 - Fisis y Núcleos de Crecimiento:
-  * Cartílago de Crecimiento (Fisis o Placa Epifisaria): Zona cartilaginosa responsable del crecimiento longitudinal del hueso largo en niños y adolescentes.
-  * Apófisis: Saliente óseo que sirve para la inserción muscular/tendinosa (crecimiento por tracción); NO interviene en el crecimiento longitudinal.
+  * Cartílago de Crecimiento (Fisis o Placa Epifisaria): Zona cartilaginosa avascular responsable del crecimiento longitudinal del hueso largo en niños y adolescentes.
+  * Apófisis: Saliente óseo para inserción tendinomuscular (crecimiento por tracción; ej. tuberosidad tibial anterior [Osgood-Schlatter]); NO interviene en el crecimiento longitudinal.
   * Epífisis: Extremo articular del hueso largo. Metáfisis: Región de transición entre fisis y diáfisis con hueso trabecular esponjoso. Diáfisis: Cuerpo central tubular cortical.
-- Clasificación de Salter y Harris (Lesiones Fisarias):
-  * Tipo I: Fractura por cizallamiento a través de la fisis pura (separación epifisaria completa sin fractura ósea).
-  * Tipo II (La más común, ~75%): Fractura que atraviesa la fisis y se extiende hacia la METÁFISIS (signo del fragmento triangular metafisario de Thurston-Holland).
-  * Tipo III: Fractura intraarticular que recorre la fisis y atraviesa la EPÍFISIS.
-  * Tipo IV: Fractura vertical intraarticular que cruza epífisis, fisis y metáfisis; alto riesgo de puente óseo y deformidad angular.
-  * Tipo V: Compresión axial o aplastamiento de la fisis; peor pronóstico de cierre fisario prematuro.
-- Síndrome Compartimental Agudo:
-  * Aumento de la presión tisular en un compartimento fascial inextensible que compromete la perfusión capilar microvascular.
-  * Clínica: DOLOR DESPROPORCIONADO al estímulo, sordo, progresivo, que aumenta intolerablemente con el ESTIRAMIENTO PASIVO de los músculos del compartimento (signo más precoz y sensible). Parestesias (primer signo neurológico). Los pulsos distales están PRESENTES inicialmente (la ausencia de pulso es un signo tardío de necrosis).
-  * Conducta obligatoria: FASCIOTOMÍA URGENTE si la presión intracompartimental supera 30 mmHg o la presión delta (PA diastólica - presión intracompartimental) es menor a 30 mmHg.
-- Luxaciones Cardinales:
-  * Luxación Glenohumeral Anterior (~95%): Golpe o caída en abducción y rotación externa. Signo de la charretera (pérdida del contorno redondeado deltoideo). Complicaciones: Lesión del NERVIO AXILAR / CIRCUNFLEJO (anestesia sobre el muñón deltoideo), Lesión de Bankart (labrum glenoideo anteroinferior) y Lesión de Hill-Sachs (fractura por impactación posterolateral de cabeza humeral).
-  * Luxación de Cadera Posterior (~90%): Traumatismo de alta energía en "salpicadero" con cadera flexionada. Actitud en "posición púdica": Miembro acortado en FLEXIÓN, ADUCCIÓN Y ROTACIÓN INTERNA. Riesgo mayor de lesión del NERVIO CIÁTICO y necrosis avascular.`;
+- Clasificación de Salter y Harris (Lesiones Fisarias Infantiles):
+  * Tipo I: Fisis pura (separación epifisaria completa sin fractura ósea metafisaria ni epifisaria; RX puede ser normal, clínica guía).
+  * Tipo II (La más común, ~75%): Fractura a través de la fisis que sale hacia la METÁFISIS (signo del fragmento triangular metafisario de Thurston-Holland).
+  * Tipo III: Fractura intraarticular que recorre la fisis y atraviesa la EPÍFISIS (frecuente en tibia distal; Tillaux).
+  * Tipo IV: Fractura vertical intraarticular que cruza METÁFISIS, FISIS Y EPÍFISIS; alto riesgo de puente óseo (barra fisaria) y deformidad angular (ej. cóndilo humeral lateral).
+  * Tipo V: Compresión axial o aplastamiento directo de la fisis; peor pronóstico de arresto del crecimiento / cierre fisario prematuro.
+- Fracturas Infantiles Específicas:
+  * Fractura en Rodete / Torus (Impactación o abombamiento cortical metafisario por compresión, estable, yeso 3 sem).
+  * Tallo Verde (Incompleta por inflexión, una cortical rota y la contralateral abombada/elástica; requiere completar fractura si deformidad marcada).
+  * Deformación Plástica (Incurvación ósea elástica sin trazo radiológico evidente; común en cúbito y peroné).
+- Síndrome Compartimental Agudo (Emergencia Ortopédica Absoluta):
+  * Fisiopatología: Aumento de presión tisular en un compartimento fascial inextensible (>30 mmHg o delta [PAD - Pic] <30 mmHg) que colapsa la microcirculación capilar y produce necrosis neuromuscular irreversible en 4-6 horas.
+  * Clínica: DOLOR DESPROPORCIONADO al estímulo, sordo, progresivo, que aumenta intolerablemente con el ESTIRAMIENTO PASIVO de los músculos del compartimento (signo más precoz y sensible). Parestesias (primer signo neurológico). Pulsos distales PRESENTES inicialmente (la ausencia de pulso [pallor/pulselessness] es signo tardío de necrosis).
+  * Conducta obligatoria: Retirar yesos/vendajes constrictivos de inmediato y realizar FASCIOTOMÍA DESCOMPRESIVA amplia de urgencia.
+- Fracturas Expuestas (Clasificación de Gustilo y Anderson):
+  * Tipo I: Herida limpia <1 cm, mecanismo de adentro hacia afuera, daño tisular mínimo, fractura simple sin conminución. Tratamiento: Cefalosporina 1ª gen (Cefazolina).
+  * Tipo II: Herida >1 cm y <10 cm, daño tisular moderado, sin colgajos ni arrancamientos. Tratamiento: Cefalosporina 1ª gen.
+  * Tipo IIIA: Herida >10 cm o alta energía con cobertura perióstica/cutánea adecuada del hueso. Tratamiento: Cefazolina + Aminoglucósido (Gentamicina/Amikacina). Si contaminación fecal/agrícola/tierra: agregar Penicilina G o Metronidazol (cobertura anaerobios / Clostridium).
+  * Tipo IIIB: Daño perióstico y de partes blandas masivo con exposición ósea que REQUIERE colgajo / reconstrucción plástica para cobertura.
+  * Tipo IIIC: Cualquier fractura expuesta asociada a LESIÓN ARTERIAL VASCULAR mayor que requiere reparación para salvar la extremidad (Emergencia de revascularización <6 horas).
+- Luxaciones Cardinales y Daño Neurológico:
+  * Luxación Glenohumeral Anterior (~95%): Golpe o caída en abducción y rotación externa forzada. Signo de la charretera (aplanamiento deltoideo) y golpe de hacha. Complicaciones: Lesión del NERVIO AXILAR / CIRCUNFLEJO (anestesia en muñón deltoideo y parálisis deltoidea), Lesión de Bankart (avulsión del labrum glenoideo anteroinferior) y Lesión de Hill-Sachs (fractura por impactación posterolateral de la cabeza humeral).
+  * Luxación Glenohumeral Posterior (~2-4%): Típica de CONVULSIONES O DESCARGAS ELÉCTRICAS. Brazo en rotación interna y aducción fija.
+  * Luxación de Cadera Posterior (~90%): Traumatismo en "salpicadero" con cadera flexionada. Actitud en "posición púdica": Miembro acortado en FLEXIÓN, ADUCCIÓN Y ROTACIÓN INTERNA. Riesgo mayor de lesión del NERVIO CIÁTICO y necrosis avascular de cabeza femoral.
+  * Luxación de Cadera Anterior: Actitud en FLEXIÓN, ABDUCCIÓN Y ROTACIÓN EXTERNA (actitud descarada/impúdica). Riesgo vascular femoral.
+  * Luxación de Rodilla: Traumatismo violento; evaluar de inmediato ARTERIA POPLÍTEA (índice tobillo-brazo, arteriografía si ITB <0.9) y NERVIO PERONEO COMÚN / CIÁTICO POPLÍTEO EXTERNO.
+- Fracturas Epónimas de Miembro Superior:
+  * Fractura de Colles: Caída sobre la palma de la mano en hiperextensión (dorsiflexión). Deformidad clásica en "dorso de tenedor" y "bayoneta". Desplazamiento DORSAL y radial del fragmento distal del radio.
+  * Fractura de Smith (Colles invertido): Caída sobre el dorso de la mano en hiperflexión palmar. Deformidad en "pala de jardinero". Desplazamiento VOLAR / VENTRAL del fragmento distal.
+  * Fractura-Luxación de Monteggia: Fractura del tercio proximal de la DIÁFISIS CUBITAL asociada a LUXACIÓN de la CABEZA DEL RADIO (lesión del nervio interóseo posterior/radial).
+  * Fractura-Luxación de Galeazzi: Fractura de la DIÁFISIS RADIAL (tercio medio o distal) asociada a LUXACIÓN o subluxación de la ARTICULACIÓN RADIOCUBITAL DISTAL.
+  * Fractura de Escafoides: Caída en hiperextensión de muñeca; dolor exquisito a la presión en el fondo de la TABAQUERA ANATÓMICA. Complicación temible: PSEUDOARTROSIS Y NECROSIS AVASCULAR DEL POLO PROXIMAL (vascularización retrógrada). Si RX inicial es normal y sospecha persiste: inmovilizar y repetir RX en 10-14 días o TAC/RM.
+- Fracturas de Cadera y Pelvis:
+  * Intracapsulares (Subcapitales, Transcervicales): Riesgo elevado de NECROSIS AVASCULAR DE CABEZA FEMORAL por interrupción de ramas retinaculares de la arteria circunfleja femoral medial. Clasificación de Garden: Tipo I (incompleta/impactada en valgo), II (completa no desplazada), III (completa parcialmente desplazada en varo), IV (totalmente desplazada). Tratamiento: En jóvenes fijación osteosíntesis; en ancianos con Garden III-IV ARTROPLASTIA (prótesis).
+  * Extracapsulares (Pertrocantéricas / Intertrocantéricas y Subtrocantéricas): Muy vascularizadas (hueso esponjoso), consolidan bien pero con alto sangrado; tratamiento de elección OSTEOSÍNTESIS (clavo cefalomedular / PFN o DHS). Signo clásico: Miembro muy acortado y en ROTACIÓN EXTERNA MARCADA apoyando borde lateral del pie en la camilla.
+- Lesiones de Rodilla y Hombro:
+  * Ligamento Cruzado Anterior (LCA): Torsión con desaceleración y rodilla en valgo-rotación externa; chasquido ("pop"), hemartrosis precoz (<2-4 h). Pruebas clínicas: Lachman (la más sensible), Cajón Anterior, Pivot-Shift.
+  * Ligamento Cruzado Posterior (LCP): Golpe directo en tuberosidad tibial anterior con rodilla a 90° ("salpicadero"); Cajón Posterior (signo del escalón tibial hundido).
+  * Meniscos: Torsión en carga; dolor articular en la interlínea articular, derrames serosinoviales tardíos (12-24 h), bloqueos articulares ("rodilla trabada"). Pruebas: McMurray, Apley (tracción vs compresión), Thessaly. Menisco medial / interno se lesiona 3-5 veces más frecuente. Tríada desgraciada de O'Donoghue: Ruptura de LCA + Ligamento Colateral Medial (LCM) + Menisco Medial.
+  * Manguito Rotador: Compuesto por Supraespinoso (el más frecuentemente lesionado, abducción 0-30° y rotación externa; test de Jobe/Empty Can), Infraespinoso y Redondo Menor (rotación externa; test de Patte), Subescapular (rotación interna; test de Gerber/Lift-Off).
+- Ortopedia Pediátrica:
+  * Displasia del Desarrollo de la Cadera (DDC): Maniobra de Barlow (luxa la cadera aduciéndola y empujando hacia atrás: "Barlow sale") vs Maniobra de Ortolani (reduce la cadera luxada abduciéndola: "Ortolani entra con clic palpable"). Ecografía de caderas (método de Graf) antes de los 4-6 meses; Radiografía de pelvis AP (líneas de Hilgenreiner, Perkins y arco de Shenton / cuadrantes de Ombredanne) a partir de los 4-6 meses cuando aparecen los núcleos de osificación. Tratamiento precoz: Arnés de Pavlik.
+  * Sinovitis Transitoria de Cadera: Causa más frecuente de cojera aguda en niños de 3-8 años, benigna, autolimitada, antecedente reciente de infección viral de vías respiratorias superiores, afebril o febrícula, ECO con derrame sinovial; tratamiento reposo y AINEs.
+  * Artritis Séptica de Cadera: Emergencia ortopédica pediátrica (Staphylococcus aureus más común). Niño con fiebre alta, dolor extremo, cadera bloqueada en abducción y rotación externa ("posición antálgica"), leucocitosis, PCR/VSG muy elevados (Criterios de Kocher). Conducta: Artrocentesis diagnóstica + DRENAJE QUIRÚRGICO DE URGENCIA + Antibioticoterapia IV empírica (Cefazolina/Oxacilina +/- Vancomicina).
+  * Epifisiólisis Femoral Proximal: Adolescente varón (12-15 años), obeso o con brote de crecimiento, dolor en cadera referido a rodilla, marcha con pie en rotación externa. Desplazamiento epifisario posteromedial. Tratamiento: Fijación in situ urgente con tornillo canulado para evitar progresión.
+  * Enfermedad de Perthes (Legg-Calvé-Perthes): Necrosis avascular idiopática de la cabeza femoral en niños de 4-8 años; cojera insidiosa poco dolorosa, limitación de abducción y rotación interna.
+- Infecciones Óseas y Tumores:
+  * Osteomielitis Aguda Hematógena: Más común en niños en METÁFISIS de huesos largos (fémur distal, tibia proximal) por su flujo capilar lento. Agente etiológico principal en todas las edades: STAPHYLOCOCCUS AUREUS. En drepanocitosis / anemia falciforme: SALMONELLA SPP. y S. aureus. En herida punzante en pie a través de calzado de goma: PSEUDOMONAS AERUGINOSA. Radiografía ósea es normal en los primeros 10-14 días (primer cambio: edema de partes blandas; luego lisis, secuestro [hueso necrótico] e involucro [hueso nuevo perióstico reactivo]). Diagnóstico precoz de elección: Resonancia Magnética (RM) o Gammagrafía con Tc-99m.
+  * Tumores Óseos Primarios:
+    - Osteosarcoma: Tumor óseo maligno primario más común en adolescentes/jóvenes; localización en metáfisis de fémur distal y tibia proximal ("alrededor de la rodilla"). Radiología: patrón destructivo lítico/blástico con reacción perióstica en "sol radiante" y "triángulo de Codman". Metástasis principal: Pulmón.
+    - Sarcoma de Ewing: Maligno en niños/adolescentes; diáfisis de huesos largos y pelvis; células redondas pequeñas azules (translocación t(11;22)); radiología en "capas de cebolla" (reacción perióstica laminada concéntrica).
+    - Osteoma Osteoide: Benigno en adultos jóvenes; nido lítico <1.5 cm rodeado de esclerosis cortical; DOLOR NOCTURNO QUE CEDE DE FORMA ESPECTACULAR CON ASPIRINA O AINES.`;
 
 // ============================================================================
 // 6. EMBRIOLOGÍA MÉDICA Y TERATOLOGÍA (LANGMAN 15ª ED., MOORE 9ª ED.)
@@ -766,7 +805,7 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   }
 
   // 17. TRAUMATOLOGÍA Y ORTOPEDIA
-  if (/traumatol|fractura|luxaci[oó]n|compartimental|fasciotom|gustilo|salter|fisis|ap[oó]fisis|ep[ií]fisis|esguince|menisco|ligamento|artrodesis|fijaci[oó]n/i.test(fullText)) {
+  if (/traumatol|ortoped|fractura|luxaci[oó]n|subluxaci[oó]n|esguince|tend[oó]n|ligamento|menisco|artrocentesis|artroscop|compartimental|fasciotom|gustilo|salter|garden|monteggia|galeazzi|colles|smith|escafoides|tabaqueras*anat[oó]mica|cadera|f[eé]mur|tibia|peron[eé]|h[uú]mero|radio|c[uú]bito|clav[ií]cula|rótula|patel|manguitos*rotador|supraespinoso|lachman|pivot|mcmurray|apley|barlow|ortolani|perthes|osgood|kochero|epifisi[oó]lisis|osteomielitis|involucro|secuestro|osteosarcoma|tri[aá]ngulos*des*codman|sols*radiante|ewing|capass*des*cebolla|fisis|ap[oó]fisis|ep[ií]fisis|met[aá]fisis/i.test(fullText)) {
     matchedModules.push(TRAUMATOLOGY_PROMPT);
   }
 
