@@ -191,6 +191,7 @@ async function loadAllData() {
   loadHistory();
   loadDomInspections();
   loadQuestionBank();
+  fetchLlmStats();
 }
 
 async function loadStats() {
@@ -1700,3 +1701,114 @@ if (sandboxLoadMoodleBtn) {
   });
 }
 
+
+
+// ============================================================================
+// MÓDULO MODELOS IA & MONITOREO FINANCIERO CLAUDE ($200 USD)
+// ============================================================================
+async function fetchLlmStats() {
+  const adminToken = localStorage.getItem('touchid_admin_token') || 'TouchID@2026#SecureAdmin!';
+  const backendUrl = localStorage.getItem('touchid_backend_url') || 'https://touchid-backend.onrender.com';
+
+  try {
+    const res = await fetch(`${backendUrl}/admin/llm-stats`, {
+      headers: { 'x-admin-token': adminToken }
+    });
+
+    if (!res.ok) {
+      console.warn('No se pudo obtener métricas de /admin/llm-stats');
+      return;
+    }
+
+    const data = await res.json();
+    const fin = data.claudeFinancials || {};
+    const dist = data.distribution || {};
+    const total = data.totalQueries || 0;
+
+    // 1. Métricas de tarjetas superiores
+    const elBalance = document.getElementById('llm-claude-balance');
+    const elProgress = document.getElementById('llm-claude-progress');
+    const elSubtext = document.getElementById('llm-claude-subtext');
+    const elQuestions = document.getElementById('llm-claude-questions');
+    const elQSubtext = document.getElementById('llm-questions-subtext');
+    const elTokens = document.getElementById('llm-total-tokens');
+
+    if (elBalance) {
+      elBalance.textContent = `$${(fin.remainingUsd ?? 200.00).toFixed(2)} USD`;
+    }
+    if (elProgress) {
+      const remainingPct = Math.max(0, 100 - (fin.percentUsed || 0));
+      elProgress.style.width = `${remainingPct}%`;
+    }
+    if (elSubtext) {
+      elSubtext.textContent = `Asignado: $200.00 USD • Consumido: $${(fin.consumedUsd || 0).toFixed(4)} USD`;
+    }
+    if (elQuestions) {
+      elQuestions.textContent = `~${(fin.remainingQuestions || 380952).toLocaleString()}`;
+    }
+    if (elQSubtext) {
+      elQSubtext.textContent = `Admite hasta ${(fin.remainingQuestions || 380952).toLocaleString()} respuestas médicas`;
+    }
+    if (elTokens) {
+      elTokens.textContent = (fin.remainingTokens || 85714285).toLocaleString();
+    }
+
+    // 2. Gráfico Financiero de Claude
+    const elBarUsd = document.getElementById('bar-claude-usd');
+    const elBarUsdText = document.getElementById('bar-claude-usd-text');
+    if (elBarUsd && elBarUsdText) {
+      const remPct = Math.max(0, 100 - (fin.percentUsed || 0));
+      elBarUsd.style.width = `${remPct}%`;
+      elBarUsdText.textContent = `$${(fin.remainingUsd ?? 200.00).toFixed(2)} / $200.00 USD (${remPct.toFixed(1)}% disponible)`;
+    }
+
+    // 3. Distribución de Consultas
+    const elBadgeTotal = document.getElementById('llm-total-queries-badge');
+    const elDistClaudeCount = document.getElementById('dist-claude-count');
+    const elDistClaudeBar = document.getElementById('dist-claude-bar');
+    const elDistGeminiCount = document.getElementById('dist-gemini-count');
+    const elDistGeminiBar = document.getElementById('dist-gemini-bar');
+    const elDistCacheCount = document.getElementById('dist-cache-count');
+    const elDistCacheBar = document.getElementById('dist-cache-bar');
+
+    if (elBadgeTotal) elBadgeTotal.textContent = `Total: ${total} resueltas`;
+
+    const cCount = dist.claude || 0;
+    const gCount = dist.gemini || 0;
+    const kCount = dist.cache || 0;
+    const sumCount = cCount + gCount + kCount || 1;
+
+    const cPct = ((cCount / sumCount) * 100).toFixed(1);
+    const gPct = ((gCount / sumCount) * 100).toFixed(1);
+    const kPct = ((kCount / sumCount) * 100).toFixed(1);
+
+    if (elDistClaudeCount) elDistClaudeCount.textContent = `${cCount} (${cPct}%)`;
+    if (elDistClaudeBar) elDistClaudeBar.style.width = `${cPct}%`;
+
+    if (elDistGeminiCount) elDistGeminiCount.textContent = `${gCount} (${gPct}%)`;
+    if (elDistGeminiBar) elDistGeminiBar.style.width = `${gPct}%`;
+
+    if (elDistCacheCount) elDistCacheCount.textContent = `${kCount} (${kPct}%)`;
+    if (elDistCacheBar) elDistCacheBar.style.width = `${kPct}%`;
+
+  } catch (err) {
+    console.warn('Error en fetchLlmStats:', err.message);
+  }
+}
+
+// Conectar evento al botón de refresco y al tab
+document.addEventListener('DOMContentLoaded', () => {
+  const btnRefresh = document.getElementById('refresh-llm-btn');
+  if (btnRefresh) {
+    btnRefresh.addEventListener('click', () => {
+      fetchLlmStats();
+    });
+  }
+
+  const navModels = document.getElementById('nav-models');
+  if (navModels) {
+    navModels.addEventListener('click', () => {
+      fetchLlmStats();
+    });
+  }
+});

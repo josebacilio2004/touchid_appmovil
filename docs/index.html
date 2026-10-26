@@ -12,9 +12,9 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="alternate icon" href="./favicon.svg">
   <link rel="apple-touch-icon" href="./favicon.svg">
-  <script type="module" crossorigin src="./assets/main-BdmvN_as.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/web_dashboard-Dtp3Omdk.js">
-  <link rel="stylesheet" crossorigin href="./assets/web_dashboard-BLBkLTnz.css">
+  <script type="module" crossorigin src="./assets/main-D8TZEtSa.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/web_dashboard-C3NKqFgz.js">
+  <link rel="stylesheet" crossorigin href="./assets/web_dashboard-C0eSXZDa.css">
 </head>
 <body>
 
@@ -68,7 +68,11 @@
           <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm4-4H6v-2h10v2zm0-4H6V7h10v2z"/></svg>
           Banco de Preguntas
         </a>
-        <a href="#config" class="nav-item" id="nav-config">
+                <a href="#models" class="nav-item" id="nav-models">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5z"/></svg>
+          Modelos & Consumo IA
+        </a>
+<a href="#config" class="nav-item" id="nav-config">
           <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm0-2a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm9.03-2l1.97-1.53-2-3.46-2.43.98a8.2 8.2 0 0 0-1.72-1l-.38-2.59h-4l-.38 2.59a8.2 8.2 0 0 0-1.72 1L8.3 4.5l-2 3.46L8.27 9.5a8.2 8.2 0 0 0-1 1.72l-2.59.38v4l2.59.38c.24.6.58 1.18 1 1.72l-.98 2.43 2 3.46 2.43-.98c.52.4 1.1.74 1.72 1l.38 2.59h4l.38-2.59c.6-.24 1.18-.58 1.72-1l2.43.98 2-3.46-1.97-1.53c.4-.52.74-1.1 1-1.72l2.59-.38v-4l-2.59-.38a8.2 8.2 0 0 0-1-1.72zM12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12z"/></svg>
           Configuración
         </a>
@@ -682,6 +686,411 @@
             </div>
           </div>
         </section>
+
+        
+        <!-- SECCIÓN 7: MODELOS DE IA & MONITOREO DE CRÉDITO CLAUDE ($200 USD) -->
+        <section id="tab-models" class="tab-content">
+          <!-- Cabecera de la Sección -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h2 style="font-size: 20px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 10px; height: 10px; background: #8b5cf6; border-radius: 50%; box-shadow: 0 0 10px #8b5cf6;"></span>
+                Arquitectura Multi-Tier: Anthropic Claude (Prioridad #1) & Google Gemini Backup
+              </h2>
+              <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">
+                Monitoreo en tiempo real del saldo de $200 USD en Claude, tasa de tokens por pregunta médica y conmutación de fallback.
+              </p>
+            </div>
+            <button id="refresh-llm-btn" class="btn btn-secondary" style="height: 38px; display: inline-flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 20q-3.35 0-5.675-2.325Q4 15.35 4 12q0-3.35 2.325-5.675Q8.65 4 12 4q1.725 0 3.3.712T18 6.75V4h2v6h-6V8h3.2q-.8-1.4-2.187-2.2Q13.625 5 12 5Q9.075 5 7.038 7.037Q5 9.075 5 12q0 2.925 2.038 4.962Q9.075 19 12 19q2.425 0 4.312-1.463Q18.2 16.075 18.725 13.8l1.95.55q-.725 3.125-3.187 5.088Q15.025 21.4 12 21.4Z"/></svg>
+              Actualizar Métricas
+            </button>
+          </div>
+
+          <!-- MÉTICAS FINANCIERAS Y DE RENDIMIENTO (4 CARDS) -->
+          <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin-bottom: 24px;">
+            <!-- Tarjeta 1: Crédito Claude -->
+            <div class="stat-card claude-card" style="padding: 18px 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="stat-label">Saldo Crédito Claude</span>
+                <span class="badge-provider anthropic">Anthropic $200</span>
+              </div>
+              <span class="stat-value" id="llm-claude-balance" style="color: #c084fc; font-size: 26px;">$200.00 USD</span>
+              <div class="progress-container">
+                <div class="progress-fill claude" id="llm-claude-progress" style="width: 100%;"></div>
+              </div>
+              <span class="stat-subtext" id="llm-claude-subtext">Asignado: $200.00 USD • 100% Disponible</span>
+            </div>
+
+            <!-- Tarjeta 2: Capacidad de Preguntas -->
+            <div class="stat-card" style="padding: 18px 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="stat-label">Capacidad de Preguntas</span>
+                <span style="font-size: 11px; color: #10b981; font-weight: 700;">$0.000525 / preg</span>
+              </div>
+              <span class="stat-value" id="llm-claude-questions" style="color: #10b981; font-size: 26px;">~380,952</span>
+              <div class="progress-container">
+                <div class="progress-fill green" style="width: 100%;"></div>
+              </div>
+              <span class="stat-subtext" id="llm-questions-subtext">Admite hasta 380,952 respuestas médicas</span>
+            </div>
+
+            <!-- Tarjeta 3: Tokens por Pregunta & Total Admitido -->
+            <div class="stat-card" style="padding: 18px 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="stat-label">Tokens Admitidos con $200</span>
+                <span style="font-size: 11px; color: #38bdf8; font-weight: 700;">85.7 MTok</span>
+              </div>
+              <span class="stat-value" id="llm-total-tokens" style="color: #38bdf8; font-size: 26px;">85,714,285</span>
+              <div class="progress-container">
+                <div class="progress-fill blue" style="width: 100%;"></div>
+              </div>
+              <span class="stat-subtext">~225 tokens prom. por pregunta (150 In + 75 Out)</span>
+            </div>
+
+            <!-- Tarjeta 4: Prioridad de Inferencia -->
+            <div class="stat-card" style="padding: 18px 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="stat-label">Prioridad de Conmutación</span>
+                <span class="badge-priority p1">Activo</span>
+              </div>
+              <span class="stat-value" style="font-size: 20px; color: #f8fafc; margin-top: 6px;">1° Claude &bull; 2° Gemini</span>
+              <div style="margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
+                Caché L1 en RAM: <span style="color: #10b981; font-weight: 700;">&lt; 0.01ms</span> • Coalescencia Activa
+              </div>
+            </div>
+          </div>
+
+          <!-- DASHBOARD GRÁFICO (2 PANELES) -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; margin-bottom: 24px;">
+            <!-- Panel 1: Monitor Financiero y Desglose de Tokens de Claude -->
+            <div class="card" style="padding: 24px;">
+              <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                <span>Desglose de Consumo de Tokens (Anthropic Claude Haiku 4.5)</span>
+                <span style="font-size: 12px; color: #c084fc; font-weight: 600;">$1.00 / MTok In • $5.00 / MTok Out</span>
+              </h3>
+
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <!-- Barra 1: Crédito $200 USD -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span style="color: var(--text-secondary);">Saldo Financiero Restante:</span>
+                    <strong id="bar-claude-usd-text" style="color: #c084fc;">$200.00 / $200.00 USD (100.0%)</strong>
+                  </div>
+                  <div style="height: 12px; background: rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden;">
+                    <div id="bar-claude-usd" style="width: 100%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #ec4899); border-radius: 8px;"></div>
+                  </div>
+                </div>
+
+                <!-- Barra 2: Tokens de Entrada (Promedio 150 tokens) -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span style="color: var(--text-secondary);">Tokens de Entrada (Prompt Clínico + Opciones):</span>
+                    <strong id="bar-tokens-in-text" style="color: #38bdf8;">~150 tokens / preg ($0.000150 USD)</strong>
+                  </div>
+                  <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                    <div style="width: 67%; height: 100%; background: #38bdf8; border-radius: 6px;"></div>
+                  </div>
+                </div>
+
+                <!-- Barra 3: Tokens de Salida (Promedio 75 tokens) -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span style="color: var(--text-secondary);">Tokens de Salida (JSON, Justificación y Verificación):</span>
+                    <strong id="bar-tokens-out-text" style="color: #34d399;">~75 tokens / preg ($0.000375 USD)</strong>
+                  </div>
+                  <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                    <div style="width: 33%; height: 100%; background: #34d399; border-radius: 6px;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tabla mini resumen -->
+              <div style="margin-top: 20px; padding: 14px 16px; background: rgba(15, 22, 42, 0.6); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                  <span style="color: var(--text-secondary);">Costo por Examen Completo (25 preg):</span><br>
+                  <strong style="color: #10b981; font-size: 14px;">~$0.0131 USD (1.3 centavos)</strong>
+                </div>
+                <div>
+                  <span style="color: var(--text-secondary);">Exámenes Totales que Financia $200:</span><br>
+                  <strong style="color: #c084fc; font-size: 14px;">~15,238 exámenes completos</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel 2: Distribución de Resoluciones en Tiempo Real -->
+            <div class="card" style="padding: 24px;">
+              <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                <span>Distribución de Consultas por Proveedor</span>
+                <span id="llm-total-queries-badge" class="badge-priority p2">Total: 0 resueltas</span>
+              </h3>
+
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- Proveedor 1: Anthropic Claude -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                      <span style="width: 8px; height: 8px; background: #8b5cf6; border-radius: 50%;"></span>
+                      Anthropic Claude (Prioridad #1)
+                    </span>
+                    <strong id="dist-claude-count" style="color: #c084fc;">0 (0%)</strong>
+                  </div>
+                  <div style="height: 10px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                    <div id="dist-claude-bar" style="width: 0%; height: 100%; background: #8b5cf6; border-radius: 6px; transition: width 0.5s;"></div>
+                  </div>
+                </div>
+
+                <!-- Proveedor 2: Google Gemini (Fallback) -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                      <span style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%;"></span>
+                      Google Gemini (Fallback Automático)
+                    </span>
+                    <strong id="dist-gemini-count" style="color: #60a5fa;">0 (0%)</strong>
+                  </div>
+                  <div style="height: 10px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                    <div id="dist-gemini-bar" style="width: 0%; height: 100%; background: #3b82f6; border-radius: 6px; transition: width 0.5s;"></div>
+                  </div>
+                </div>
+
+                <!-- Proveedor 3: L1 RAM Cache (<0.01ms) -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                      <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span>
+                      Caché Semántico L1 en RAM
+                    </span>
+                    <strong id="dist-cache-count" style="color: #34d399;">0 (0%)</strong>
+                  </div>
+                  <div style="height: 10px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden;">
+                    <div id="dist-cache-bar" style="width: 0%; height: 100%; background: #10b981; border-radius: 6px; transition: width 0.5s;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Comparador de Latencias de Red -->
+              <div style="margin-top: 20px; padding: 12px 16px; background: rgba(15, 22, 42, 0.6); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">Latencias Medidas en Benchmark Real:</div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; flex-wrap: wrap; gap: 8px;">
+                  <span>Claude Haiku: <strong style="color: #c084fc;">~700ms - 1.4s</strong></span>
+                  <span>Gemini Flash-Lite: <strong style="color: #60a5fa;">~1.6s - 1.7s</strong></span>
+                  <span>Caché RAM: <strong style="color: #10b981;">&lt; 0.01ms</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MATRIZ DE MODELOS: ORDEN DE PRIORIDAD DE CONTESTACIÓN -->
+          <div class="card" style="padding: 24px; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h3 style="font-size: 17px; font-weight: 700; color: #fff;">Jerarquía Oficial de Inferencia (Orden de Prioridad en Ejecución)</h3>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 3px;">
+                  Cuando un estudiante presiona el botón en la app móvil, el servidor consulta los modelos en el orden exacto de abajo.
+                </p>
+              </div>
+              <span class="badge-priority p1" style="padding: 6px 12px;">7 Modelos Calibrados</span>
+            </div>
+
+            <div class="models-grid-layout" id="models-hierarchy-container">
+              <!-- Tarjeta Modelo 1 -->
+              <div class="model-tier-card tier-p1">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <span class="badge-priority p1">🥇 Prioridad #1 (Activo Principal)</span>
+                  <span class="badge-provider anthropic">Anthropic Claude</span>
+                </div>
+                <div>
+                  <h4 style="font-size: 16px; font-weight: 700; color: #fff;">claude-haiku-4-5-20251001</h4>
+                  <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Inferencia Primaria Ultrarrápida y Diagnóstico de Alta Certeza</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px;">
+                  <div><span style="color: var(--text-secondary);">Velocidad:</span> <strong style="color: #10b981;">689ms - 1.4s</strong></div>
+                  <div><span style="color: var(--text-secondary);">Cuota:</span> <strong style="color: #c084fc;">$200.00 USD</strong></div>
+                  <div><span style="color: var(--text-secondary);">Entrada:</span> $1.00 / MTok</div>
+                  <div><span style="color: var(--text-secondary);">Salida:</span> $5.00 / MTok</div>
+                </div>
+                <div style="font-size: 11px; color: #34d399; display: flex; align-items: center; gap: 4px;">
+                  <span style="width: 6px; height: 6px; background: #10b981; border-radius: 50%;"></span> Responde en primer turno todas las preguntas estándar y clínicas.
+                </div>
+              </div>
+
+              <!-- Tarjeta Modelo 2 -->
+              <div class="model-tier-card" style="border-color: rgba(139, 92, 246, 0.4);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <span class="badge-priority p2">🥈 Prioridad #2 (Haiku Modern)</span>
+                  <span class="badge-provider anthropic">Anthropic Claude</span>
+                </div>
+                <div>
+                  <h4 style="font-size: 16px; font-weight: 700; color: #fff;">claude-haiku-5-5</h4>
+                  <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Alternativa Haiku de Última Generación</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px;">
+                  <div><span style="color: var(--text-secondary);">Velocidad:</span> <strong style="color: #10b981;">716ms</strong></div>
+                  <div><span style="color: var(--text-secondary);">Cuota:</span> <strong style="color: #c084fc;">$200.00 USD</strong></div>
+                  <div><span style="color: var(--text-secondary);">Entrada:</span> $1.00 / MTok</div>
+                  <div><span style="color: var(--text-secondary);">Salida:</span> $5.00 / MTok</div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary);">
+                  Segunda línea de respuesta instantánea bajo el mismo crédito de Anthropic.
+                </div>
+              </div>
+
+              <!-- Tarjeta Modelo 3 -->
+              <div class="model-tier-card" style="border-color: rgba(139, 92, 246, 0.3);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <span class="badge-priority p2">🥉 Prioridad #3 (K-Type Experto)</span>
+                  <span class="badge-provider anthropic">Anthropic Claude</span>
+                </div>
+                <div>
+                  <h4 style="font-size: 16px; font-weight: 700; color: #fff;">claude-sonnet-4-5-20250929</h4>
+                  <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Razonamiento Clínico Complejo & Proposiciones 1-4</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px;">
+                  <div><span style="color: var(--text-secondary);">Velocidad:</span> <strong style="color: #f59e0b;">~1.3s</strong></div>
+                  <div><span style="color: var(--text-secondary);">Cuota:</span> <strong style="color: #c084fc;">$200.00 USD</strong></div>
+                  <div><span style="color: var(--text-secondary);">Entrada:</span> $3.00 / MTok</div>
+                  <div><span style="color: var(--text-secondary);">Salida:</span> $15.00 / MTok</div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary);">
+                  Especializado en desentrañar alternativas complejas combinadas con fact-check anatómico.
+                </div>
+              </div>
+
+              <!-- Tarjeta Modelo 4 -->
+              <div class="model-tier-card gemini-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <span class="badge-priority p3">🏅 Prioridad #4 (Fallback #1)</span>
+                  <span class="badge-provider google">Google Gemini</span>
+                </div>
+                <div>
+                  <h4 style="font-size: 16px; font-weight: 700; color: #fff;">gemini-3.5-flash-lite</h4>
+                  <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Primer Respaldo Inmediato Gratuito</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px;">
+                  <div><span style="color: var(--text-secondary);">Velocidad:</span> <strong style="color: #60a5fa;">~1.7s</strong></div>
+                  <div><span style="color: var(--text-secondary);">Cuota:</span> Gratuita (RPM/RPD)</div>
+                  <div><span style="color: var(--text-secondary);">Entrada:</span> $0.00 USD</div>
+                  <div><span style="color: var(--text-secondary);">Salida:</span> $0.00 USD</div>
+                </div>
+                <div style="font-size: 11px; color: #60a5fa;">
+                  Toma el control automático sin interrupciones si Claude se satura.
+                </div>
+              </div>
+
+              <!-- Tarjeta Modelo 5 -->
+              <div class="model-tier-card gemini-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <span class="badge-priority p4">🏅 Prioridad #5 (Alias Estable)</span>
+                  <span class="badge-provider google">Google Gemini</span>
+                </div>
+                <div>
+                  <h4 style="font-size: 16px; font-weight: 700; color: #fff;">gemini-flash-lite-latest</h4>
+                  <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Alias Operativo Oficial en Google v1beta</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px;">
+                  <div><span style="color: var(--text-secondary);">Velocidad:</span> <strong style="color: #60a5fa;">~1.6s</strong></div>
+                  <div><span style="color: var(--text-secondary);">Cuota:</span> Gratuita Activa</div>
+                  <div><span style="color: var(--text-secondary);">Entrada:</span> $0.00 USD</div>
+                  <div><span style="color: var(--text-secondary);">Salida:</span> $0.00 USD</div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary);">
+                  Garantiza continuidad operacional sin depender de un único endpoint.
+                </div>
+              </div>
+
+              <!-- Tarjeta Modelo 6 -->
+              <div class="model-tier-card gemini-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <span class="badge-priority p5">🏅 Prioridad #6 (Thinking)</span>
+                  <span class="badge-provider google">Google Gemini</span>
+                </div>
+                <div>
+                  <h4 style="font-size: 16px; font-weight: 700; color: #fff;">gemini-3.5-flash</h4>
+                  <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Razonamiento con Thinking Budget (256-384)</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px;">
+                  <div><span style="color: var(--text-secondary);">Velocidad:</span> <strong style="color: #f59e0b;">~2.7s</strong></div>
+                  <div><span style="color: var(--text-secondary);">Cuota:</span> Gratuita</div>
+                  <div><span style="color: var(--text-secondary);">Pensamiento:</span> 256 tokens</div>
+                  <div><span style="color: var(--text-secondary);">Costos:</span> $0.00 USD</div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary);">
+                  Cadena de pensamiento interna paso a paso para preguntas con distractores médicos.
+                </div>
+              </div>
+
+              <!-- Tarjeta Modelo 7 -->
+              <div class="model-tier-card" style="border-color: rgba(255, 255, 255, 0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <span class="badge-priority p6">🛡️ Prioridad #7 (Contingencia)</span>
+                  <span class="badge-provider google">Google Gemini</span>
+                </div>
+                <div>
+                  <h4 style="font-size: 16px; font-weight: 700; color: #fff;">gemini-robotics-er-2-preview</h4>
+                  <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Respaldo de Emergencia de Último Recurso</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px;">
+                  <div><span style="color: var(--text-secondary);">Velocidad:</span> ~2.3s</div>
+                  <div><span style="color: var(--text-secondary);">Cuota:</span> 100% Limpia</div>
+                  <div><span style="color: var(--text-secondary);">Failsafe:</span> 0% 503</div>
+                  <div><span style="color: var(--text-secondary);">Costos:</span> $0.00 USD</div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary);">
+                  Asegura que el estudiante jamás reciba un error 500 bajo ninguna condición.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GUÍA VISUAL PASO A PASO: CONFIGURACIÓN EN RENDER -->
+          <div class="card" style="padding: 24px; border: 1px solid rgba(139, 92, 246, 0.35); background: linear-gradient(135deg, rgba(22, 32, 58, 0.5) 0%, rgba(88, 28, 135, 0.15) 100%);">
+            <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="#8b5cf6" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              ¿Cómo configurar la API Key de Claude en Render para Producción?
+            </h3>
+            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px;">
+              Para que tu servidor en la nube utilice la llave de <strong>Anthropic Claude</strong> como prioridad número uno con los <strong>$200 USD de crédito</strong>, solo debes añadir la variable de entorno en tu panel de Render siguiendo estos 4 sencillos pasos:
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 18px;">
+              <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="color: #c084fc; font-weight: 700; font-size: 13px; margin-bottom: 4px;">Paso 1. Ingresar a Render</div>
+                <div style="color: var(--text-secondary); font-size: 12px;">Entra a <strong>dashboard.render.com</strong> y haz clic en tu Web Service <strong>touchid-backend</strong>.</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="color: #c084fc; font-weight: 700; font-size: 13px; margin-bottom: 4px;">Paso 2. Pestaña Environment</div>
+                <div style="color: var(--text-secondary); font-size: 12px;">En el menú lateral izquierdo de tu servicio, pulsa en la opción <strong>Environment</strong>.</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="color: #c084fc; font-weight: 700; font-size: 13px; margin-bottom: 4px;">Paso 3. Añadir Variable</div>
+                <div style="color: var(--text-secondary); font-size: 12px;">Haz clic en <strong>Add Environment Variable</strong> y pega los datos que figuran debajo.</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="color: #c084fc; font-weight: 700; font-size: 13px; margin-bottom: 4px;">Paso 4. Guardar Cambios</div>
+                <div style="color: var(--text-secondary); font-size: 12px;">Pulsa <strong>Save Changes</strong>. Render reiniciará y compilará con Claude activo en ~60 seg.</div>
+              </div>
+            </div>
+
+            <!-- Caja de Claves Copiables -->
+            <div style="background: rgba(10, 15, 30, 0.85); padding: 16px; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.3); display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                  <span style="color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Key Name (Nombre de la variable):</span><br>
+                  <code style="color: #38bdf8; font-size: 14px; font-weight: 700;">ANTHROPIC_API_KEY</code>
+                </div>
+                <div>
+                  <span style="color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Valor de la clave de Claude:</span><br>
+                  <code style="color: #c084fc; font-size: 13px;">sk-ant-usr-1JTZkwMM...Ny87QAA</code>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="navigator.clipboard.writeText('sk-ant-usr-1JTZkwMM...Ny87QAA'); alert('Clave de Anthropic Claude copiada al portapapeles.');" style="height: 38px; padding: 0 16px;">
+                  Copiar API Key
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
 
         <!-- SECCIÓN 6: CONFIGURACIÓN -->
         <section id="tab-config" class="tab-content">

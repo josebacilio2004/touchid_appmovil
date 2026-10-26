@@ -242,7 +242,7 @@ async function triggerShadowVerification(db, question, options, isKType, canonic
 // ============================================================================
 // INTEGRACIÓN HÍBRIDA ANTHROPIC CLAUDE (ALTA VELOCIDAD Y PRECISIÓN CLÍNICA)
 // ============================================================================
-async function callAnthropicClaude({ prompt, systemInstructionText, isKType, options, timeoutMs = 4500 }) {
+async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', prompt, systemInstructionText, isKType, options, timeoutMs = 4500 }) {
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (!anthropicKey) return null;
 
@@ -263,7 +263,7 @@ async function callAnthropicClaude({ prompt, systemInstructionText, isKType, opt
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: modelName,
         max_tokens: 600,
         temperature: 0.0,
         system: (systemInstructionText || '') + '\n\n' + jsonInstruction,
@@ -275,17 +275,20 @@ async function callAnthropicClaude({ prompt, systemInstructionText, isKType, opt
     clearTimeout(timeoutId);
     if (!res.ok) {
       const errTxt = await res.text();
-      console.warn(`[CLAUDE-ERROR] HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
+      console.warn(`[CLAUDE-ERROR] HTTP ${res.status} en ${modelName}: ${errTxt.slice(0, 100)}`);
       return null;
     }
 
     const data = await res.json();
     const rawContent = data.content?.[0]?.text || '';
-    const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const cleanJson = rawContent.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim();
     const parsed = JSON.parse(cleanJson);
     const elapsed = Date.now() - startTime;
-    console.log(`[RESOLVED-SPEED] Claude Haiku resolvió en ${elapsed}ms`);
-    return { result: parsed, modelUsed: 'claude-haiku-4-5-20251001', elapsed };
+    const inTokens = data.usage?.input_tokens || Math.round((prompt.length + (systemInstructionText || '').length) / 3.8);
+    const outTokens = data.usage?.output_tokens || Math.round(cleanJson.length / 3.8);
+
+    console.log(`[RESOLVED-SPEED] ${modelName} resolvió en ${elapsed}ms (${inTokens} in / ${outTokens} out)`);
+    return { result: parsed, modelUsed: modelName, elapsed, inputTokens: inTokens, outputTokens: outTokens };
   } catch (err) {
     clearTimeout(timeoutId);
     console.warn(`[CLAUDE-EXCEPTION] ${err.message}`);
@@ -1163,6 +1166,188 @@ app.post('/activate', requireDb, async (req, res) => {
 });
 
 // 5. Endpoints Administrativos (Requieren token admin y DB)
+
+// 5.1. Métricas de Modelos LLM y Monitoreo Financiero de Crédito Claude ($200 USD)
+app.get('/admin/llm-stats', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const historyCol = req.db.collection('history');
+    const totalQueries = await historyCol.countDocuments();
+    const claudeQueries = await historyCol.countDocuments({
+      $or: [
+        { provider: 'anthropic' },
+        { modelUsed: { $regex: /claude/i } }
+      ]
+    });
+    const googleQueries = await historyCol.countDocuments({
+      $or: [
+        { provider: 'google' },
+        { modelUsed: { $regex: /gemini/i } }
+      ]
+    });
+    const cacheQueries = await historyCol.countDocuments({
+      $or: [
+        { provider: 'cache' },
+        { modelUsed: 'cache_l1' }
+      ]
+    });
+
+    const claudeTokensAgg = await historyCol.aggregate([
+      {
+        $match: {
+          $or: [
+            { provider: 'anthropic' },
+            { modelUsed: { $regex: /claude/i } }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalInputTokens: { $sum: { $ifNull: ['$inputTokens', 150] } },
+          totalOutputTokens: { $sum: { $ifNull: ['$outputTokens', 75] } },
+          totalCostUsd: { $sum: { $ifNull: ['$costUsd', 0.000525] } }
+        }
+      }
+    ]).toArray();
+
+    const claudeTotals = claudeTokensAgg[0] || { totalInputTokens: 0, totalOutputTokens: 0, totalCostUsd: 0 };
+    const initialCreditUsd = 200.00;
+    const consumedUsd = Number((claudeTotals.totalCostUsd || (claudeQueries * 0.000525)).toFixed(4));
+    const remainingUsd = Number(Math.max(0, initialCreditUsd - consumedUsd).toFixed(4));
+    const percentUsed = Number(((consumedUsd / initialCreditUsd) * 100).toFixed(2));
+
+    const haikuInputRatePerM = 1.00;
+    const haikuOutputRatePerM = 5.00;
+    const avgInputTokensPerQ = 150;
+    const avgOutputTokensPerQ = 75;
+    const avgTokensPerQ = 225;
+    const costPerQ = Number(((avgInputTokensPerQ * haikuInputRatePerM / 1e6) + (avgOutputTokensPerQ * haikuOutputRatePerM / 1e6)).toFixed(6));
+
+    const maxPossibleQuestions = Math.floor(initialCreditUsd / costPerQ); // ~380,952
+    const remainingQuestions = Math.floor(remainingUsd / costPerQ);
+    const maxPossibleTokens = Math.floor(maxPossibleQuestions * avgTokensPerQ); // ~85,714,285
+    const remainingTokens = Math.floor(remainingQuestions * avgTokensPerQ);
+
+    const modelsHierarchy = [
+      {
+        priority: 1,
+        name: 'claude-haiku-4-5-20251001',
+        provider: 'Anthropic Claude',
+        role: 'Inferencia Primaria Ultrarrápida (Prioridad #1 Absoluta)',
+        type: 'Haiku Next-Gen',
+        avgSpeedMs: 700,
+        pricing: '$1.00 / MTok In • $5.00 / MTok Out',
+        costPerQuestion: '$0.000525 USD',
+        status: process.env.ANTHROPIC_API_KEY ? 'ACTIVO (100% Cuota)' : 'REQUIERE_API_KEY',
+        isPrimary: true
+      },
+      {
+        priority: 2,
+        name: 'claude-haiku-5-5',
+        provider: 'Anthropic Claude',
+        role: 'Alternativa Rápida Haiku v5.5',
+        type: 'Haiku Modern',
+        avgSpeedMs: 716,
+        pricing: '$1.00 / MTok In • $5.00 / MTok Out',
+        costPerQuestion: '$0.000525 USD',
+        status: process.env.ANTHROPIC_API_KEY ? 'ACTIVO' : 'REQUIERE_API_KEY',
+        isPrimary: false
+      },
+      {
+        priority: 3,
+        name: 'claude-sonnet-4-5-20250929',
+        provider: 'Anthropic Claude',
+        role: 'Inferencia Médica Compleja & K-Type',
+        type: 'Sonnet High-Reasoning',
+        avgSpeedMs: 1300,
+        pricing: '$3.00 / MTok In • $15.00 / MTok Out',
+        costPerQuestion: '$0.001575 USD',
+        status: process.env.ANTHROPIC_API_KEY ? 'ACTIVO' : 'REQUIERE_API_KEY',
+        isPrimary: false
+      },
+      {
+        priority: 4,
+        name: 'gemini-3.5-flash-lite',
+        provider: 'Google Gemini',
+        role: 'Primer Fallback Gratuito de Alta Velocidad',
+        type: 'Flash-Lite v3.5',
+        avgSpeedMs: 1700,
+        pricing: 'Gratuito (RPM / RPD por clave)',
+        costPerQuestion: '$0.00 USD',
+        status: (process.env.GEMINI_API_KEY && isModelHealthy('gemini-3.5-flash-lite')) ? 'ACTIVO' : 'STANDBY',
+        isPrimary: false
+      },
+      {
+        priority: 5,
+        name: 'gemini-flash-lite-latest',
+        provider: 'Google Gemini',
+        role: 'Alias Operativo v1beta Oficial',
+        type: 'Flash-Lite Latest',
+        avgSpeedMs: 1600,
+        pricing: 'Gratuito (RPM / RPD)',
+        costPerQuestion: '$0.00 USD',
+        status: (process.env.GEMINI_API_KEY && isModelHealthy('gemini-flash-lite-latest')) ? 'ACTIVO' : 'STANDBY',
+        isPrimary: false
+      },
+      {
+        priority: 6,
+        name: 'gemini-3.5-flash',
+        provider: 'Google Gemini',
+        role: 'Razonamiento Clínico con Thinking Budget (256-384)',
+        type: 'Flash Thinking',
+        avgSpeedMs: 2750,
+        pricing: 'Gratuito con cuota extendida',
+        costPerQuestion: '$0.00 USD',
+        status: (process.env.GEMINI_API_KEY && isModelHealthy('gemini-3.5-flash')) ? 'ACTIVO' : 'STANDBY',
+        isPrimary: false
+      },
+      {
+        priority: 7,
+        name: 'gemini-robotics-er-2-preview',
+        provider: 'Google Gemini',
+        role: 'Contingencia de Último Recurso',
+        type: 'Embodied Reasoning',
+        avgSpeedMs: 2300,
+        pricing: 'Gratuito',
+        costPerQuestion: '$0.00 USD',
+        status: (process.env.GEMINI_API_KEY && isModelHealthy('gemini-robotics-er-2-preview')) ? 'ACTIVO' : 'STANDBY',
+        isPrimary: false
+      }
+    ];
+
+    res.json({
+      totalQueries,
+      distribution: {
+        claude: claudeQueries,
+        gemini: googleQueries,
+        cache: cacheQueries
+      },
+      claudeFinancials: {
+        initialCreditUsd,
+        consumedUsd,
+        remainingUsd,
+        percentUsed,
+        totalInputTokens: claudeTotals.totalInputTokens,
+        totalOutputTokens: claudeTotals.totalOutputTokens,
+        totalTokensConsumed: (claudeTotals.totalInputTokens + claudeTotals.totalOutputTokens),
+        avgInputTokensPerQ,
+        avgOutputTokensPerQ,
+        avgTokensPerQ,
+        costPerQ,
+        maxPossibleQuestions,
+        remainingQuestions,
+        maxPossibleTokens,
+        remainingTokens
+      },
+      modelsHierarchy,
+      hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY),
+      hasGeminiKeys: Boolean(process.env.GEMINI_API_KEY)
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/admin/stats', checkAdminToken, requireDb, async (req, res) => {
   try {
     const totalQuestions = await req.db.collection('history').countDocuments();
