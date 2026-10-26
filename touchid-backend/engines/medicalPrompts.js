@@ -592,6 +592,31 @@ DOMINIO: PATOLOGÍA DE OÍDO, NARIZ, SENOS PARANASALES, FARINGOLARINGE Y CUELLO
   * Epiglotitis Aguda: Emergencia vital pediátrica (clásicamente *Haemophilus influenzae* tipo b); niño con fiebre alta, posición de trípode, disnea, estridor, ausencia de tos y disfagia con sialorrea; signo del pulgar en Rx lateral; MANEJO: NO manipular cavidad oral con bajalenguas (riesgo de laringoespasmo fatal), asegurar vía aérea de inmediato e iniciar Ceftriaxona IV.
   * Lesiones Benignas de Cuerdas Vocales: Nódulos vocales (lesión bilateral en unión de tercio anterior y dos tercios posteriores por abuso vocal crónico, 'nódulos del cantante', tratamiento foniátrico) vs Pólipos vocales (lesión típicamente unilateral, tras esfuerzo vocal agudo, tratamiento quirúrgico). Parálisis de cuerda vocal unilateral: lesión del Nervio Laríngeo Recurrente (complicación clásica de tiroidectomía).`;
 
+
+// ============================================================================
+// 23. CIRUGÍA DE TÓRAX Y TRAUMA TORÁCICO (SCHWARTZ 11ª ED., SABISTON 21ª ED., ATLS 10ª ED.)
+// ============================================================================
+const THORACIC_SURGERY_PROMPT = `ROL: Catedrático Titular de Cirugía Torácica y Cardiovascular (Schwartz Principios de Cirugía 11ª Ed., Sabiston Tratado de Cirugía 21ª Ed., Manual ATLS 10ª Ed., Shields General Thoracic Surgery 8ª Ed.).
+DOMINIO: TRAUMA TORÁCICO, CIRUGÍA PLEUROPULMONAR, DRENAJE PLEURAL Y MEDIASTINO
+- Traumatismos Torácicos con Riesgo Vital Inminente (Revisión Primaria ATLS):
+  * Neumotórax a Tensión: Diagnóstico estrictamente CLÍNICO (hipotensión/shock por colapso de retorno venoso, disnea severa, timpanismo, abolición de murmullo vesicular, ingurgitación yugular y desviación traqueal CONTRALATERAL). Jamás esperar radiografía. Conducta inmediata de emergencia: DESCOMPRESIÓN CON AGUJA gruesa (catéter 14G-16G) en el 5.º espacio intercostal línea axilar media (o 2.º espacio intercostal línea medioclavicular), seguida obligatoriamente de colocación de tubo de drenaje pleural (toracostomía con tubo).
+  * Neumotórax Abierto (Herida torácica succionante): Defecto parietal >2/3 del diámetro traqueal donde el aire entra preferentemente por la pared torácica. Manejo inmediato: Parche oclusivo de 3 LADOS (funciona como válvula unidireccional: se cierra en inspiración impidiendo entrada de aire y se abre en espiración permitiendo escape) + colocación de tubo de drenaje pleural en sitio anatómico alejado de la herida.
+  * Hemotórax Masivo: Acumulación rápida de sangre en cavidad pleural; matidez a la percusión, colapso circulatorio y shock hemorrágico. Indicaciones absolutas de TORACOTOMÍA DE URGENCIA / EMERGENCIA:
+    1) Drenaje inicial inmediato >= 1500 mL de sangre tras colocar el tubo pleural.
+    2) Sangrado continuo persistente >= 200 a 250 mL/hora durante 3 a 4 horas consecutivas.
+    3) Necesidad continua de transfusión sanguínea para mantener estabilidad hemodinámica.
+  * Tórax Inestable / Volet Costal: Fractura de 3 o más costillas consecutivas en 2 o más segmentos de su longitud; produce respiración paradójica (el segmento inestable se hunde en la inspiración y protruye en la espiración). La causa principal de hipoxemia es la CONTUSIÓN PULMONAR subyacente. Manejo: analgesia regional/epidural potente, oxigenoterapia juiciosa y fisioterapia respiratoria; ventilación mecánica con presión positiva solo si hay insuficiencia respiratoria refractaria.
+  * Taponamiento Cardíaco Traumático: Tríada de Beck (hipotensión arterial, ruidos cardíacos apagados/velados e ingurgitación yugular) + Pulso paradójico (disminución de PA sistólica >10 mmHg durante inspiración). Diagnóstico rápido: Ventana pericárdica ecográfica (FAST). Tratamiento de emergencia: Pericardiocentesis subxifoidea descompresiva (con aguja a 45° hacia hombro izquierdo) como puente a toracotomía/esternotomía de urgencia.
+- Técnica de Toracostomía y Drenaje Pleural (Sistema de Tres Frascos / Pleur-evac):
+  * Anatomía y Sitio de Inserción: 5.º espacio intercostal (a nivel de la línea mamilar en varones o pliegue inframamario), entre la línea axilar anterior y media (el "triángulo de seguridad", delimitado por pectoral mayor anterior, dorsal ancho posterior y base axilar). El tubo se introduce apoyándose sobre el BORDE SUPERIOR DE LA COSTILLA INFERIOR para evitar la laceración del paquete vasculonervioso intercostal (VAN: Vena, Arteria y Nervio, que discurren por el canal subcostal inferior).
+  * Sistema de Drenaje de Tres Cámaras / Frascos:
+    - Cámara 1 (Recolectora): Recibe y mide el débito pleural (sangre, líquido o pus).
+    - Cámara 2 (Sello de Agua): Contiene 2 cm de agua esterilizada; actúa como válvula unidireccional que permite la salida de aire o líquido del tórax e impide la entrada de aire atmosférico retrógrado. El burbujeo persistente indica fuga aérea del parénquima pulmonar o árbol bronquial. La oscilación con la respiración confirma la permeabilidad del tubo.
+    - Cámara 3 (Control de Aspiración): La altura de la columna de agua determina la presión de succión negativa ejercida sobre la cavidad pleural (habitualmente regulada a -15 o -20 cmH2O).
+- Patología Pleural y Pulmonar Quirúrgica:
+  * Empiema Pleural: Fases: 1) Fase Exudativa (líquido seroso libre; manejo con tubo de drenaje pleural y antibioticoterapia), 2) Fase Fibrinopurulenta (líquido turbio con tabiques y adherencias; manejo con Videotoracoscopia / VATS y agentes fibrinolíticos intrapleurales tPA/DNasa), 3) Fase Organizativa / Crónica (corteza fibrosa gruesa que atrapa el pulmón; manejo mandatorio: TORACOTOMÍA CON DECORTICACIÓN PLEURAL).
+  * Cáncer de Pulmón (Tratamiento Quirúrgico): Pacientes con Carcinoma Pulmonar No Microcítico (CPNM) en estadios resecables (Estadios I, II y seleccionados de IIIA sin N2 voluminoso). La intervención estándar con intención curativa es la LOBECTOMÍA PULMONAR anatómica con Linfadenectomía / Muestreo Ganglionar Mediastínico Sistemático. Neumonectomía reservada cuando el tumor invade la confluencia lobar o bronquio principal.`;
+
 function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPromptOverride = '') {
   const trimmedOverride = (systemPromptOverride || '').trim();
   const isLegacyDefault = trimmedOverride.includes('evaluador académico de élite');
@@ -651,6 +676,11 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   // 7.2. OTORRINOLARINGOLOGÍA Y CABEZA Y CUELLO (Cummings / Ramírez Camacho)
   if (/otorrino|laring|faring|otitis|o[ií]do|pabell[oó]n|t[ií]mpan|colesteatoma|rinne|weber|audiometr|hipoacusia|sordera|vppb|v[eé]rtigo|dix-hallpike|epley|m[eé]ni[eè]re|tinnitus|ac[uú]feno|neurinoma|schwannoma|epistaxis|kiesselbach|esfenopalatina|sinusitis|rinosinusitis|seno\s*(maxilar|etmoidal|frontal|esfenoidal)|hematoma\s*septal|periamigdalino|trismus|[uú]vula|crup|laringotraqueo|parainfluenza|epiglotitis|estridor|disfon[ií]a|cuerda\s*vocal|n[oó]dulo\s*vocal|p[oó]lipo\s*vocal|laringoscopia/i.test(fullText)) {
     matchedModules.push(OTORHINOLARYNGOLOGY_PROMPT);
+  }
+
+  // 7.3. CIRUGÍA DE TÓRAX Y TRAUMA TORÁCICO (Schwartz / Sabiston / ATLS)
+  if (/cirug[ií]a\s*de\s*t[oó]rax|cirug[ií]a\s*tor[aá]cic|trauma\s*tor[aá]cic|neumot[oó]rax|hemot[oó]rax|toracostom|toracotom|tubo\s*(pleural|de\s*t[oó]rax|intercostal)|drenaje\s*pleural|pleur-evac|sello\s*de\s*agua|volet|t[oó]rax\s*inestable|respiraci[oó]n\s*parad[oó]jic|contusi[oó]n\s*pulmonar|taponamiento\s*card[ií]ac|triada\s*de\s*beck|pericardiocentesis|empiema|decorticaci[oó]n|lobectom[ií]a|neumonectom[ií]a|mediastinitis|borde\s*superior\s*de\s*la\s*costilla|tri[aá]ngulo\s*de\s*seguridad/i.test(fullText)) {
+    matchedModules.push(THORACIC_SURGERY_PROMPT);
   }
 
   // 8. HISTOLOGÍA Y BIOLOGÍA TISULAR (Ross / Junqueira)
@@ -767,6 +797,7 @@ module.exports = {
   HISTOLOGY_PROMPT,
   DERMATOLOGY_PROMPT,
   OTORHINOLARYNGOLOGY_PROMPT,
+  THORACIC_SURGERY_PROMPT,
   GENETICS_PROMPT,
   SEMIOLOGY_PROMPT,
   ANATOMY_PROMPT,
