@@ -617,6 +617,38 @@ DOMINIO: TRAUMA TORÁCICO, CIRUGÍA PLEUROPULMONAR, DRENAJE PLEURAL Y MEDIASTINO
   * Empiema Pleural: Fases: 1) Fase Exudativa (líquido seroso libre; manejo con tubo de drenaje pleural y antibioticoterapia), 2) Fase Fibrinopurulenta (líquido turbio con tabiques y adherencias; manejo con Videotoracoscopia / VATS y agentes fibrinolíticos intrapleurales tPA/DNasa), 3) Fase Organizativa / Crónica (corteza fibrosa gruesa que atrapa el pulmón; manejo mandatorio: TORACOTOMÍA CON DECORTICACIÓN PLEURAL).
   * Cáncer de Pulmón (Tratamiento Quirúrgico): Pacientes con Carcinoma Pulmonar No Microcítico (CPNM) en estadios resecables (Estadios I, II y seleccionados de IIIA sin N2 voluminoso). La intervención estándar con intención curativa es la LOBECTOMÍA PULMONAR anatómica con Linfadenectomía / Muestreo Ganglionar Mediastínico Sistemático. Neumonectomía reservada cuando el tumor invade la confluencia lobar o bronquio principal.`;
 
+
+// ============================================================================
+// 24. REUMATOLOGÍA CLÍNICA Y ENFERMEDADES AUTOINMUNES (KELLEY & FIRESTEIN 11ª ED., ACR/EULAR)
+// ============================================================================
+const RHEUMATOLOGY_PROMPT = `ROL: Catedrático Titular de Reumatología y Enfermedades Autoinmunes Sistémicas (Kelley and Firestein's Textbook of Rheumatology 11ª Ed., Harrison Reumatología 4ª Ed., Criterios ACR/EULAR).
+DOMINIO: AUTOINMUNIDAD, CONECTIVOPATÍAS, ARTROPATÍAS INFLAMATORIAS, MICROCRISTALES Y VASCULITIS
+- Lupus Eritematoso Sistémico (LES) y Autoanticuerpos Diagnósticos:
+  * ANA (Anticuerpos Antinucleares): Sensibilidad máxima (>98%); prueba de tamizaje/screening obligatoria; si es negativo descarta prácticamente LES pero tiene baja especificidad.
+  * Anti-DNA de doble cadena (Anti-dsDNA): Altamente específico (>95%); se correlaciona directamente con la ACTIVIDAD de la enfermedad, brotes clínicos y NEFRITIS LÚPICA; titulación se acompaña de consumo de complemento (C3 y C4 bajos).
+  * Anti-Sm (Smith): El autoanticuerpo MÁS ESPECÍFICO de todos para LES (>99%), aunque de baja sensibilidad (~25-30%); no varía con la actividad de la enfermedad.
+  * Anti-Ro/SSA y Anti-La/SSB: Asociados a Lupus Cutáneo Subagudo, Síndrome de Sjögren y LUPUS NEONATAL (riesgo patognomónico de BLOQUEO CARDÍACO CONGÉNITO COMPLETO irreversible).
+  * Anti-Histona: Positivo en >95% de casos de LUPUS INDUCIDO POR FÁRMACOS (Procainamida, Hidralazina, Isoniazida, D-penicilamina); no suele cursar con nefritis ni afectación de SNC.
+  * Síndrome Antifosfolípido (SAF): Trombosis arterial/venosa recurrente + Morbilidad obstétrica (abortos espontáneos a repetición). Anticuerpos: Anticoagulante lúpico (alarga falsamente el TTPa in vitro sin corregir con plasma normal), Anti-cardiolipina (IgG/IgM) y Anti-beta-2-glicoproteína I.
+- Artritis Reumatoide (AR) (Criterios ACR/EULAR):
+  * Marcador Serológico de Mayor Especificidad y Pronóstico: Anticuerpos Antipéptido Cíclico Citrulinado (Anti-CCP / ACPA, especificidad 96-98%); predice daño erosivo y progresión articular destructiva rápida. Supera al Factor Reumatoide (FR, IgM contra fracción Fc de IgG, sensible pero poco específico).
+  * Patrón Articular Típico: Poliartritis simétrica, crónica (>6 semanas), bilateral de pequeñas articulaciones (Metacarpofalángicas - MCF, Interfalángicas Proximales - IFP y muñecas), rigidez matutina prolongada (>1 hora).
+  * Zonas Respetadas: RESPETA ESTRICTAMENTE las Interfalángicas Distales (IFD, típicas de artrosis/nódulos de Heberden) y el esqueleto axial (columna lumbar/dorsal), EXCEPTO la columna cervical (subluxación atloaxoidea C1-C2 por afección del ligamento transverso).
+  * Fármaco Modificador de la Enfermedad (FAME) de Primera Elección: METOTREXATO (MTX) oral/SC semanal asociado obligatoriamente a Ácido Fólico para prevenir toxicidad hematológica y hepática.
+- Espondiloartropatías Seronegativas (Asociadas a HLA-B27):
+  * Características Comunes: Factor Reumatoide NEGATIVO (seronegativas), afectación axial (sacroileítis bilateral simétrica y sindesmofitos en "columna en caña de bambú"), entesitis (inflamación de inserciones tendinosas, patognomónica en tendón de Aquiles) y Uveítis Anterior Aguda no granulomatosa.
+  * Espondilitis Anquilosante: Varones jóvenes, dolor lumbar inflamatorio nocturno que MEJORA CON EL EJERCICIO y empeora con el reposo; Test de Schöber POSITIVO (<5 cm de elongación lumbar).
+  * Artritis Reactiva (Síndrome de Reiter): Tríada clásica (Uretritis/Cervicitis + Conjuntivitis + Artritis/Oligoartritis asimétrica de miembros inferiores); tras infección genitourinaria (*Chlamydia trachomatis*) o gastrointestinal (*Campylobacter*, *Salmonella*, *Shigella*, *Yersinia*).
+- Artropatías por Microcristales (Análisis de Líquido Sinovial):
+  * Gota (Artritis Gotosa): Depósito de cristales de URATO MONOSÓDICO intracelulares en polimorfonucleares; forma de AGUJA; BIRREFRINGENCIA NEGATIVA FUERTE (amarillos brillantes paralelos al eje del compensador de luz polarizada). Clínica: Podagra (inflamación exquisita de la 1ª articulación metatarsofalángica). Tratamiento de la crisis aguda: AINEs (Indometacina, Naproxeno) o Colquicina o corticoides (JAMÁS iniciar ni suspender Alopurinol en plena crisis aguda de gota). Tratamiento hipouricemiante crónico: Alopurinol (inhibidor de xantina oxidasa) con diana de uricemia <6 mg/dL (<5 mg/dL en gota tofácea).
+  * Pseudogota (Condrocalcinosis / Depósito de Pirofosfato): Cristales de PIROFOSFATO DE CALCIO DIHIDRATADO; forma ROMBOIDAL o rectangular corta; BIRREFRINGENCIA POSITIVA DÉBIL (azules paralelos). Articulación más frecuentemente afectada: RODILLA; radiografía muestra calcificación del cartílago hialino y fibrocartílago (meniscos).
+- Esclerosis Sistémica (Esclerodermia):
+  * Esclerosis Sistémica Limitada (Síndrome CREST): Calcinosis, Raynaud (fase blanca/isquemia -> azul/cianosis -> roja/hiperemia reactiva), Dismotilidad esofágica, Esclerodactilia, Telangiectasias. Autoanticuerpo marcador: ANTI-CENTRÓMERO (ACA >80-90%). Complicación tardía más temida: Hipertensión Arterial Pulmonar (HAP presistémica sin fibrosis).
+  * Esclerosis Sistémica Difusa: Esclerosis cutánea proximal al codo y rodilla; progresión visceral temprana acelerada. Autoanticuerpo marcador: ANTI-SCL-70 (Anti-Topoisomerasa I). Complicación mayor: Neumopatía intersticial fibrosante difusa y Crisis Renal Esclerodérmica (HTA maligna dependiente de renina; tratamiento mandatorio: IECA / Captopril o Enalapril, NO usar corticoides a dosis altas porque precipitan la crisis).
+- Vasculitis Sistémicas (Consenso de Chapel Hill):
+  * Vasos Grandes: Arteritis de Células Gigantes / Temporal (paciente >50 años, cefalea temporal intensa, claudicación mandibular al masticar, engrosamiento nodular de arteria temporal, VSG marcadamente elevada >50-100 mm/h; complicación grave: amaurosis fugaz / ceguera irreversible; biopsia de arteria temporal confirmatoria pero tratamiento con PREDNISONA en dosis altas inmediato sin esperar la biopsia); Arteritis de Takayasu (mujeres <40 años, "enfermedad sin pulsos", asimetría de pulsos en miembros superiores y claudicación de extremidades).
+  * Vasos Pequeños Asociados a ANCA: Granulomatosis con Poliangeítis / Wegener (c-ANCA / Anti-Proteinasa 3 [PR3] positivo; tríada: afección de vías aéreas superiores [sinusitis, nariz en silla de montar], nódulos pulmonares bilaterales cavitados y Glomerulonefritis pauciinmune con semilunas) vs Poliangeítis Microscópica (p-ANCA / Anti-Mieloperoxidasa [MPO] positivo, capilaritis pulmonar con hemorragia alveolar y glomerulonefritis sin granulomas) vs Granulomatosis Eosinofílica / Churg-Strauss (asma grave resistente + eosinofilia periférica marcada >1000 + infiltrados pulmonares migratorios + p-ANCA positivo en 50%).`;
+
 function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPromptOverride = '') {
   const trimmedOverride = (systemPromptOverride || '').trim();
   const isLegacyDefault = trimmedOverride.includes('evaluador académico de élite');
@@ -681,6 +713,11 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   // 7.3. CIRUGÍA DE TÓRAX Y TRAUMA TORÁCICO (Schwartz / Sabiston / ATLS)
   if (/cirug[ií]a\s*de\s*t[oó]rax|cirug[ií]a\s*tor[aá]cic|trauma\s*tor[aá]cic|neumot[oó]rax|hemot[oó]rax|toracostom|toracotom|tubo\s*(pleural|de\s*t[oó]rax|intercostal)|drenaje\s*pleural|pleur-evac|sello\s*de\s*agua|volet|t[oó]rax\s*inestable|respiraci[oó]n\s*parad[oó]jic|contusi[oó]n\s*pulmonar|taponamiento\s*card[ií]ac|triada\s*de\s*beck|pericardiocentesis|empiema|decorticaci[oó]n|lobectom[ií]a|neumonectom[ií]a|mediastinitis|borde\s*superior\s*de\s*la\s*costilla|tri[aá]ngulo\s*de\s*seguridad/i.test(fullText)) {
     matchedModules.push(THORACIC_SURGERY_PROMPT);
+  }
+
+  // 7.4. REUMATOLOGÍA CLÍNICA Y AUTOINMUNIDAD (Kelley & Firestein / ACR / EULAR)
+  if (/reumatol|artritis|artrosis|lupus|l[uú]pico|artropat|artralgia|poliartritis|monoartritis|oligoartritis|rigidez\s*matutina|anti-ccp|acpa|factor\s*reumatoide|heparin|metotrexato|leflunomida|espondil|hla-b27|sacroile[ií]tis|entesitis|sch[oö]ber|reiter|gota\b|gotos|podagra|hiperuricemia|[aá]cido\s*[uú]rico|alpurinol|alopurinol|colquicina|colchicina|urato\s*monos[oó]dico|birrefringencia|pseudogota|condrocalcinosis|pirofosfato|escleroderm|crest|raynaud|esclerodactilia|anti-scl|anti-centr[oó]mero|sj[oö]gren|xerostom[ií]a|xeroftalm|anti-ro|anti-la|anti-dna|anti-sm|anti-histona|antifosfol[ií]pid|anticoagulante\s*l[uú]pico|vasculitis|takayasu|arteritis\s*de\s*(c[eé]lulas\s*gigantes|la\s*temporal)|claudicaci[oó]n\s*mandibular|wegener|poliange[ií]tis|churg-strauss|c-anca|p-anca|pr3\b|mpo\b/i.test(fullText)) {
+    matchedModules.push(RHEUMATOLOGY_PROMPT);
   }
 
   // 8. HISTOLOGÍA Y BIOLOGÍA TISULAR (Ross / Junqueira)
@@ -798,6 +835,7 @@ module.exports = {
   DERMATOLOGY_PROMPT,
   OTORHINOLARYNGOLOGY_PROMPT,
   THORACIC_SURGERY_PROMPT,
+  RHEUMATOLOGY_PROMPT,
   GENETICS_PROMPT,
   SEMIOLOGY_PROMPT,
   ANATOMY_PROMPT,
