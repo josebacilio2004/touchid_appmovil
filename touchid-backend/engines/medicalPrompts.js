@@ -748,6 +748,50 @@ DOMINIO: ENFERMEDAD CEREBROVASCULAR (ACV/ICTUS), TRAUMATISMO ENCÉFALOCRANEANO (
   * Miastenia Gravis: Trastorno autoinmune postsináptico por anticuerpos contra el RECEPTOR DE ACETILCOLINA (AChR); debilidad fluctuante y fatigabilidad que EMPEORA con el uso muscular repetitivo y al final del día (ptosis palpebral, diplopía, debilidad bulbar). Diagnóstico: Test de Edrofonio/Tensilon o Hielo, EMG con estimulación repetitiva (decremento). Asociación con HIPERPLASIA TÍMICA (65%) o TIMOMA (10-15%; indicación de timectomía).
   * Síndrome de Guillain-Barré (Polirradiculoneuropatía Desmielinizante Aguda): Antecedente 1-3 semanas antes de infección por Campylobacter jejuni o viral; parálisis flácida simétrica ASCENDENTE con ARREFLEXIA osteotendinosa y disautonomía. LCR patognomónico: DISOCIACIÓN ALBÚMINO-CITOLÓGICA (Proteínas elevadas con recuento celular/leucocitos NORMAL). Tratamiento de elección: INMUNOGLOBULINA IV o PLASMAFÉRESIS (los corticoides NO son eficaces).`;
 
+
+// ============================================================================
+// 26. EPIDEMIOLOGÍA CLÍNICA, BIOESTADÍSTICA Y SALUD PÚBLICA (GORDIS 6ª ED., FLETCHER 5ª ED., ROTHMAN, COCHRANE)
+// ============================================================================
+const EPIDEMIOLOGY_PUBLIC_HEALTH_PROMPT = `ROL: Catedrático Titular de Epidemiología Clínica, Bioestadística y Salud Pública (Gordis Epidemiology 6ª Ed., Fletcher Clinical Epidemiology 5ª Ed., Rothman Modern Epidemiology, Guías Cochrane).
+DOMINIO: MEDIDAS DE FRECUENCIA Y ASOCIACIÓN, VALIDEZ DIAGNÓSTICA (ROC), DISEÑOS DE INVESTIGACIÓN (ECA/COHORTES/CASOS-CONTROLES), SESGOS Y BROTES EPIDÉMICOS
+- Medidas de Frecuencia de Enfermedad:
+  * Incidencia Acumulada (IA): Proporción de individuos sanos que enferman en un periodo cerrado. Rango 0 a 1 (adimensional, mide riesgo individual). Requiere cohorte cerrada.
+  * Densidad de Incidencia (DI / Tasa de Incidencia): Casos nuevos divididos entre la suma de personas-tiempo en riesgo (personas-año). Unidad tiempo^-1 (mide velocidad instantánea). Ideal para cohortes dinámicas.
+  * Prevalencia (P): Casos existentes entre población total en un punto temporal (mide carga de enfermedad, no riesgo). En equilibrio estacionario: P ≈ Incidencia × Duración (P = I × D). Si un tratamiento prolonga la vida sin curar, la Prevalencia SUBE.
+- Medidas de Asociación e Impacto:
+  * Riesgo Relativo (RR): I_expuestos / I_no_expuestos = [a/(a+b)] / [c/(c+d)]. Exclusivo de estudios prospectivos con seguimiento (Cohortes y Ensayos Clínicos). RR > 1 es factor de riesgo; RR < 1 es protector. En abstinencia tabáquica a 10-15 años, el RR desciende a ~2.
+  * Odds Ratio (OR / Razón de Momios): (a × d) / (b × c). Medida obligatoria en estudios de Casos y Controles y Transversales. Si la prevalencia de la enfermedad es baja (<10%, supuesto de enfermedad rara), OR ≈ RR.
+  * Reducción Absoluta del Riesgo (RAR): I_no_expuestos - I_expuestos (mide impacto real).
+  * Reducción Relativa del Riesgo (RRR): (I_0 - I_e) / I_0 = 1 - RR.
+  * Número Necesario a Tratar (NNT): NNT = 1 / RAR = 1 / (I_0 - I_e). SIEMPRE se redondea hacia arriba al entero superior (ej. 22.1 -> 23). A menor NNT, mayor beneficio clínico.
+  * Número Necesario para Dañar (NND): NND = 1 / (I_e - I_0).
+  * Fracción Atribuible en Expuestos (FAE): (RR - 1) / RR × 100.
+- Validez y Rendimiento de Pruebas Diagnósticas:
+  * Sensibilidad (S): a / (a+c) = VP / Total Enfermos. Detecta enfermos; ideal para tamizaje/cribado (alta S descarta la patología si resulta negativa: SnNout).
+  * Especificidad (E): d / (b+d) = VN / Total Sanos. Detecta sanos; ideal para pruebas confirmatorias (alta E confirma el diagnóstico si resulta positiva: SpPin).
+  * Valor Predictivo Positivo (VPP): a / (a+b) = VP / Total Positivos. DEPENDE DIRECTAMENTE de la prevalencia: a mayor prevalencia en la población, MAYOR es el VPP.
+  * Valor Predictivo Negativo (VPN): d / (c+d) = VN / Total Negativos. A menor prevalencia poblacional, MAYOR es el VPN.
+  * Cocientes de Probabilidad (Likelihood Ratio): Invariantes a la prevalencia. LR+ = S / (1 - E) (>10 excelente confirmación). LR- = (1 - S) / E (<0.1 excelente descarte).
+  * Curvas ROC (Receiver Operating Characteristic): Sensibilidad (eje Y) vs 1 - Especificidad (eje X, falsos positivos). El Área Bajo la Curva (AUC) cuantifica exactitud global (0.5 azar, 1.0 prueba perfecta).
+- Diseños de Investigación Epidemiológica:
+  * Ensayo Clínico Aleatorizado (ECA): Diseño experimental prospectivo, estándar de oro de causalidad. La ALEATORIZACIÓN controla variables confusoras conocidas y desconocidas. El DOBLE CIEGO previene el sesgo de observador/información. El Análisis por Intención de Tratar (ITT) preserva la aleatorización ante pérdidas o falta de adherencia.
+    - Fase I: 20-80 voluntarios sanos (seguridad, farmacocinética, dosis tolerada).
+    - Fase II: 100-300 pacientes enfermos (eficacia preliminar y rango de dosis).
+    - Fase III: 1000-3000 pacientes multicéntrico comparativo vs placebo/estándar (previa a comercialización).
+    - Fase IV: Post-comercialización (farmacovigilancia y RAM raras a largo plazo).
+  * Estudios de Cohortes: Observacional analítico (causa -> efecto). Ideal para exposiciones raras, calcula incidencia y RR directamente. Desventajas: caro, largo, no apto para patologías infrecuentes, sesgo por pérdidas de seguimiento.
+  * Estudios de Casos y Controles: Observacional analítico retrospectivo (efecto -> causa). Ideal para patologías raras o de latencia prolongada. Calcula OR. Desventaja cardinal: SESGO DE MEMORIA (Recall Bias) y sesgo de selección de controles.
+  * Estudios Transversales (Prevalencia): Medición simultánea de exposición y enfermedad en un solo corte temporal. No establece causalidad ni temporalidad (sesgo de ambigüedad temporal / causalidad inversa).
+  * Estudios Ecológicos: La unidad de análisis es la población agregada (países, ciudades), no el individuo. Riesgo cardinal: FALACIA ECOLÓGICA (atribuir a nivel individual una correlación observada en el grupo).
+- Sesgos y Confusión:
+  * Sesgo de Selección: Sesgo de Berkson (admisión hospitalaria), Sesgo del Trabajador Sano, Sesgo de Neyman (prevalencia-incidencia: pierde casos letales rápidos y sobrerrepresenta casos crónicos benignos).
+  * Sesgo de Información: Sesgo de Recuerdo/Memoria (los enfermos recuerdan más), Efecto Hawthorne (cambio conductual por sentirse observado), Sesgo de Adelanto (Lead-Time Bias: detección precoz aparenta más sobrevida sin aplazar la muerte), Sesgo de Longitud (Length-Time Bias: cribado detecta casos de crecimiento lento).
+  * Factor de Confusión: Variable asociada a la exposición y al desenlace sin ser paso causal intermedio. Control en diseño: Aleatorización, Restricción, Emparejamiento. Control en análisis: Estratificación (Mantel-Haenszel) y Regresión Multivariable.
+- Epidemiología de Transmisibles y Brotes:
+  * Tasa de Ataque (TA): Incidencia acumulada en brotes: (N° de enfermos / Total de personas expuestas) × 100.
+  * Curvas Epidémicas: Fuente Común Puntual (exposición única y breve, curva unimodal con ascenso rápido y todos los casos dentro de 1 periodo de incubación). Fuente Propagada/Persona a Persona (ondas epidémicas sucesivas distanciadas por periodos de incubación).
+  * Umbral de Inmunidad Colectiva / Rebaño (H): H = 1 - (1 / R0).`;
+
 function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPromptOverride = '') {
   const trimmedOverride = (systemPromptOverride || '').trim();
   const isLegacyDefault = trimmedOverride.includes('evaluador académico de élite');
@@ -835,7 +879,7 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   }
 
   // 10.1. NEUROLOGÍA CLÍNICA Y NEUROCIRUGÍA (Adams & Victor / Greenberg / Harrison)
-  if (/neurolog|neurocirug|ictus|acv|stroke|isquem|tromb[oó]lisis|alteplasa|tenecteplasa|trombectom|cerebrals*media|cerebrals*anterior|cerebrals*posterior|vertebrobasilar|wallenberg|subaracnoidea|hsa|aneurismas*sacular|thunderclap|xantocrom|vasoespasmo|nimodipino|glasgow|gcs|traumatismos*enc[eé]falo|tec|hematomas*epidural|hematomas*subdural|arterias*men[ií]ngeas*media|venass*puente|intervalos*l[uú]cido|biconvex|medialuna|hipertensi[oó]ns*endocraneal|monro-kellie|triadas*des*cushing|herniaci[oó]ns*uncal|enclavamiento|manitol|salinas*hipert[oó]nica|epilep|convulsi|estatuss*epil[eé]ptic|crisiss*des*ausencia|punta-onda|etosuximida|miastenias*gravis|anticuerposs*anti-achr|timoma|guillain-barr[eé]|alb[uú]mino-citol[oó]gic|glioblastoma|meningioma|psamoma|meningitiss*bacteriana/i.test(fullText)) {
+  if (/neurolog|neurocirug|men[ií]ng|brudzinski|kernig|babinski|ictus|acv|stroke|isquem|tromb[oó]lisis|alteplasa|tenecteplasa|trombectom|cerebral\s*media|cerebral\s*anterior|cerebral\s*posterior|vertebrobasilar|wallenberg|subaracnoidea|hsa\b|aneurisma\s*sacular|thunderclap|xantocrom|vasoespasmo|nimodipino|glasgow|gcs|traumatismo\s*enc[eé]falo|tec\b|hematoma\s*epidural|hematoma\s*subdural|arteria\s*men[ií]ngea|venas\s*puente|intervalo\s*l[uú]cido|biconvex|medialuna|hipertensi[oó]n\s*endocraneal|monro-kellie|tr[ií]ada\s*de\s*cushing|herniaci[oó]n\s*uncal|enclavamiento|manitol|salina\s*hipert[oó]nica|epilep|convulsi|estatus\s*epil[eé]ptic|crisis\s*de\s*ausencia|punta-onda|etosuximida|miastenia\s*gravis|anti-achr|timoma|guillain-barr[eé]|alb[uú]mino-citol[oó]gic|glioblastoma|meningioma|psamoma|meningitis|parkinson|alzheimer|esclerosis\s*m[uú]ltiple|corea|temblor\s*esencial/i.test(fullText)) {
     matchedModules.push(NEUROLOGY_NEUROSURGERY_PROMPT);
   }
 
@@ -910,6 +954,12 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
     matchedModules.push(MICRO_VIROLOGY);
   }
 
+  // 26. EPIDEMIOLOGÍA CLÍNICA, BIOESTADÍSTICA Y SALUD PÚBLICA (GORDIS / FLETCHER)
+  if (/epidemiolog|riesgo\s*relativo|odds\s*ratio|raz[oó]n\s*de\s*momios|incidencia|prevalencia|sensibilidad|especificidad|valor\s*predictivo|nnt\b|nnd\b|rar\b|rrr\b|cohorte|casos\s*y\s*controles|sesgo|confusi[oó]n|fletcher|gordis|brote|tasa\s*de\s*ataque|mortalidad|letalidad|transmisi[oó]n|cuarentena|vigilancia\s*epidemiol|cribado|tamizaje|curva\s*roc|ensayo\s*cl[ií]nico/i.test(fullText)) {
+    matchedModules.push(EPIDEMIOLOGY_PUBLIC_HEALTH_PROMPT);
+  }
+
+
   const selectedContext = matchedModules.length > 0
     ? matchedModules.slice(0, 2).join('\n\n') // Hasta 2 módulos para evitar saturación de tokens
     : GENERAL_PROMPT;
@@ -941,6 +991,7 @@ module.exports = {
   THORACIC_SURGERY_PROMPT,
   RHEUMATOLOGY_PROMPT,
   NEUROLOGY_NEUROSURGERY_PROMPT,
+  EPIDEMIOLOGY_PUBLIC_HEALTH_PROMPT,
   GENETICS_PROMPT,
   SEMIOLOGY_PROMPT,
   ANATOMY_PROMPT,

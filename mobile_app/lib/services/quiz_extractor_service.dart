@@ -67,23 +67,27 @@ class QuizExtractorService {
 
   // Revisar si hay contenido en iframes accesibles (Moodle / simuladores embebidos)
   if (allRadios.length === 0 && allCheckboxes.length === 0) {
-    var iframes = doc.querySelectorAll('iframe');
-    for (var f = 0; f < iframes.length; f++) {
-      try {
-        var idoc = iframes[f].contentDocument || iframes[f].contentWindow.document;
-        if (idoc) {
-          var ifRadios = Array.from(idoc.querySelectorAll('input[type="radio"]'));
-          if (ifRadios.length > 0) {
-            allRadios = ifRadios;
-            allCheckboxes = Array.from(idoc.querySelectorAll('input[type="checkbox"]'));
-            allSelects = Array.from(idoc.querySelectorAll('select'));
-            allTextareas = Array.from(idoc.querySelectorAll('textarea'));
-            doc = idoc;
-            break;
+    try {
+      var iframes = doc.querySelectorAll('iframe');
+      for (var f = 0; f < iframes.length; f++) {
+        try {
+          var ifr = iframes[f];
+          var idoc = null;
+          try { idoc = ifr.contentDocument || (ifr.contentWindow && ifr.contentWindow.document); } catch(_) {}
+          if (idoc) {
+            var ifRadios = Array.from(idoc.querySelectorAll('input[type="radio"]'));
+            if (ifRadios.length > 0) {
+              allRadios = ifRadios;
+              allCheckboxes = Array.from(idoc.querySelectorAll('input[type="checkbox"]'));
+              allSelects = Array.from(idoc.querySelectorAll('select'));
+              allTextareas = Array.from(idoc.querySelectorAll('textarea'));
+              doc = idoc;
+              break;
+            }
           }
-        }
-      } catch(e) {}
-    }
+        } catch(e) {}
+      }
+    } catch(_) {}
   }
 
   var visibleRadios = allRadios.filter(isElementVisible);
@@ -516,17 +520,21 @@ class QuizExtractorService {
 
     // Revisar iframes si no hay radios en el documento principal
     if (allRadios.length === 0) {
-      var iframes = doc.querySelectorAll('iframe');
-      for (var f = 0; f < iframes.length; f++) {
-        try {
-          var idoc = iframes[f].contentDocument || iframes[f].contentWindow.document;
-          if (idoc && idoc.querySelectorAll('input[type="radio"]').length > 0) {
-            doc = idoc;
-            allRadios = Array.from(doc.querySelectorAll('input[type="radio"]'));
-            break;
-          }
-        } catch(e) {}
-      }
+      try {
+        var iframes = doc.querySelectorAll('iframe');
+        for (var f = 0; f < iframes.length; f++) {
+          try {
+            var ifr = iframes[f];
+            var idoc = null;
+            try { idoc = ifr.contentDocument || (ifr.contentWindow && ifr.contentWindow.document); } catch(_) {}
+            if (idoc && idoc.querySelectorAll('input[type="radio"]').length > 0) {
+              doc = idoc;
+              allRadios = Array.from(doc.querySelectorAll('input[type="radio"]'));
+              break;
+            }
+          } catch(e) {}
+        }
+      } catch(_) {}
     }
 
     var visibleRadios = allRadios.filter(function(r) {
@@ -614,19 +622,26 @@ class QuizExtractorService {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch(_) {}
 
-      // 2. Foco y marcado directo
+      // 2. Eventos iniciales de ratón y foco
+      try { targetElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); } catch(_) {}
       try { targetElement.focus(); } catch(_) {}
+      try { targetElement.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true })); } catch(_) {}
+
+      // 3. Marcado con setter nativo de HTMLInputElement para frameworks reactivos (React/Vue/Angular/Moodle)
       if (targetElement.tagName === 'INPUT') {
-        targetElement.checked = true;
+        try {
+          var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'checked');
+          if (nativeSetter && nativeSetter.set) {
+            nativeSetter.set.call(targetElement, true);
+          } else {
+            targetElement.checked = true;
+          }
+        } catch(e) {
+          targetElement.checked = true;
+        }
       }
 
-      // 3. Despacho de eventos nativos para frameworks reactivos y Moodle/UDABOL
-      try {
-        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
-        targetElement.dispatchEvent(new Event('change', { bubbles: true }));
-      } catch(_) {}
-
-      // 4. Disparar click sobre el elemento principal y su label
+      // 4. Disparar click en targetElement y en label asociado
       try {
         targetElement.click();
       } catch(_) {}
@@ -636,6 +651,12 @@ class QuizExtractorService {
           labelElement.click();
         } catch(_) {}
       }
+
+      // 5. Despacho de eventos de cambio reactivo (input -> change)
+      try {
+        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+        targetElement.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch(_) {}
 
       return JSON.stringify({
         success: true,

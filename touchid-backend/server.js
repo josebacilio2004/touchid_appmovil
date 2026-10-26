@@ -148,7 +148,7 @@ function buildGenerationConfig(modelCfg, activeSchema) {
 // Verificación en Sombra Asíncrona (Fire-and-Forget Anti-Poisoning)
 async function triggerShadowVerification(db, question, options, isKType, canonicalSig, rawApiKeys) {
   try {
-    const verifyCandidateModels = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-robotics-er-2-preview'];
+    const verifyCandidateModels = ['gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'];
     let verifyModel = verifyCandidateModels.find(m => (rawApiKeys || []).some(k => !isKeyModelDailyExhausted(k, m) && isKeyHealthy(k))) || verifyCandidateModels[0];
     const candidateKeys = (rawApiKeys || []).filter(k => !isKeyModelDailyExhausted(k, verifyModel) && isKeyHealthy(k));
     if (candidateKeys.length === 0) return;
@@ -237,6 +237,61 @@ async function triggerShadowVerification(db, question, options, isKType, canonic
 }
 
 
+
+
+// ============================================================================
+// INTEGRACIÓN HÍBRIDA ANTHROPIC CLAUDE (ALTA VELOCIDAD Y PRECISIÓN CLÍNICA)
+// ============================================================================
+async function callAnthropicClaude({ prompt, systemInstructionText, isKType, options, timeoutMs = 4500 }) {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const startTime = Date.now();
+
+  try {
+    const jsonInstruction = isKType
+      ? 'Responde ÚNICAMENTE un objeto JSON válido con este formato: {"subject": "...", "propositions": [{"index": 1, "is_true": true, "fact_check": "..."}], "suggested_letter": "A", "explanation": "max 15 words"}.'
+      : 'Responde ÚNICAMENTE un objeto JSON válido con este formato: {"subject": "...", "options_evaluation": [{"index": 0, "verdict": "VERDADERO/FALSO", "trap_check": "..."}], "correct_option_index": 0, "correct_option_letter": "A", "correct_option_text": "...", "explanation": "max 15 words"}.';
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        temperature: 0.0,
+        system: (systemInstructionText || '') + '\n\n' + jsonInstruction,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const errTxt = await res.text();
+      console.warn(`[CLAUDE-ERROR] HTTP ${res.status}: ${errTxt.slice(0, 100)}`);
+      return null;
+    }
+
+    const data = await res.json();
+    const rawContent = data.content?.[0]?.text || '';
+    const cleanJson = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanJson);
+    const elapsed = Date.now() - startTime;
+    console.log(`[RESOLVED-SPEED] Claude Haiku resolvió en ${elapsed}ms`);
+    return { result: parsed, modelUsed: 'claude-haiku-4-5-20251001', elapsed };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.warn(`[CLAUDE-EXCEPTION] ${err.message}`);
+    return null;
+  }
+}
 
 let lastConnectionFailure = 0;
 const FAILURE_COOLDOWN_MS = 30000;
@@ -515,11 +570,20 @@ app.post('/credits/set', async (req, res) => {
 app.post('/solve', async (req, res) => {
   const { userId, question, options, systemPrompt } = req.body;
 
-  if (!userId || !question) {
-    return res.status(400).json({ error: 'Faltan parámetros obligatorios.' });
+  // Validación estricta anti-NoSQL Injection
+  if (!userId || typeof userId !== 'string' || !question || typeof question !== 'string') {
+    return res.status(400).json({ error: 'Parámetros obligatorios faltantes o inválidos (userId y question deben ser texto plano).' });
+  }
+
+  if (options !== undefined && options !== null) {
+    if (!Array.isArray(options) || !options.every(o => typeof o === 'string')) {
+      return res.status(400).json({ error: 'options debe ser un arreglo de cadenas.' });
+    }
   }
 
   let isUnlimited = (userId === 'unlimited_user_touchid');
+  let deductedCredit = false;
+  let remainingCredits = null;
   let database = null;
 
   try {
@@ -528,33 +592,42 @@ app.post('/solve', async (req, res) => {
     console.warn('⚠️ DB no disponible al verificar créditos para solve:', dbErr.message);
   }
 
-  // Si no es el ID fijo de ilimitado, verificar contra DB si está disponible
+  // Pre-descuento atómico de créditos (Blindaje Anti-TOCTOU)
   if (!isUnlimited && database) {
     try {
-      const userDoc = await database.collection('users').findOne({ _id: userId });
-      if (userDoc && userDoc.isUnlimited === true) {
-        isUnlimited = true;
-      }
+      const userUpdate = await database.collection('users').findOneAndUpdate(
+        { _id: userId, $or: [{ isUnlimited: true }, { credits: { $gt: 0 } }] },
+        { $inc: { credits: -1 }, $set: { updatedAt: new Date() } },
+        { returnDocument: 'after' }
+      );
 
-      if (!isUnlimited) {
-        if (!userDoc) {
+      const updatedUser = userUpdate?.value ?? userUpdate;
+      if (!updatedUser) {
+        const checkUser = await database.collection('users').findOne({ _id: userId });
+        if (!checkUser) {
           return res.status(403).json({ error: 'Usuario no registrado. Registra créditos primero.' });
         }
+        return res.status(402).json({ error: 'Créditos insuficientes. Adquiere más créditos en el Dashboard.' });
+      }
 
-        const credits = userDoc.credits || 0;
-        if (credits <= 0) {
-          return res.status(402).json({ error: 'Créditos insuficientes. Adquiere más créditos en el Dashboard.' });
-        }
+      if (updatedUser.isUnlimited === true) {
+        isUnlimited = true;
+        // Revertir descuento preventivo para usuarios ilimitados
+        await database.collection('users').updateOne({ _id: userId }, { $inc: { credits: 1 } }).catch(() => {});
+        remainingCredits = 999999;
+      } else {
+        deductedCredit = true;
+        remainingCredits = updatedUser.credits ?? 0;
       }
     } catch (chkErr) {
-      console.error('Error verificando usuario en DB:', chkErr);
+      console.error('Error al realizar pre-descuento atómico de crédito:', chkErr);
     }
   }
 
   try {
     const rawApiKeys = (process.env.GEMINI_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
-    if (rawApiKeys.length === 0) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY no configurada en el servidor Render.' });
+    if (rawApiKeys.length === 0 && !process.env.ANTHROPIC_API_KEY) {
+      return res.status(500).json({ error: 'No hay API keys de IA configuradas en el servidor Render.' });
     }
 
     // Rescate inteligente de contingencia en backend si la pregunta enviada por la app es una cabecera
@@ -630,11 +703,40 @@ app.post('/solve', async (req, res) => {
     let parsedResult = null;
     const canonicalSig = buildCanonicalSignature(effectiveQuestion, options);
 
-    // 0. VERIFIED DB BANK: Si la pregunta fue corregida/verificada en question_bank, usar la respuesta oficial verificada
-    if (database && options && options.length > 0) {
+    // =========================================================================
+    // PIPELINE OPTIMIZADO (L1 RAM -> IN-FLIGHT COALESCE -> DB VERIFIED BANK -> LLM)
+    // =========================================================================
+
+    // 1. FAST-PATH: Caché Semántico L1 en Memoria RAM (< 0.01 ms)
+    const cachedHit = l1Cache.get(canonicalSig);
+    if (cachedHit) {
+      const mapped = mapCachedAnswerToStudentOptions(cachedHit, options);
+      if (mapped) {
+        console.log(`[CACHE-L1-HIT] Resuelto en RAM (<0.01ms): "${mapped.correct_option_letter}" -> "${mapped.correct_option_text}"`);
+        parsedResult = mapped;
+      }
+    }
+
+    // 2. COALESCENCIA: Si ya hay una consulta idéntica resolviéndose en paralelo
+    if (!parsedResult && inFlightRequests.has(canonicalSig)) {
+      console.log(`[IN-FLIGHT-COALESCE] Reutilizando solicitud en vuelo para: "${effectiveQuestion.substring(0, 35)}..."`);
+      try {
+        const sharedResult = await inFlightRequests.get(canonicalSig);
+        const mapped = mapCachedAnswerToStudentOptions(sharedResult, options);
+        if (mapped) {
+          parsedResult = mapped;
+        }
+      } catch (_) {}
+    }
+
+    // 3. BANCO OFICIAL VERIFICADO EN DB: Consultar MongoDB si no estaba en RAM
+    if (!parsedResult && database && options && options.length > 0) {
       try {
         const verifiedDoc = await database.collection('question_bank').findOne({
-          question: effectiveQuestion.trim(),
+          $or: [
+            { canonicalSignature: canonicalSig },
+            { question: effectiveQuestion.trim() }
+          ],
           verified: true
         });
         if (verifiedDoc && verifiedDoc.answerText) {
@@ -645,7 +747,7 @@ app.post('/solve', async (req, res) => {
             subject: verifiedDoc.course || 'Fisiología II'
           }, options);
           if (mappedVerified) {
-            console.log(`[DB-VERIFIED-HIT] Resuelto con banco corregido: "${mappedVerified.correct_option_letter}" -> "${mappedVerified.correct_option_text}"`);
+            console.log(`[DB-VERIFIED-HIT] Resuelto con banco oficial: "${mappedVerified.correct_option_letter}" -> "${mappedVerified.correct_option_text}"`);
             l1Cache.set(canonicalSig, {
               ...mappedVerified,
               canonical_answer_text: verifiedDoc.answerText,
@@ -659,33 +761,7 @@ app.post('/solve', async (req, res) => {
       }
     }
 
-    // 1. FAST-PATH: Verificar en Caché Semántico L1 (Memoria RAM < 1ms)
-    if (!parsedResult) {
-      const cachedHit = l1Cache.get(canonicalSig);
-      if (cachedHit) {
-        const mapped = mapCachedAnswerToStudentOptions(cachedHit, options);
-        if (mapped) {
-          console.log(`[CACHE-L1-HIT] Resuelto en <1ms: "${mapped.correct_option_letter}" (descontando crédito al usuario)`);
-          parsedResult = mapped;
-        }
-      }
-    }
-
-    // 1.1 COALESCENCIA: Si ya hay una consulta idéntica resolviéndose en paralelo, unirse a su promesa
-    if (!parsedResult && inFlightRequests.has(canonicalSig)) {
-      console.log(`[IN-FLIGHT-COALESCE] Reutilizando solicitud en vuelo para: "${effectiveQuestion.substring(0, 35)}..."`);
-      try {
-        const sharedResult = await inFlightRequests.get(canonicalSig);
-        const mapped = mapCachedAnswerToStudentOptions(sharedResult, options);
-        if (mapped) {
-          parsedResult = mapped;
-        }
-      } catch (_) {
-        // Fallback a ejecución independiente si la compartida falló
-      }
-    }
-
-    // 2. Detección Inteligente K-Type y Prompt Médico Especializado
+    // 4. INFERENCIA LLM MULTI-TIER (Solo si hubo Cache MISS)
     const isKType = isKTypeQuestion(effectiveQuestion, options);
     const systemInstructionText = getSmartSystemPrompt(effectiveQuestion, options, systemPrompt);
 
@@ -706,253 +782,257 @@ app.post('/solve', async (req, res) => {
       prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "subject": "1 word", "is_negative_question": false, "clinical_key_pearl": "pearl", "options_evaluation": [], "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words" }`;
     }
 
-    // 3. Matriz de Modelos Multi-Tier de Alta Disponibilidad Real (Cuotas 100% Verificadas en v1beta)
-    // Prioridad #1: gemini-2.5-flash-lite (Ultra rápido 1200ms-1600ms mientras tenga cuota)
-    // Prioridad #2: gemini-2.5-flash (Alta precisión clínica médica)
-    // Prioridad #3: gemini-3-flash-preview (Alta fidelidad diagnóstica)
-    // Prioridad #4: gemini-robotics-er-2-preview (1200ms, cuota 100% limpia y activa en todas las claves, 0% 503)
-    // Prioridad #5: gemini-flash-lite-latest (Alias operativo en v1beta con cuota 100% activa en todas las claves)
-    // Prioridad #6: gemini-3.5-flash-lite (Respaldo secundario)
-    // Prioridad #7: gemini-3.1-flash-lite (Contingencia final)
+    // Matriz Multi-Tier Calibrada: Google Gemini + Anthropic Claude Hybrid
     const baseModels = isKType
       ? [
-          { name: 'gemini-2.5-flash-lite',         timeoutMs: 5500, thinkingBudget: 0 },
-          { name: 'gemini-2.5-flash',              timeoutMs: 6500, thinkingBudget: 384 },
-          { name: 'gemini-3-flash-preview',        timeoutMs: 6500, thinkingBudget: 384 },
-          { name: 'gemini-robotics-er-2-preview',  timeoutMs: 5500, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest',      timeoutMs: 6000, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash-lite',         timeoutMs: 5500, thinkingBudget: 0 },
-          { name: 'gemini-3.1-flash-lite',         timeoutMs: 5500, thinkingBudget: 0 }
+          { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6500, thinkingBudget: 384 },
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 4500, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 }
         ]
       : [
-          { name: 'gemini-2.5-flash-lite',         timeoutMs: 5000, thinkingBudget: 0 },
-          { name: 'gemini-2.5-flash',              timeoutMs: 6000, thinkingBudget: 256 },
-          { name: 'gemini-3-flash-preview',        timeoutMs: 6000, thinkingBudget: 256 },
-          { name: 'gemini-robotics-er-2-preview',  timeoutMs: 5000, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest',      timeoutMs: 5500, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash-lite',         timeoutMs: 5000, thinkingBudget: 0 },
-          { name: 'gemini-3.1-flash-lite',         timeoutMs: 5000, thinkingBudget: 0 }
+          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 4500, thinkingBudget: 0 },
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 4000, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6000, thinkingBudget: 256 },
+          { name: 'gemini-robotics-er-2-preview', provider: 'google', timeoutMs: 4500, thinkingBudget: 0 }
         ];
 
     if (!parsedResult) {
-    // Ejecutor asíncrono registrado en inFlightRequests para soportar coalescencia
-    let usedModelName = null;
-    const solveExecutionPromise = (async () => {
-      let candidateResult = null;
-      let lastError = null;
+      let usedModelName = null;
+      const solveExecutionPromise = (async () => {
+        let candidateResult = null;
+        let lastError = null;
 
-      // Pases de recuperación ante saturación 429 (2 pases en multi-key para evitar 500 transitorios)
-      const maxPasses = rawApiKeys.length > 1 ? 2 : 3;
+        const maxPasses = (rawApiKeys.length > 1 || process.env.ANTHROPIC_API_KEY) ? 2 : 3;
 
-      for (let pass = 0; pass < maxPasses; pass++) {
-        if (pass > 0) {
-          const backoffWait = 600; // Reducido de 1500ms a 600ms para respuesta inmediata al alumno
-          console.warn(`⏳ [RATE-LIMIT-BACKOFF] Esperando ${backoffWait}ms para pase de reintento #${pass}...`);
-          await new Promise(r => setTimeout(r, backoffWait));
-        }
-
-        // Recálculo DINÁMICO de modelos sanos en cada pase
-        const currentActiveModels = [
-          ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && isModelHealthy(m.name)),
-          ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && !isModelHealthy(m.name))
-        ];
-
-        modelLoop: for (const modelCfg of currentActiveModels) {
-          const { name: model, timeoutMs } = modelCfg;
-
-          // Excluir claves que ya agotaron su cuota diaria (limit: 20) en ESTE modelo específico
-          const keysWithDailyQuota = rawApiKeys.filter(k => !isKeyModelDailyExhausted(k, model));
-          if (keysWithDailyQuota.length === 0) {
-            continue modelLoop; // En el primer pase, saltar modelos sin ninguna clave con cuota diaria
+        for (let pass = 0; pass < maxPasses; pass++) {
+          if (pass > 0) {
+            const backoffWait = 600;
+            console.warn(`⏳ [RATE-LIMIT-BACKOFF] Esperando ${backoffWait}ms para pase de reintento #${pass}...`);
+            await new Promise(r => setTimeout(r, backoffWait));
           }
-          const candidatePool = keysWithDailyQuota.length > 0 ? keysWithDailyQuota : rawApiKeys;
 
-          // Dentro de las claves con cuota diaria, priorizar las que no están en cooldown RPM (25s)
-          const healthyKeys = candidatePool.filter(k => isKeyHealthy(k));
-          const targetKeys = healthyKeys.length > 0 ? healthyKeys : candidatePool;
+          const currentActiveModels = [
+            ...baseModels.filter(m => m.provider === 'anthropic' || (!isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && isModelHealthy(m.name))),
+            ...baseModels.filter(m => m.provider !== 'anthropic' && !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && !isModelHealthy(m.name))
+          ];
 
-          const startKeyIdx = Math.floor(Math.random() * targetKeys.length);
-
-          keyLoop: for (let k = 0; k < targetKeys.length; k++) {
-            const activeKey = targetKeys[(startKeyIdx + k) % targetKeys.length];
-            const keyNum = rawApiKeys.indexOf(activeKey) + 1;
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-            const startTime = Date.now();
-
-            try {
-              const requestBody = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemInstructionText }] },
-                generationConfig: buildGenerationConfig(modelCfg, responseSchema)
-              };
-
-              const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
-                signal: controller.signal
-              });
-
-              clearTimeout(timeoutId);
-              const elapsed = Date.now() - startTime;
-
-              // HTTP 429: Cuota agotada (RPM por minuto o límite diario RPD del par Clave+Modelo)
-              if (geminiRes.status === 429) {
-                const errText = await geminiRes.text();
-                lastError = `Google API Quota (HTTP 429 en Clave ${keyNum} / ${model}): ${errText}`;
-
-                const isModelDailyLimit = errText.includes('PerModel') || errText.includes('PerDay') || errText.includes('limit: 20');
-                if (isModelDailyLimit) {
-                  console.warn(`⚠️ [MODEL-DAILY-LIMIT] Clave ${keyNum} agotó su cuota diaria gratuita (limit: 20) en ${model}. Penalizando par (Clave ${keyNum} + ${model}) por 12h y rotando a la siguiente clave...`);
-                  penalizeKeyModelDaily(activeKey, model, 12 * 3600 * 1000);
-                  continue keyLoop; // Probar inmediatamente Clave 2, 3, 4 en este MISMO modelo rápido
+          modelLoop: for (const modelCfg of currentActiveModels) {
+            // RUTA ANTHROPIC CLAUDE
+            if (modelCfg.provider === 'anthropic') {
+              if (!process.env.ANTHROPIC_API_KEY) continue modelLoop;
+              try {
+                const claudeRes = await callAnthropicClaude({
+                  prompt,
+                  systemInstructionText,
+                  isKType,
+                  options,
+                  timeoutMs: modelCfg.timeoutMs || 4500
+                });
+                if (claudeRes && claudeRes.result) {
+                  candidateResult = claudeRes.result;
+                  usedModelName = claudeRes.modelUsed;
+                  if (!isKType) {
+                    candidateResult = enforceNegativeQuestionConsistency(candidateResult, options);
+                  }
+                  break modelLoop;
                 }
-
-                console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} agotó cuota RPM en Google. Cooldown 25s. Modelo ${model} sigue activo.`);
-                penalizeKey(activeKey, 25000);
-
-                if (targetKeys.length > 1) {
-                  continue keyLoop; // Probar siguiente clave con el MISMO modelo rápido
-                } else {
-                  break keyLoop; // Romper para no quemar otros modelos en este pase con la misma clave saturada
-                }
+              } catch (claudeErr) {
+                console.warn('[CLAUDE-LOOP-ERR]', claudeErr.message);
+                lastError = claudeErr.message;
               }
-
-              // HTTP 503: Demanda/saturación del MODELO en Google. Penalizar el modelo.
-              if (geminiRes.status === 503) {
-                lastError = `Modelo ${model} (HTTP 503): sobrecargado en Google.`;
-                console.warn(`⚠️ [MODEL-503] Modelo ${model} saturado en Google. Penalizando modelo por 2 min...`);
-                penalizeModel(model, 30000);
-                break keyLoop; // Salta al siguiente modelo
-              }
-
-              if (!geminiRes.ok) {
-                const errText = await geminiRes.text();
-                lastError = `Clave ${keyNum} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
-                continue keyLoop;
-              }
-
-              // No penalizar modelos que resuelven exitosamente aunque tarden >3.5s
-
-              const geminiData = await geminiRes.json();
-              const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (candidateText) {
-                candidateResult = JSON.parse(candidateText.trim());
-                if (!isKType) {
-                  candidateResult = enforceNegativeQuestionConsistency(candidateResult, options);
-                }
-                usedModelName = model;
-                console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${keyNum})`);
-                break modelLoop;
-              }
-            } catch (err) {
-              clearTimeout(timeoutId);
-              if (err.name === 'AbortError') {
-                console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms sin responder. Penalizando modelo...`);
-                lastError = `Modelo ${model} abortado por SLA timeout (${timeoutMs}ms)`;
-                penalizeModel(model, 45000);
-                break keyLoop; // Modelo congelado -> salta de inmediato al siguiente modelo
-              }
-              lastError = err.message;
+              continue modelLoop;
             }
+
+            // RUTA GOOGLE GEMINI
+            const { name: model, timeoutMs } = modelCfg;
+            const keysWithDailyQuota = rawApiKeys.filter(k => !isKeyModelDailyExhausted(k, model));
+            if (keysWithDailyQuota.length === 0) {
+              continue modelLoop;
+            }
+            const candidatePool = keysWithDailyQuota.length > 0 ? keysWithDailyQuota : rawApiKeys;
+            const healthyKeys = candidatePool.filter(k => isKeyHealthy(k));
+            const targetKeys = healthyKeys.length > 0 ? healthyKeys : candidatePool;
+
+            const startKeyIdx = Math.floor(Math.random() * targetKeys.length);
+
+            keyLoop: for (let k = 0; k < targetKeys.length; k++) {
+              const activeKey = targetKeys[(startKeyIdx + k) % targetKeys.length];
+              const keyNum = rawApiKeys.indexOf(activeKey) + 1;
+
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+              const startTime = Date.now();
+
+              try {
+                const requestBody = {
+                  contents: [{ parts: [{ text: prompt }] }],
+                  systemInstruction: { parts: [{ text: systemInstructionText }] },
+                  generationConfig: buildGenerationConfig(modelCfg, responseSchema)
+                };
+
+                const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKey}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(requestBody),
+                  signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                const elapsed = Date.now() - startTime;
+
+                if (geminiRes.status === 429) {
+                  const errText = await geminiRes.text();
+                  lastError = `Google API Quota (HTTP 429 en Clave ${keyNum} / ${model}): ${errText}`;
+                  const isModelDailyLimit = errText.includes('PerModel') || errText.includes('PerDay') || errText.includes('limit: 20');
+                  if (isModelDailyLimit) {
+                    console.warn(`⚠️ [MODEL-DAILY-LIMIT] Clave ${keyNum} agotó cuota diaria en ${model}. Penalizando 12h...`);
+                    penalizeKeyModelDaily(activeKey, model, 12 * 3600 * 1000);
+                    continue keyLoop;
+                  }
+                  console.warn(`⚠️ [KEY-QUOTA-429] Clave ${keyNum} cooldown 25s.`);
+                  penalizeKey(activeKey, 25000);
+                  if (targetKeys.length > 1) {
+                    continue keyLoop;
+                  } else {
+                    break keyLoop;
+                  }
+                }
+
+                if (geminiRes.status === 503) {
+                  lastError = `Modelo ${model} (HTTP 503): sobrecargado.`;
+                  penalizeModel(model, 30000);
+                  break keyLoop;
+                }
+
+                if (!geminiRes.ok) {
+                  const errText = await geminiRes.text();
+                  lastError = `Clave ${keyNum} - Modelo ${model} (HTTP ${geminiRes.status}): ${errText}`;
+                  continue keyLoop;
+                }
+
+                const geminiData = await geminiRes.json();
+                const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (candidateText) {
+                  candidateResult = JSON.parse(candidateText.trim());
+                  if (!isKType) {
+                    candidateResult = enforceNegativeQuestionConsistency(candidateResult, options);
+                  }
+                  usedModelName = model;
+                  console.log(`[RESOLVED-SPEED] Modelo ${model} resolvió en ${elapsed}ms (Clave ${keyNum})`);
+                  break modelLoop;
+                }
+              } catch (err) {
+                clearTimeout(timeoutId);
+                if (err.name === 'AbortError') {
+                  console.warn(`⏱️ [SLA-TIMEOUT] Modelo ${model} superó ${timeoutMs}ms. Penalizando...`);
+                  lastError = `Modelo ${model} abortado por timeout (${timeoutMs}ms)`;
+                  penalizeModel(model, 45000);
+                  break keyLoop;
+                }
+                lastError = err.message;
+              }
+            }
+
+            if (candidateResult) break;
           }
 
           if (candidateResult) break;
         }
 
-        if (candidateResult) break;
-      }
-
-      if (!candidateResult) {
-        throw new Error(lastError || 'No se pudo obtener respuesta válida de Gemini tras agotar reintentos.');
-      }
-
-      // 4. Mapeo Determinista Post-LLM para Preguntas K-Type
-      let finalResult = candidateResult;
-      if (isKType && finalResult.propositions) {
-        finalResult = resolveKTypeDeterministically(finalResult, options);
-      } else {
-        const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
-        if (!finalResult.correct_option_letter && finalResult.correct_option_index !== undefined && finalResult.correct_option_index >= 0) {
-          finalResult.correct_option_letter = alphabet[finalResult.correct_option_index] || 'A';
+        if (!candidateResult) {
+          throw new Error(lastError || 'No se pudo obtener respuesta válida de IA tras agotar tiers.');
         }
-      }
 
-      // 5. Almacenar en Caché Semántico L1 en RAM y question_bank con protección anti-poisoning
-      const isHighPrecision = (usedModelName === 'gemini-2.5-flash-lite' || usedModelName === 'gemini-2.5-flash' || usedModelName === 'gemini-3-flash-preview' || usedModelName === 'gemini-robotics-er-2-preview' || usedModelName === 'gemini-flash-lite-latest' || usedModelName === 'gemini-3.5-flash-lite');
-
-      if (isHighPrecision) {
-        l1Cache.set(canonicalSig, {
-          ...finalResult,
-          canonical_answer_text: finalResult.correct_option_text,
-          is_k_type: isKType,
-          true_indices: finalResult.true_indices || [],
-          verified: true,
-          modelUsed: usedModelName
-        });
-
-        if (database && options && options.length > 0) {
-          database.collection('question_bank').updateOne(
-            { question: effectiveQuestion.trim() },
-            {
-              $set: {
-                question: effectiveQuestion.trim(),
-                options: options || [],
-                answer: finalResult.correct_option_letter,
-                bestAnswer: finalResult.correct_option_text,
-                correctAnswer: finalResult.correct_option_letter,
-                explanation: finalResult.explanation || '',
-                verified: true,
-                verifiedBy: usedModelName,
-                updatedAt: new Date()
-              },
-              $setOnInsert: { createdAt: new Date() }
-            },
-            { upsert: true }
-          ).catch(() => {});
+        // Mapeo Determinista Post-LLM para K-Type
+        let finalResult = candidateResult;
+        if (isKType && finalResult.propositions) {
+          finalResult = resolveKTypeDeterministically(finalResult, options);
+        } else {
+          const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
+          if (!finalResult.correct_option_letter && finalResult.correct_option_index !== undefined && finalResult.correct_option_index >= 0) {
+            finalResult.correct_option_letter = alphabet[finalResult.correct_option_index] || 'A';
+          }
         }
-      } else {
-        // Modelo Lite (por contingencia): TTL corto de 3 minutos en RAM
-        l1Cache.set(canonicalSig, {
-          ...finalResult,
-          canonical_answer_text: finalResult.correct_option_text,
-          is_k_type: isKType,
-          true_indices: finalResult.true_indices || [],
-          verified: false,
-          modelUsed: usedModelName
-        }, { ttl: 1000 * 60 * 3 });
 
-        // Verificación en sombra asíncrona en segundo plano (fire-and-forget)
-        triggerShadowVerification(database, effectiveQuestion, options, isKType, canonicalSig, rawApiKeys).catch(() => {});
-      }
-
-      return finalResult;
-    })();
-
-    inFlightRequests.set(canonicalSig, solveExecutionPromise);
-    try {
-      parsedResult = await solveExecutionPromise;
-    } finally {
-      inFlightRequests.delete(canonicalSig);
-    }
-    }
-
-    // Descontar 1 crédito si no es ilimitado y la base de datos está disponible
-    if (!isUnlimited && database) {
-      try {
-        const updRes = await database.collection('users').findOneAndUpdate(
-          { _id: userId },
-          { $inc: { credits: -1 }, $set: { updatedAt: new Date() } }, { returnDocument: 'after' }
+        // Almacenar en Caché Semántico L1 en RAM y question_bank
+        const isHighPrecision = (
+          usedModelName === 'gemini-3.5-flash' ||
+          usedModelName === 'gemini-3.5-flash-lite' ||
+          usedModelName === 'claude-haiku-4-5-20251001' ||
+          usedModelName === 'gemini-flash-lite-latest'
         );
-        const remCr = (updRes && (updRes.value?.credits ?? updRes.credits)) ?? 0;
-        whatsappCrmService.notifyExamStart(userId, parsedResult.subject || 'Examen', remCr).catch(() => {});
-        if (remCr <= 3) {
-          whatsappCrmService.notifyLowCredits(userId, parsedResult.subject || 'Examen', remCr).catch(() => {});
+
+        if (isHighPrecision) {
+          l1Cache.set(canonicalSig, {
+            ...finalResult,
+            canonical_answer_text: finalResult.correct_option_text,
+            is_k_type: isKType,
+            true_indices: finalResult.true_indices || [],
+            verified: true,
+            modelUsed: usedModelName
+          });
+
+          if (database && options && options.length > 0) {
+            database.collection('question_bank').updateOne(
+              {
+                $or: [
+                  { canonicalSignature: canonicalSig },
+                  { question: effectiveQuestion.trim() }
+                ]
+              },
+              {
+                $set: {
+                  canonicalSignature: canonicalSig,
+                  question: effectiveQuestion.trim(),
+                  options: options || [],
+                  answer: finalResult.correct_option_letter,
+                  bestAnswer: finalResult.correct_option_text,
+                  correctAnswer: finalResult.correct_option_letter,
+                  explanation: finalResult.explanation || '',
+                  verified: true,
+                  verifiedBy: usedModelName,
+                  updatedAt: new Date()
+                },
+                $setOnInsert: { createdAt: new Date() }
+              },
+              { upsert: true }
+            ).catch(() => {});
+          }
+        } else {
+          l1Cache.set(canonicalSig, {
+            ...finalResult,
+            canonical_answer_text: finalResult.correct_option_text,
+            is_k_type: isKType,
+            true_indices: finalResult.true_indices || [],
+            verified: false,
+            modelUsed: usedModelName
+          }, { ttl: 1000 * 60 * 3 });
+
+          triggerShadowVerification(database, effectiveQuestion, options, isKType, canonicalSig, rawApiKeys).catch(() => {});
         }
-      } catch (updErr) {
-        console.error('Error descontando crédito:', updErr);
+
+        return finalResult;
+      })();
+
+      inFlightRequests.set(canonicalSig, solveExecutionPromise);
+      try {
+        parsedResult = await solveExecutionPromise;
+      } finally {
+        inFlightRequests.delete(canonicalSig);
+      }
+    }
+
+    // Notificaciones CRM con créditos actualizados
+    if (!isUnlimited && database && remainingCredits !== null) {
+      try {
+        whatsappCrmService.notifyExamStart(userId, parsedResult.subject || 'Examen', remainingCredits).catch(() => {});
+        if (remainingCredits <= 3) {
+          whatsappCrmService.notifyLowCredits(userId, parsedResult.subject || 'Examen', remainingCredits).catch(() => {});
+        }
+      } catch (crmErr) {
+        console.warn('Error en notificación CRM:', crmErr.message);
       }
     }
 
@@ -976,7 +1056,7 @@ app.post('/solve', async (req, res) => {
         console.error('Error al guardar historial:', histError);
       }
 
-      // Guardar en dom_inspections (telemetría de análisis DOM para auditoría en el Dashboard)
+      // Guardar en dom_inspections (telemetría de análisis DOM)
       try {
         const telemetry = req.body.telemetry || null;
         const inspectionDoc = {
@@ -1007,11 +1087,7 @@ app.post('/solve', async (req, res) => {
       }
     }
 
-    // Blindaje anti-colisión de subcadenas para APKs móviles ya instaladas:
-    // Si otra alternativa contiene a la respuesta correcta como subcadena (ej. "Apófisis" contiene "fisis" o
-    // "Carcinoma de células escamosas y melanoma vulvar" contiene "Carcinoma de células escamosas"),
-    // enviamos la letra (longitud 1) en correct_option_text para que el WebView salte el indexOf parcial (Estrategia 1)
-    // y marque directamente el radio exacto por índice (Estrategia 2).
+    // Blindaje anti-colisión de subcadenas para APKs móviles ya instaladas
     const responsePayload = { ...parsedResult };
     if (Array.isArray(options) && options.length > 1 && parsedResult && parsedResult.correct_option_text && parsedResult.correct_option_letter) {
       const targetLower = String(parsedResult.correct_option_text).trim().toLowerCase();
@@ -1028,6 +1104,11 @@ app.post('/solve', async (req, res) => {
     res.json(responsePayload);
   } catch (e) {
     console.error('Error al resolver:', e);
+    // Rollback atómico en caso de fallo crítico en inferencia
+    if (deductedCredit && database) {
+      console.warn(`[CREDIT-ROLLBACK] Reembolsando 1 crédito a ${userId} por fallo en inferencia.`);
+      await database.collection('users').updateOne({ _id: userId }, { $inc: { credits: 1 } }).catch(() => {});
+    }
     res.status(500).json({ error: e.message || 'Error interno del servidor.' });
   }
 });
