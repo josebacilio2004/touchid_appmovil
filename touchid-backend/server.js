@@ -264,7 +264,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
       },
       body: JSON.stringify({
         model: modelName,
-        max_tokens: 600,
+        max_tokens: 1200,
         temperature: 0.0,
         system: (systemInstructionText || '') + '\n\n' + jsonInstruction,
         messages: [{ role: 'user', content: prompt }]
@@ -788,15 +788,15 @@ app.post('/solve', async (req, res) => {
     // Matriz Multi-Tier Calibrada: Anthropic Claude (Prioridad #1) + Google Gemini Fallback
     const baseModels = isKType
       ? [
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 6500, thinkingBudget: 0 },
-          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 6500, thinkingBudget: 0 },
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
+          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 8500, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6500, thinkingBudget: 384 },
           { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
           { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 }
         ]
       : [
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 6000, thinkingBudget: 0 },
-          { name: 'claude-haiku-5-5',          provider: 'anthropic', timeoutMs: 6000, thinkingBudget: 0 },
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
+          { name: 'claude-haiku-5-5',          provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 4500, thinkingBudget: 0 },
           { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6000, thinkingBudget: 256 },
