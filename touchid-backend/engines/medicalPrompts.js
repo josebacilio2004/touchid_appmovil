@@ -688,6 +688,66 @@ DOMINIO: AUTOINMUNIDAD, CONECTIVOPATÍAS, ARTROPATÍAS INFLAMATORIAS, MICROCRIST
   * Vasos Grandes: Arteritis de Células Gigantes / Temporal (paciente >50 años, cefalea temporal intensa, claudicación mandibular al masticar, engrosamiento nodular de arteria temporal, VSG marcadamente elevada >50-100 mm/h; complicación grave: amaurosis fugaz / ceguera irreversible; biopsia de arteria temporal confirmatoria pero tratamiento con PREDNISONA en dosis altas inmediato sin esperar la biopsia); Arteritis de Takayasu (mujeres <40 años, "enfermedad sin pulsos", asimetría de pulsos en miembros superiores y claudicación de extremidades).
   * Vasos Pequeños Asociados a ANCA: Granulomatosis con Poliangeítis / Wegener (c-ANCA / Anti-Proteinasa 3 [PR3] positivo; tríada: afección de vías aéreas superiores [sinusitis, nariz en silla de montar], nódulos pulmonares bilaterales cavitados y Glomerulonefritis pauciinmune con semilunas) vs Poliangeítis Microscópica (p-ANCA / Anti-Mieloperoxidasa [MPO] positivo, capilaritis pulmonar con hemorragia alveolar y glomerulonefritis sin granulomas) vs Granulomatosis Eosinofílica / Churg-Strauss (asma grave resistente + eosinofilia periférica marcada >1000 + infiltrados pulmonares migratorios + p-ANCA positivo en 50%).`;
 
+// ============================================================================
+// 25. NEUROLOGÍA CLÍNICA Y NEUROCIRUGÍA (ADAMS & VICTOR 11ª ED., GREENBERG 9ª ED., HARRISON 21ª ED.)
+// ============================================================================
+const NEUROLOGY_NEUROSURGERY_PROMPT = `ROL: Catedrático Titular de Neurología y Neurocirugía (Adams and Victor's Principles of Neurology 11ª Ed., Greenberg Handbook of Neurosurgery 9ª Ed., Harrison Principios de Medicina Interna 21ª Ed., Guías AHA/ASA de Ictus).
+DOMINIO: ENFERMEDAD CEREBROVASCULAR (ACV/ICTUS), TRAUMATISMO ENCÉFALOCRANEANO (TEC), HIPERTENSIÓN ENDOCRANEAL, EPILEPSIA, DEMENCIAS Y TUMORES CEREBRALES
+- Enfermedad Cerebrovascular Isquémica y Hemorrágica (ACV / Ictus):
+  * ACV Isquémico (~85%): Causa más frecuente: tromboembolismo aterotrombótico o cardioembólico (Fibrilación Auricular).
+    - Ventana terapéutica de Trombolisis IV con rtPA (Alteplasa 0.9 mg/kg, máx 90 mg; o Tenecteplasa): Hasta 4.5 HORAS desde el inicio de los síntomas (o última vez visto normal). Criterio de PA: PA debe ser <185/110 mmHg antes de trombolisis y mantenerse <180/105 mmHg tras infusión (con Labetalol o Nicardipino).
+    - Trombectomía Mecánica Endovascular: Ventana de hasta 6 horas (o hasta 24 horas con criterios de imagen DAWN / DEFUSE-3 con mismatch clínica-difusión) para oclusión de gran vaso en territorio anterior (carótida interna o arteria cerebral media M1).
+    - Síndromes Vasculares Cerebrales:
+      * ACM (Arteria Cerebral Media - la más común): Hemiparesia y hemihipoestesia faciobraquial contralateral + Hemianopsia homónima contralateral + Desviación oculocefálica hacia el lado de la lesión ("mira la lesión"). Si hemisferio dominante (izquierdo): Afasia global o de Broca/Wernicke. Si no dominante: Heminegligencia / Asomatognosia.
+      * ACA (Arteria Cerebral Anterior): Paresia e hipoestesia crural contralateral (predominio en miembro inferior) + Apraxia de la marcha + Desinhibición / Reflejos arcaicos (prensión).
+      * ACP (Arteria Cerebral Posterior): Hemianopsia homónima contralateral con RESPETO MACULAR + Alexia sin agrafia.
+      * Territorio Vertebrobasilar / Tronco: Síndromes alternos (par craneal ipsilateral + hemiplejía contralateral), ataxia, vértigo, disartria, diplopía. Síndrome de Wallenberg (Bulbar lateral por oclusión de PICA o vertebral): Pérdida termoalgésica facial ipsilateral (V par) + termoalgésica corporal contralateral + Síndrome de Horner ipsilateral + ataxia cerebelosa ipsilateral + disfagia y disfonía (IX, X pares).
+  * Hemorragia Subaracnoidea (HSA) No Traumática:
+    - Causa principal (85%): Ruptura de aneurisma sacular cerebral (localización más frecuente: Arteria Comunicante Anterior 30-35%, luego Comunicante Posterior).
+    - Clínica clásica: Cefalea súbita hiperaguda, explosiva, de máxima intensidad ("la peor cefalea de mi vida", en trueno / thunderclap), con rigidez de nuca, náuseas/vómitos y fotofobia.
+    - Diagnóstico: TAC craneal simple sin contraste inmediata (sensibilidad >95-98% en las primeras 6-12 horas). Si TAC es NORMAL y la sospecha clínica persiste, conducta mandatoria obligatoria: PUNCIÓN LUMBAR (demuestra líquido cefalorraquídeo xantocrómico por degradación de hemoglobina y presión de apertura elevada). Angio-TAC o Arteriografía cerebral digital para mapeo vascular.
+    - Complicaciones mayores de la HSA:
+      1) Resangrado: Máximo riesgo en las primeras 24 horas (mayor mortalidad); prevención mediante exclusión quirúrgica o embolización endovascular precoz (<24-72h).
+      2) Vasoespasmo / Isquemia Cerebral Tardía: Pico de incidencia entre los días 4 y 14 (máximo día 7); prevención farmacológica estándar: NIMODIPINO ORAL 60 mg cada 4 horas por 21 días.
+      3) Hidrocefalia aguda o comunicante: Manejo con derivación ventricular externa (DVE).
+- Traumatismo Encéfalocraneano (TEC) y Hematomas Intracraneales:
+  * Escala de Coma de Glasgow (GCS, 3 a 15 puntos):
+    - Apertura Ocular (1-4): Espontánea (4), A la orden (3), Al dolor/presión (2), Ninguna (1).
+    - Respuesta Verbal (1-5): Orientado (5), Confuso (4), Palabras inapropiadas (3), Sonidos incomprensibles (2), Ninguna (1).
+    - Respuesta Motora (1-6): Obedece órdenes (6), Localiza el dolor (5), Retirada en flexión (4), Flexión anormal / Decorticación (3), Extensión anormal / Descerebración (2), Ninguna (1).
+    - Clasificación de Gravedad del TEC: Leve (GCS 14-15), Moderado (GCS 9-13), Grave (GCS <=8; indicación formal de INTUBACIÓN ENDOTRAQUEAL para protección de vía aérea).
+  * Hematoma Epidural (Extradural):
+    - Mecanismo: Traumatismo en región temporoparietal con fractura ósea del pterion que desgarra la ARTERIA MENÍNGEA MEDIA.
+    - Clínica típica: Pérdida inicial del conocimiento seguida de un INTERVALO LÚCIDO (periodo libre de síntomas de horas) y posterior deterioro neurológico rápido con midriasis paralítica ipsilateral (por herniación uncal y compresión del III par craneal) y hemiplejía contralateral.
+    - Imagen TAC: Colección hiperdensa BICONVEXA (en "lenteja biconvexa"), limitada por las suturas craneales (no cruza suturas porque la duramadre está adherida al periostio). Tratamiento: Craneotomía y evacuación quirúrgica urgente.
+  * Hematoma Subdural:
+    - Mecanismo: Desgarro de las VENAS PUENTE corticales emisarias que drenan a los senos durales (seno sagital superior).
+    - Hematoma Subdural Agudo: Traumatismo de alta energía; TAC muestra colección hiperdensa en FORMA DE MEDIALUNA (cóncava hacia el parénquima) que CRUZA suturas craneales y bordea todo el hemisferio; alta mortalidad.
+    - Hematoma Subdural Crónico: Frecuente en ANCIANOS, ALCOHÓLICOS y anticoagulados tras traumatismo craneal leve desapercibido semanas antes (atrofia cerebral tracciona venas puente); clínica de deterioro cognitivo progresivo, marcha inestable o déficit focal; TAC muestra colección HIPODENSA o isodensa en medialuna.
+- Hipertensión Endocraneal (HEC) y Herniaciones Cerebrales:
+  * Doctrina de Monro-Kellie: El volumen intracraneal es constante (Parénquima cerebral ~80% + Sangre ~10% + LCR ~10%). Cualquier incremento de volumen compensa desplazando LCR y sangre venosa; al agotarse la distensibilidad, la Presión Intracraneal (PIC) se dispara exponencialmente (PIC normal en adultos: 5 a 15 mmHg; patológica >20 mmHg).
+  * Presión de Perfusión Cerebral (PPC): PPC = Presión Arterial Media (PAM) - PIC. Meta clínica terapéutica: PPC > 60-70 mmHg.
+  * Tríada de Cushing (Respuesta tardía de HEC con riesgo inminente de enclavamiento): 1) HIPERTENSIÓN ARTERIAL (con aumento de presión de pulso / diferencial), 2) BRADICARDIA y 3) ALTERACIÓN DEL PATRÓN RESPIRATORIO (respiración irregular o bradipnea).
+  * Herniación Uncal / Transtentorial Lateral: El uncus del lóbulo temporal protruye hacia la fosa posterior a través de la hendidura tentorial; comprime: 1º III Par Craneal ipsilateral (MIDRIASIS PARALÍTICA UNILATERAL no reactiva a la luz), 2º Pedúnculo cerebral ipsilateral (Hemiplejía contralateral), 3º Si comprime pedúnculo contralateral contra el borde libre del tentorio produce hemiplejía ipsilateral (Fenómeno de Kernohan-Woltman).
+  * Manejo Médico de Emergencia de la HEC: Cabecera elevada a 30°, hiperventilación transitoria leve (PaCO2 30-35 mmHg para vasoconstricción cerebral), Terapia Hiperosmolar con MANITOL al 20% (0.5 - 1 g/kg en bolo) o SOLUCIÓN SALINA HIPERTÓNICA al 3% (evacúa agua del parénquima sano). Sedoanalgesia profunda.
+- Epilepsia y Crisis Epilépticas:
+  * Crisis Focal (con o sin alteración de conciencia) vs Generalizada (Tónico-Clónica, Ausencias, Mioclónicas).
+  * Crisis de Ausencia Típica: Niños/edad escolar, desconexión fugaz (5-15 seg) sin aura ni confusión postictal, hiperventilación desencadena la crisis; EEG patognomónico: Descargas generalizadas de PUNTA-ONDA LENTA A 3 HZ. Fármaco de primera línea de elección: ETOSUCCIMIDA (o Ácido Valproico).
+  * Crisis Tónico-Clónicas Generalizadas / Focales: Fármacos de primera línea: Levetiracetam, Lamotrigina, Carbamazepina (focales), Ácido Valproico (amplio espectro; contraindicado en mujeres en edad fértil por teratogenicidad [espina bífida/tubo neural]).
+  * Estatus Epiléptico Convulsivo (Crisis continua >=5 minutos o >=2 crisis sin recuperación del estado de conciencia):
+    - Línea 1 (0-10 min): BENZODIAZEPINA IV (Lorazepam 4 mg IV o Diazepam 10 mg IV o Midazolam IM).
+    - Línea 2 (10-30 min): Antiepiléptico IV de carga (Levetiracetam 60 mg/kg, Fosfenitoína/Fenitoína 20 mg/kg o Valproato de Sodio 40 mg/kg).
+    - Línea 3 (Refractario >30-60 min): Anestesia general con infusión continua (Propofol, Midazolam o Tiopental) e Intubación con monitorización EEG.
+- Infecciones del Sistema Nervioso Central (LCR Diagnóstico):
+  * Meningitis Bacteriana Aguda: Pleocitosis a predominio de POLIMORFONUCLEARES (PMN >80%), PROTEÍNAS MUY ELEVADAS (>100-500 mg/dl), GLUCOSA MUY BAJA (Glucosa LCR / Glucosa sérica <0.4 o <40 mg/dl) y presión de apertura elevada. Tratamiento empírico: Ceftriaxona 2g c/12h + Vancomicina +/- Dexametasona antes/junto a la primera dosis de antibiótico. En ancianos (>50 años) o inmunodeprimidos: AGREGAR AMPICILINA para cubrir Listeria monocytogenes.
+  * Meningitis Viral / Aséptica: Pleocitosis a predominio LINFOCÍTICO / Mononuclear, Proteínas normales o levemente elevadas, GLUCOSA NORMAL (Cociente LCR/plasma >0.6).
+  * Meningitis Tuberculosa / Fúngica: Pleocitosis linfocítica, hiperproteinorraquia muy marcada (>100-500 mg/dl), GLUCOSA MUY BAJA (consumo de glucosa).
+- Tumores Cerebrales y Síndromes Neurodegenerativos:
+  * Glioblastoma Multiforme (Grado IV OMS): Tumor primario maligno más común en adultos; hemisferios cerebrales (cruce en "mariposa" por el cuerpo calloso); TAC/RM con realce en ANILLO que rodea un centro necrótico y edema vasogénico extenso. Histología: Necrosis en empalizada y proliferación microvascular.
+  * Meningioma: Tumor primario benigno más común en adultos; extraaxial adherido a la duramadre; signo de la "COLA DURAL" con realce homogéneo; histología: Cuerpos de Psamoma.
+  * Miastenia Gravis: Trastorno autoinmune postsináptico por anticuerpos contra el RECEPTOR DE ACETILCOLINA (AChR); debilidad fluctuante y fatigabilidad que EMPEORA con el uso muscular repetitivo y al final del día (ptosis palpebral, diplopía, debilidad bulbar). Diagnóstico: Test de Edrofonio/Tensilon o Hielo, EMG con estimulación repetitiva (decremento). Asociación con HIPERPLASIA TÍMICA (65%) o TIMOMA (10-15%; indicación de timectomía).
+  * Síndrome de Guillain-Barré (Polirradiculoneuropatía Desmielinizante Aguda): Antecedente 1-3 semanas antes de infección por Campylobacter jejuni o viral; parálisis flácida simétrica ASCENDENTE con ARREFLEXIA osteotendinosa y disautonomía. LCR patognomónico: DISOCIACIÓN ALBÚMINO-CITOLÓGICA (Proteínas elevadas con recuento celular/leucocitos NORMAL). Tratamiento de elección: INMUNOGLOBULINA IV o PLASMAFÉRESIS (los corticoides NO son eficaces).`;
+
 function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPromptOverride = '') {
   const trimmedOverride = (systemPromptOverride || '').trim();
   const isLegacyDefault = trimmedOverride.includes('evaluador académico de élite');
@@ -772,6 +832,11 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   // 10. SEMIOLOGÍA MÉDICA (Argente-Álvarez)
   if (/semiolog|inspecci[oó]n|palpaci[oó]n|percusi[oó]n|auscultaci[oó]n|signo\s*de\s*(murphy|mcburney|blumberg|rovsing|psoas|obturador|cullen|grey\s*turner|courvoisier|chvostek|trousseau)|soplo\s*(eyectivo|pansist[oó]lico|holosist[oó]lico|continuo|maquinaria\s*de\s*gibson)|galope|r3\b|r4\b|crepitante|sibilancia|estridor|respiraci[oó]n\s*de\s*(kussmaul|cheyne|biot)/i.test(fullText)) {
     matchedModules.push(SEMIOLOGY_PROMPT);
+  }
+
+  // 10.1. NEUROLOGÍA CLÍNICA Y NEUROCIRUGÍA (Adams & Victor / Greenberg / Harrison)
+  if (/neurolog|neurocirug|ictus|acv|stroke|isquem|tromb[oó]lisis|alteplasa|tenecteplasa|trombectom|cerebrals*media|cerebrals*anterior|cerebrals*posterior|vertebrobasilar|wallenberg|subaracnoidea|hsa|aneurismas*sacular|thunderclap|xantocrom|vasoespasmo|nimodipino|glasgow|gcs|traumatismos*enc[eé]falo|tec|hematomas*epidural|hematomas*subdural|arterias*men[ií]ngeas*media|venass*puente|intervalos*l[uú]cido|biconvex|medialuna|hipertensi[oó]ns*endocraneal|monro-kellie|triadas*des*cushing|herniaci[oó]ns*uncal|enclavamiento|manitol|salinas*hipert[oó]nica|epilep|convulsi|estatuss*epil[eé]ptic|crisiss*des*ausencia|punta-onda|etosuximida|miastenias*gravis|anticuerposs*anti-achr|timoma|guillain-barr[eé]|alb[uú]mino-citol[oó]gic|glioblastoma|meningioma|psamoma|meningitiss*bacteriana/i.test(fullText)) {
+    matchedModules.push(NEUROLOGY_NEUROSURGERY_PROMPT);
   }
 
   // 11. ANATOMÍA HUMANA Y NEUROANATOMÍA (Latarjet / Rouvière / Netter)
@@ -875,6 +940,7 @@ module.exports = {
   OTORHINOLARYNGOLOGY_PROMPT,
   THORACIC_SURGERY_PROMPT,
   RHEUMATOLOGY_PROMPT,
+  NEUROLOGY_NEUROSURGERY_PROMPT,
   GENETICS_PROMPT,
   SEMIOLOGY_PROMPT,
   ANATOMY_PROMPT,
