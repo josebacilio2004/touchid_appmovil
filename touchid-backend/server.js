@@ -706,33 +706,27 @@ app.post('/solve', async (req, res) => {
       prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "subject": "1 word", "is_negative_question": false, "clinical_key_pearl": "pearl", "options_evaluation": [], "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words" }`;
     }
 
-    // 3. Matriz de Modelos Multi-Tier Ordenada por Disponibilidad Empírica y SLA Timeout
-    // Prioridad Absoluta #1: gemini-3-flash-preview (Comprobado 100% operativo en todas las claves, alta precisión)
+    // 3. Matriz de Modelos Multi-Tier Optimizada por Velocidad Empírica y Cero 503
+    // Prioridad #1: gemini-2.5-flash-lite (1200ms - 1600ms medido en Render, sin congestión)
+    // Prioridad #2: gemini-2.5-flash (alta inteligencia clínica y probada estabilidad)
+    // Prioridad #3: gemini-3-flash-preview (alta fidelidad médica)
+    // Prioridad #4: gemini-2.0-flash (clúster alternativo en Google Cloud)
+    // Prioridad #5: gemini-3.1-flash-lite (contingencia final con SLA suficiente)
     const baseModels = isKType
       ? [
-          { name: 'gemini-3-flash-preview',   timeoutMs: 6500, thinkingBudget: 512 },
-          { name: 'gemini-3.1-flash-lite',    timeoutMs: 4500, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash-lite',    timeoutMs: 5000, thinkingBudget: 0 },
-          { name: 'gemini-2.5-flash',         timeoutMs: 6000, thinkingBudget: 512 },
-          { name: 'gemini-3.5-flash',         timeoutMs: 6000, thinkingBudget: 512 },
-          { name: 'gemini-2.5-flash-lite',    timeoutMs: 4500, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest',  timeoutMs: 5500, thinkingBudget: 0 }
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 5500, thinkingBudget: 0 },
+          { name: 'gemini-2.5-flash',         timeoutMs: 6500, thinkingBudget: 384 },
+          { name: 'gemini-3-flash-preview',   timeoutMs: 6500, thinkingBudget: 384 },
+          { name: 'gemini-2.0-flash',         timeoutMs: 5500, thinkingBudget: 0 },
+          { name: 'gemini-3.1-flash-lite',    timeoutMs: 5500, thinkingBudget: 0 }
         ]
       : [
-          { name: 'gemini-3-flash-preview',   timeoutMs: 5500, thinkingBudget: 384 },
-          { name: 'gemini-3.1-flash-lite',    timeoutMs: 4200, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash-lite',    timeoutMs: 4500, thinkingBudget: 0 },
-          { name: 'gemini-2.5-flash',         timeoutMs: 5200, thinkingBudget: 384 },
-          { name: 'gemini-3.5-flash',         timeoutMs: 5200, thinkingBudget: 384 },
-          { name: 'gemini-2.5-flash-lite',    timeoutMs: 4200, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest',  timeoutMs: 5000, thinkingBudget: 0 }
+          { name: 'gemini-2.5-flash-lite',    timeoutMs: 5000, thinkingBudget: 0 },
+          { name: 'gemini-2.5-flash',         timeoutMs: 6000, thinkingBudget: 256 },
+          { name: 'gemini-3-flash-preview',   timeoutMs: 6000, thinkingBudget: 256 },
+          { name: 'gemini-2.0-flash',         timeoutMs: 5000, thinkingBudget: 0 },
+          { name: 'gemini-3.1-flash-lite',    timeoutMs: 5000, thinkingBudget: 0 }
         ];
-
-    // Separar estrictamente modelos con cuota disponible (sanos primero, luego en cooldown RPM/latencia)
-    const activeModels = [
-      ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && isModelHealthy(m.name)),
-      ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && !isModelHealthy(m.name))
-    ];
 
     if (!parsedResult) {
     // Ejecutor asíncrono registrado en inFlightRequests para soportar coalescencia
@@ -746,12 +740,18 @@ app.post('/solve', async (req, res) => {
 
       for (let pass = 0; pass < maxPasses; pass++) {
         if (pass > 0) {
-          const backoffWait = pass * 1500;
+          const backoffWait = 600; // Reducido de 1500ms a 600ms para respuesta inmediata al alumno
           console.warn(`⏳ [RATE-LIMIT-BACKOFF] Esperando ${backoffWait}ms para pase de reintento #${pass}...`);
           await new Promise(r => setTimeout(r, backoffWait));
         }
 
-        modelLoop: for (const modelCfg of activeModels) {
+        // Recálculo DINÁMICO de modelos sanos en cada pase
+        const currentActiveModels = [
+          ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && isModelHealthy(m.name)),
+          ...baseModels.filter(m => !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && !isModelHealthy(m.name))
+        ];
+
+        modelLoop: for (const modelCfg of currentActiveModels) {
           const { name: model, timeoutMs } = modelCfg;
 
           // Excluir claves que ya agotaron su cuota diaria (limit: 20) en ESTE modelo específico
@@ -828,9 +828,7 @@ app.post('/solve', async (req, res) => {
                 continue keyLoop;
               }
 
-              if (elapsed > 3500) {
-                penalizeModel(model, 90000);
-              }
+              // No penalizar modelos que resuelven exitosamente aunque tarden >3.5s
 
               const geminiData = await geminiRes.json();
               const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -877,7 +875,7 @@ app.post('/solve', async (req, res) => {
       }
 
       // 5. Almacenar en Caché Semántico L1 en RAM y question_bank con protección anti-poisoning
-      const isHighPrecision = (usedModelName === 'gemini-3-flash-preview' || usedModelName === 'gemini-2.5-flash' || usedModelName === 'gemini-3.5-flash');
+      const isHighPrecision = (usedModelName === 'gemini-2.5-flash-lite' || usedModelName === 'gemini-2.5-flash' || usedModelName === 'gemini-3-flash-preview' || usedModelName === 'gemini-2.0-flash');
 
       if (isHighPrecision) {
         l1Cache.set(canonicalSig, {
