@@ -148,7 +148,7 @@ function buildGenerationConfig(modelCfg, activeSchema) {
 // Verificación en Sombra Asíncrona (Fire-and-Forget Anti-Poisoning)
 async function triggerShadowVerification(db, question, options, isKType, canonicalSig, rawApiKeys) {
   try {
-    const verifyCandidateModels = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    const verifyCandidateModels = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-robotics-er-2-preview'];
     let verifyModel = verifyCandidateModels.find(m => (rawApiKeys || []).some(k => !isKeyModelDailyExhausted(k, m) && isKeyHealthy(k))) || verifyCandidateModels[0];
     const candidateKeys = (rawApiKeys || []).filter(k => !isKeyModelDailyExhausted(k, verifyModel) && isKeyHealthy(k));
     if (candidateKeys.length === 0) return;
@@ -706,32 +706,32 @@ app.post('/solve', async (req, res) => {
       prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "subject": "1 word", "is_negative_question": false, "clinical_key_pearl": "pearl", "options_evaluation": [], "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words" }`;
     }
 
-    // 3. Matriz de Modelos Multi-Tier de Alta Capacidad y Respaldo Infinito (1500 RPD)
-    // Prioridad #1: gemini-2.5-flash-lite (Ultra rápido 1200ms-1600ms)
-    // Prioridad #2: gemini-2.5-flash (Alta precisión clínica)
-    // Prioridad #3: gemini-3-flash-preview (Fidelidad de razonamiento médico)
-    // Prioridad #4: gemini-2.0-flash-exp (Clúster experimental ultra rápido con cuota limpia)
-    // Prioridad #5: gemini-1.5-flash (Respaldo masivo: 1,500 consultas/día por clave, 0% saturación)
-    // Prioridad #6: gemini-1.5-flash-latest (Alias estable de alta disponibilidad)
+    // 3. Matriz de Modelos Multi-Tier de Alta Disponibilidad Real (Cuotas 100% Verificadas en v1beta)
+    // Prioridad #1: gemini-2.5-flash-lite (Ultra rápido 1200ms-1600ms mientras tenga cuota)
+    // Prioridad #2: gemini-2.5-flash (Alta precisión clínica médica)
+    // Prioridad #3: gemini-3-flash-preview (Alta fidelidad diagnóstica)
+    // Prioridad #4: gemini-robotics-er-2-preview (1200ms, cuota 100% limpia y activa en todas las claves, 0% 503)
+    // Prioridad #5: gemini-flash-lite-latest (Alias operativo en v1beta con cuota 100% activa en todas las claves)
+    // Prioridad #6: gemini-3.5-flash-lite (Respaldo secundario)
     // Prioridad #7: gemini-3.1-flash-lite (Contingencia final)
     const baseModels = isKType
       ? [
-          { name: 'gemini-2.5-flash-lite',    timeoutMs: 5500, thinkingBudget: 0 },
-          { name: 'gemini-2.5-flash',         timeoutMs: 6500, thinkingBudget: 384 },
-          { name: 'gemini-3-flash-preview',   timeoutMs: 6500, thinkingBudget: 384 },
-          { name: 'gemini-2.0-flash-exp',     timeoutMs: 5500, thinkingBudget: 0 },
-          { name: 'gemini-1.5-flash',         timeoutMs: 6000, thinkingBudget: 0 },
-          { name: 'gemini-1.5-flash-latest',  timeoutMs: 6000, thinkingBudget: 0 },
-          { name: 'gemini-3.1-flash-lite',    timeoutMs: 5500, thinkingBudget: 0 }
+          { name: 'gemini-2.5-flash-lite',         timeoutMs: 5500, thinkingBudget: 0 },
+          { name: 'gemini-2.5-flash',              timeoutMs: 6500, thinkingBudget: 384 },
+          { name: 'gemini-3-flash-preview',        timeoutMs: 6500, thinkingBudget: 384 },
+          { name: 'gemini-robotics-er-2-preview',  timeoutMs: 5500, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest',      timeoutMs: 6000, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash-lite',         timeoutMs: 5500, thinkingBudget: 0 },
+          { name: 'gemini-3.1-flash-lite',         timeoutMs: 5500, thinkingBudget: 0 }
         ]
       : [
-          { name: 'gemini-2.5-flash-lite',    timeoutMs: 5000, thinkingBudget: 0 },
-          { name: 'gemini-2.5-flash',         timeoutMs: 6000, thinkingBudget: 256 },
-          { name: 'gemini-3-flash-preview',   timeoutMs: 6000, thinkingBudget: 256 },
-          { name: 'gemini-2.0-flash-exp',     timeoutMs: 5000, thinkingBudget: 0 },
-          { name: 'gemini-1.5-flash',         timeoutMs: 5500, thinkingBudget: 0 },
-          { name: 'gemini-1.5-flash-latest',  timeoutMs: 5500, thinkingBudget: 0 },
-          { name: 'gemini-3.1-flash-lite',    timeoutMs: 5000, thinkingBudget: 0 }
+          { name: 'gemini-2.5-flash-lite',         timeoutMs: 5000, thinkingBudget: 0 },
+          { name: 'gemini-2.5-flash',              timeoutMs: 6000, thinkingBudget: 256 },
+          { name: 'gemini-3-flash-preview',        timeoutMs: 6000, thinkingBudget: 256 },
+          { name: 'gemini-robotics-er-2-preview',  timeoutMs: 5000, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest',      timeoutMs: 5500, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash-lite',         timeoutMs: 5000, thinkingBudget: 0 },
+          { name: 'gemini-3.1-flash-lite',         timeoutMs: 5000, thinkingBudget: 0 }
         ];
 
     if (!parsedResult) {
@@ -881,7 +881,7 @@ app.post('/solve', async (req, res) => {
       }
 
       // 5. Almacenar en Caché Semántico L1 en RAM y question_bank con protección anti-poisoning
-      const isHighPrecision = (usedModelName === 'gemini-2.5-flash-lite' || usedModelName === 'gemini-2.5-flash' || usedModelName === 'gemini-3-flash-preview' || usedModelName === 'gemini-2.0-flash-exp' || usedModelName === 'gemini-1.5-flash' || usedModelName === 'gemini-1.5-flash-latest');
+      const isHighPrecision = (usedModelName === 'gemini-2.5-flash-lite' || usedModelName === 'gemini-2.5-flash' || usedModelName === 'gemini-3-flash-preview' || usedModelName === 'gemini-robotics-er-2-preview' || usedModelName === 'gemini-flash-lite-latest' || usedModelName === 'gemini-3.5-flash-lite');
 
       if (isHighPrecision) {
         l1Cache.set(canonicalSig, {
