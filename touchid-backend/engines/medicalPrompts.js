@@ -566,6 +566,32 @@ DOMINIO: LESIONES ELEMENTALES, INFECCIONES CUTÁNEAS, DERMATOSIS INFLAMATORIAS Y
   * Carcinoma Espinocelular: Placa o nódulo hiperqueratósico ulcerado; surge frecuentemente sobre queratosis actínica previa.
   * Melanoma Maligno: Neoplasia melanocítica de alta letalidad. Regla ABCDE (Asimetría, Bordes irregulares, Color heterogéneo/variado, Diámetro >6 mm, Evolución/cambios). Índice de Breslow (profundidad en mm desde capa granulosa) es el factor pronóstico más importante.`;
 
+
+// ============================================================================
+// 22. OTORRINOLARINGOLOGÍA Y CIRUGÍA DE CABEZA Y CUELLO (CUMMINGS 7ª ED., RAMÍREZ CAMACHO)
+// ============================================================================
+const OTORHINOLARYNGOLOGY_PROMPT = `ROL: Catedrático Titular de Otorrinolaringología y Cirugía de Cabeza y Cuello (Cummings Otolaryngology 7ª Ed., Ramírez Camacho Manual de Otorrinolaringología 2ª Ed., Diamante).
+DOMINIO: PATOLOGÍA DE OÍDO, NARIZ, SENOS PARANASALES, FARINGOLARINGE Y CUELLO
+- Otología e Hipoacusias:
+  * Pruebas Acumétricas: Rinne (conducción ósea vs aérea). Rinne POSITIVO (vía aérea > ósea, fisiológico o hipoacusia neurosensorial/perceptiva). Rinne NEGATIVO (vía ósea > aérea, patognomónico de hipoacusia de TRANSMISIÓN / conducción). Weber: Lateraliza al oído ENFERMO en hipoacusia de transmisión; lateraliza al oído SANO en hipoacusia neurosensorial.
+  * Otitis Media Aguda (OMA): Bacteriología principal: *Streptococcus pneumoniae* (neumococo), *Haemophilus influenzae* no tipificable, *Moraxella catarrhalis*. Antibiótico de primera elección: AMOXICILINA a dosis altas (80-90 mg/kg/día); si fracasa a 48-72h o amoxicilina previa: Amoxicilina-Ácido Clavulánico.
+  * Otitis Media Crónica Colesteatomatosa: Epitelio escamoso queratinizado en oído medio que erosiona huesecillos (yunque es el más precoz) y pared ósea con osteólisis; otorrea fétida crónica indolora e hipoacusia de transmisión; tratamiento estrictamente QUIRÚRGICO (timpanoplastia con mastoidectomía).
+  * Otitis Externa Difusa (Oído de nadador): Agente causal #1: *Pseudomonas aeruginosa*; dolor a la tracción del pabellón y presión sobre el trago (Signo del Trago POSITIVO). Otitis Externa Maligna/Necrotizante: En diabéticos o ancianos inmunodeprimidos por *Pseudomonas*, osteomielitis de la base del cráneo, afecta par VII (facial); tratamiento con Ceftazidima / Ciprofloxacino IV prolongado.
+  * Hipoacusia Neurosensorial y Vértigo:
+    - Vértigo Posicional Paroxístico Benigno (VPPB): Causa más frecuente de vértigo periférico; otolitos en conducto semicircular posterior; crisis breves (<1 min) desencadenadas por cambios posicionales cefálicos; diagnóstico con Maniobra de Dix-Hallpike (nistagmo geotrópico rotatorio fatigable); tratamiento: Maniobras de reposición de Epley o Semont (no fármacos).
+    - Enfermedad de Ménière: Hidropesía endolinfática; tríada diagnóstica: Vértigo episódico recurrente (horas) + Hipoacusia neurosensorial fluctuante en frecuencias graves + Tinnitus/Acúfenos y plenitud ótica.
+    - Neurinoma del Acústico (Schwannoma Vestibular): Tumor benigno del ángulo pontocerebeloso derivado de la rama vestibular del VIII par; hipoacusia neurosensorial asimétrica unilateral progresiva y acúfeno continuo; estudio de elección: RESONANCIA MAGNÉTICA con gadolinio de fosa posterior.
+- Rinología y Senos Paranasales:
+  * Epistaxis: Anterior (más común >90%, Plexo de Kiesselbach / Área de Little en tabique nasal anterior; manejo: compresión, cauterización con nitrato de plata o taponamiento anterior) vs Posterior (Arteria esfenopalatina; hemorragia profusa, deglución de sangre, requiere taponamiento posterior o embolización).
+  * Rinosinusitis Aguda: Criterios mayores (obstrucción nasal, rinorrea purulenta, dolor/plenitud facial, hiposmia); etiología más común viral; si persiste >10 días o empeoramiento tras mejoría inicial ('doble caída'): bacteriana (*S. pneumoniae*, *H. influenzae*). Seno más frecuentemente afectado en adultos: SENO MAXILAR; en niños: SENO ETMOIDAL.
+  * Fracturas Nasales: Huesos propios de la nariz son los más fracturados del macizo facial; complicación grave que requiere drenaje urgente inmediato: HEMATOMA SEPTAL (riesgo de necrosis avascular del cartílago cuadrangular y deformidad en 'nariz en silla de montar').
+- Faringolaringe y Patología de Voz:
+  * Faringoamigdalitis Aguda Bacteriana: *Streptococcus pyogenes* (EbhGA); criterios de Centor (Fiebre >38°C, Exudado amigdalino, Adenopatías cervicales anteriores dolorosas, Ausencia de tos); antibiótico de elección: Penicilina V oral o Amoxicilina por 10 días (o Penicilina G Benzatínica IM dosis única).
+  * Absceso Periamigdalino: Complicación supurativa más común; trismus intenso, sialorrea, voz en 'patata caliente', abombamiento del pilar amigdalino anterior con desviación de la úvula hacia el lado CONTRALATERAL; manejo: aspiración/drenaje con aguja + antibioticoterapia IV.
+  * Laringitis Aguda / Crup Laríngeo (Laringotraqueobronquitis): Causa #1: Virus Parainfluenza; estridor inspiratorio, tos perruna / foca y disfonía; signo del campanario o punta de lápiz en Rx cervical; tratamiento: Corticoides (Dexametasona oral/IM) + Nebulización con Adrenalina racémica / corriente en casos moderados-graves.
+  * Epiglotitis Aguda: Emergencia vital pediátrica (clásicamente *Haemophilus influenzae* tipo b); niño con fiebre alta, posición de trípode, disnea, estridor, ausencia de tos y disfagia con sialorrea; signo del pulgar en Rx lateral; MANEJO: NO manipular cavidad oral con bajalenguas (riesgo de laringoespasmo fatal), asegurar vía aérea de inmediato e iniciar Ceftriaxona IV.
+  * Lesiones Benignas de Cuerdas Vocales: Nódulos vocales (lesión bilateral en unión de tercio anterior y dos tercios posteriores por abuso vocal crónico, 'nódulos del cantante', tratamiento foniátrico) vs Pólipos vocales (lesión típicamente unilateral, tras esfuerzo vocal agudo, tratamiento quirúrgico). Parálisis de cuerda vocal unilateral: lesión del Nervio Laríngeo Recurrente (complicación clásica de tiroidectomía).`;
+
 function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPromptOverride = '') {
   const trimmedOverride = (systemPromptOverride || '').trim();
   const isLegacyDefault = trimmedOverride.includes('evaluador académico de élite');
@@ -620,6 +646,11 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
     // 7.1. DERMATOLOGÍA CLÍNICA (Fitzpatrick / Bolognia)
   if (/dermatolog|piodermitis|ectima|imp[eé]tigo|foliculitis|fur[uú]nculo|[aá]ntrax|psoriasis|p[eé]nfigo|penfigoide|nikolsky|koebner|auspitz|acantolisis|eritemas*nudoso|eritemas*multiforme|stevens-johnson|net|necr[oó]lisiss*epid[eé]rmica|acn[eé]|ros[aá]cea|alopecia|melanoma|breslow|clark|carcinomas*basocelular|carcinomas*espinocelular|queratosis|urticaria|hab[oó]n|roncha|m[aá]cula|p[aá]pula|placa|ves[ií]cula|ampolla|flictena|[uú]lcera|prurito|dermatitis/i.test(fullText)) {
     matchedModules.push(DERMATOLOGY_PROMPT);
+  }
+
+  // 7.2. OTORRINOLARINGOLOGÍA Y CABEZA Y CUELLO (Cummings / Ramírez Camacho)
+  if (/otorrino|laring|faring|otitis|o[ií]do|pabell[oó]n|t[ií]mpan|colesteatoma|rinne|weber|audiometr|hipoacusia|sordera|vppb|v[eé]rtigo|dix-hallpike|epley|m[eé]ni[eè]re|tinnitus|ac[uú]feno|neurinoma|schwannoma|epistaxis|kiesselbach|esfenopalatina|sinusitis|rinosinusitis|seno\s*(maxilar|etmoidal|frontal|esfenoidal)|hematoma\s*septal|periamigdalino|trismus|[uú]vula|crup|laringotraqueo|parainfluenza|epiglotitis|estridor|disfon[ií]a|cuerda\s*vocal|n[oó]dulo\s*vocal|p[oó]lipo\s*vocal|laringoscopia/i.test(fullText)) {
+    matchedModules.push(OTORHINOLARYNGOLOGY_PROMPT);
   }
 
   // 8. HISTOLOGÍA Y BIOLOGÍA TISULAR (Ross / Junqueira)
@@ -735,6 +766,7 @@ module.exports = {
   ANESTHESIOLOGY_PROMPT,
   HISTOLOGY_PROMPT,
   DERMATOLOGY_PROMPT,
+  OTORHINOLARYNGOLOGY_PROMPT,
   GENETICS_PROMPT,
   SEMIOLOGY_PROMPT,
   ANATOMY_PROMPT,
