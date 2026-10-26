@@ -2949,15 +2949,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   onAccountTap: _showGoogleAccountBottomSheet,
                                 );
                               } else {
-                                if (defaultTargetPlatform == TargetPlatform.android) {
-                                  return WebViewWidget.fromPlatformCreationParams(
-                                    key: ValueKey('webview_android_${tab.id}'),
-                                    params: AndroidWebViewWidgetCreationParams(
-                                      controller: tab.controller.platform,
-                                      displayWithHybridComposition: true,
-                                    ),
-                                  );
-                                }
                                 return WebviewRefresher(
                                   key: ValueKey('refresher_${tab.id}'),
                                   controller: tab.controller,
