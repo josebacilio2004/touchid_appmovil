@@ -785,17 +785,19 @@ app.post('/solve', async (req, res) => {
       prompt = `Pregunta/Contenido: "${effectiveQuestion}"\n\nResponde en JSON estructurado: { "subject": "1 word", "is_negative_question": false, "clinical_key_pearl": "pearl", "options_evaluation": [], "correct_option_index": -1, "correct_option_text": "Respuesta sintetizada", "explanation": "max 5 words" }`;
     }
 
-    // Matriz Multi-Tier Calibrada: Google Gemini + Anthropic Claude Hybrid
+    // Matriz Multi-Tier Calibrada: Anthropic Claude (Prioridad #1) + Google Gemini Fallback
     const baseModels = isKType
       ? [
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 6500, thinkingBudget: 0 },
+          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 6500, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6500, thinkingBudget: 384 },
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 4500, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
           { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 }
         ]
       : [
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 6000, thinkingBudget: 0 },
+          { name: 'claude-haiku-5-5',          provider: 'anthropic', timeoutMs: 6000, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 4500, thinkingBudget: 0 },
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 4000, thinkingBudget: 0 },
           { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6000, thinkingBudget: 256 },
           { name: 'gemini-robotics-er-2-preview', provider: 'google', timeoutMs: 4500, thinkingBudget: 0 }
