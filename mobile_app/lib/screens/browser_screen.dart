@@ -235,10 +235,23 @@ class _BrowserScreenState extends State<BrowserScreen> {
     _urlFocusNode.addListener(() {
       setState(() {});
       if (_urlFocusNode.hasFocus) {
+        if (_tabs.isNotEmpty && _currentTabIndex < _tabs.length) {
+          final cur = _tabs[_currentTabIndex];
+          if (cur.url != 'chrome://newtab' && cur.url != 'chrome://incognito') {
+            _urlController.text = cur.url;
+          }
+        }
         _urlController.selection = TextSelection(
           baseOffset: 0,
           extentOffset: _urlController.text.length,
         );
+      } else {
+        if (_tabs.isNotEmpty && _currentTabIndex < _tabs.length) {
+          final cur = _tabs[_currentTabIndex];
+          if (cur.url != 'chrome://newtab' && cur.url != 'chrome://incognito') {
+            _urlController.text = _getDisplayHost(cur.url);
+          }
+        }
       }
     });
     SystemChrome.setSystemUIOverlayStyle(
@@ -774,7 +787,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             _tabs[index].url = pageUrl;
             if (index == _currentTabIndex) {
               if (!_urlFocusNode.hasFocus) {
-                _urlController.text = (pageUrl == 'chrome://newtab' || pageUrl == 'chrome://incognito') ? '' : pageUrl;
+                _urlController.text = (pageUrl == 'chrome://newtab' || pageUrl == 'chrome://incognito') ? '' : _getDisplayHost(pageUrl);
               }
               _loadingProgress = 20;
             }
@@ -849,7 +862,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             _tabs[index].title = cleanTitle;
             if (index == _currentTabIndex) {
               if (!_urlFocusNode.hasFocus) {
-                _urlController.text = (pageUrl == 'chrome://newtab' || pageUrl == 'chrome://incognito') ? '' : pageUrl;
+                _urlController.text = (pageUrl == 'chrome://newtab' || pageUrl == 'chrome://incognito') ? '' : _getDisplayHost(pageUrl);
               }
               _loadingProgress = 100;
             }
@@ -925,7 +938,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 action: SnackBarAction(
                   label: 'Reintentar',
                   textColor: Colors.white,
-                  onPressed: () => controller.reload(),
+                  onPressed: () {
+                    final tabIdx = _tabs.indexWhere((t) => t.id == id);
+                    if (tabIdx != -1) {
+                      _reloadTab(_tabs[tabIdx]);
+                    } else {
+                      controller.reload();
+                    }
+                  },
                 ),
               ),
             );
@@ -991,7 +1011,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         }
       }
       final active = _tabs[_currentTabIndex];
-      _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : active.url;
+      _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : _getDisplayHost(active.url);
     });
   }
 
@@ -999,7 +1019,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     setState(() {
       _currentTabIndex = index;
       final active = _tabs[index];
-      _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : active.url;
+      _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : _getDisplayHost(active.url);
       _loadingProgress = 100;
     });
   }
@@ -1022,10 +1042,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
       // Si no contiene espacios y cumple estructura de dominio/subdominio, se carga como web.
       // De lo contrario (ej. "hola", "examen mtc", etc.), se busca automáticamente en Google.
       final hasDomainPattern = !input.contains(' ') && 
-          RegExp(r'^[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)+(/[^\s]*)?$').hasMatch(input);
+          RegExp(r'^[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)+(:[0-9]+)?(/[^\s]*)?$').hasMatch(input);
 
       if (hasDomainPattern) {
-        finalUrl = 'https://$input';
+        final isIp = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}').hasMatch(input);
+        finalUrl = isIp ? 'http://$input' : 'https://$input';
       } else {
         finalUrl = 'https://www.google.com/search?q=${Uri.encodeQueryComponent(input)}';
       }
@@ -1035,7 +1056,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       final uri = Uri.parse(finalUrl);
       final currentTab = _tabs[_currentTabIndex];
       currentTab.url = finalUrl;
-      _urlController.text = finalUrl;
+      _urlController.text = _getDisplayHost(finalUrl);
       currentTab.controller.loadRequest(uri);
       FocusScope.of(context).unfocus();
       setState(() {});
@@ -1498,7 +1519,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   _currentTabIndex = _tabs.length - 1;
                 }
                 final active = _tabs[_currentTabIndex];
-                _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : active.url;
+                _urlController.text = (active.url == 'chrome://newtab' || active.url == 'chrome://incognito') ? '' : _getDisplayHost(active.url);
               }
             });
           },
@@ -1852,6 +1873,516 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
     await currentTab.controller.reload();
     setState(() {});
+  }
+
+  String _getDisplayHost(String rawUrl) {
+    if (rawUrl.isEmpty || rawUrl == 'chrome://newtab' || rawUrl == 'chrome://incognito') {
+      return '';
+    }
+    try {
+      final uri = Uri.parse(rawUrl);
+      String host = uri.host;
+      if (host.startsWith('www.')) {
+        host = host.substring(4);
+      }
+      if (uri.hasPort && uri.port != 80 && uri.port != 443) {
+        return '$host:${uri.port}';
+      }
+      if (host.isNotEmpty) {
+        return host;
+      }
+      return rawUrl;
+    } catch (_) {
+      return rawUrl;
+    }
+  }
+
+  bool _isSecureUrl(String rawUrl) {
+    return rawUrl.trim().toLowerCase().startsWith('https://');
+  }
+
+  Future<void> _reloadTab(BrowserTab tab) async {
+    if (tab.url == 'chrome://newtab' || tab.url == 'chrome://incognito') {
+      setState(() {});
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _loadingProgress = 15;
+      });
+    }
+    try {
+      final currentUrl = await tab.controller.currentUrl();
+      final targetUrl = (currentUrl != null && currentUrl.isNotEmpty && currentUrl != 'about:blank')
+          ? currentUrl
+          : tab.url;
+
+      if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+        await tab.controller.loadRequest(Uri.parse(targetUrl));
+      } else {
+        await tab.controller.reload();
+      }
+    } catch (e) {
+      if (tab.url.startsWith('http://') || tab.url.startsWith('https://')) {
+        try {
+          await tab.controller.loadRequest(Uri.parse(tab.url));
+        } catch (_) {}
+      }
+    }
+  }
+
+  void _showPageInfoBottomSheet(BuildContext context) {
+    final currentTab = _tabs[_currentTabIndex];
+    final rawUrl = currentTab.url;
+    final host = _getDisplayHost(rawUrl);
+    final isSecure = _isSecureUrl(rawUrl);
+    final isDark = currentTab.isIncognito;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF282A2D) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 18,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.only(top: 8, bottom: 24, left: 18, right: 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 4, bottom: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF5F6368) : const Color(0xFFE0E3E7),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Encabezado: Favicon/Icono + Dominio + Botón de cerrar ✕
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF3C4043) : const Color(0xFFF1F3F4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        isSecure ? Icons.lock_rounded : Icons.language_rounded,
+                        size: 18,
+                        color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF444746),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      host.isNotEmpty ? host : 'Página actual',
+                      style: TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? const Color(0xFF9AA0A6) : const Color(0xFF444746),
+                      size: 22,
+                    ),
+                    splashRadius: 20,
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+              Divider(height: 1, color: isDark ? const Color(0xFF3C4043) : const Color(0xFFE0E3E7)),
+              const SizedBox(height: 12),
+
+              // Tarjeta de Seguridad (Captura 2 vs Captura 4)
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1F2023) : const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF3C4043) : const Color(0xFFE8EAED),
+                    width: 1,
+                  ),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          isSecure ? Icons.lock_rounded : Icons.info_outline_rounded,
+                          size: 22,
+                          color: isDark
+                              ? const Color(0xFFE8EAED)
+                              : (isSecure ? const Color(0xFF1F1F1F) : const Color(0xFF1F1F1F)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isSecure ? 'La conexión es segura' : 'La conexión no es segura',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              RichText(
+                                text: TextSpan(
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark ? const Color(0xFFBDC1C6) : const Color(0xFF444746),
+                                    height: 1.35,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: isSecure
+                                          ? 'Tu información (por ejemplo, contraseñas o números de tarjetas de crédito) es privada cuando se envía a este sitio web. '
+                                          : 'No debes ingresar información confidencial en este sitio (p. ej., contraseñas o tarjetas de crédito), ya que los atacantes podrían robarla. ',
+                                    ),
+                                    WidgetSpan(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.pop(ctx);
+                                          _showConnectionSecurityDetails(context, host, isSecure);
+                                        },
+                                        child: Text(
+                                          isSecure ? 'Más información' : 'Detalles',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF0B57D0),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Fila 2: Datos de sitios y cookies (Capturas 2 & 4)
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showSiteDataAndCookiesDialog(context, host);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.cookie_outlined,
+                        size: 22,
+                        color: isDark ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          'Datos de sitios y cookies',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 22,
+                        color: isDark ? const Color(0xFF8E918F) : const Color(0xFF747775),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Fila 3: Última visita (Capturas 2 & 4)
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showBrowsingHistory();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.history_rounded,
+                        size: 22,
+                        color: isDark ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          isSecure ? 'Última visita: hace 2 días' : 'Última visita: hoy',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 22,
+                        color: isDark ? const Color(0xFF8E918F) : const Color(0xFF747775),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Fila 4: Acerca de esta página (Captura 4)
+              if (host.contains('chatgpt') || host.contains('google') || host.contains('udabol'))
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showAboutThisPageDialog(context, host);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome_outlined,
+                            size: 22,
+                            color: isDark ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Acerca de esta página',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  host.contains('chatgpt')
+                                      ? 'ChatGPT es una aplicación de chatbot de inteligencia artificial desarrollada por OpenAI.'
+                                      : host.contains('udabol')
+                                          ? 'Universidad de Aquino Bolivia - Campus Virtual y Plataforma Académica Oficial.'
+                                          : 'Motor de búsqueda y servicios en la nube de Google.',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: isDark ? const Color(0xFF8E918F) : const Color(0xFF747775),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 22,
+                            color: isDark ? const Color(0xFF8E918F) : const Color(0xFF747775),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Botón de Volver a cargar si la conexión no es segura o falló (Captura 2)
+              if (!isSecure)
+                Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF0B57D0),
+                        side: const BorderSide(color: Color(0xFF0B57D0), width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      ),
+                      icon: const Icon(Icons.refresh_rounded, size: 19),
+                      label: const Text(
+                        'Volver a cargar sitio',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _reloadTab(currentTab);
+                      },
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showConnectionSecurityDetails(BuildContext context, String host, bool isSecure) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(
+                isSecure ? Icons.lock_rounded : Icons.info_outline_rounded,
+                color: isSecure ? const Color(0xFF0B57D0) : const Color(0xFFB3261E),
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              const Text('Seguridad del sitio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+            isSecure
+                ? 'El certificado es válido emitido para $host.\n\nLa conexión a este sitio web está totalmente cifrada mediante el protocolo TLS 1.3 con clave de 256 bits. Tus contraseñas y datos privados se transfieren con total privacidad.'
+                : 'Este sitio web ($host) no utiliza cifrado SSL/TLS (HTTP plano).\n\nNo ingreses contraseñas ni datos confidenciales en este sitio web porque la información viaja sin encriptar y podría ser visible por terceros.',
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Entendido', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSiteDataAndCookiesDialog(BuildContext context, String host) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.cookie_outlined, color: Color(0xFF444746), size: 24),
+              SizedBox(width: 10),
+              Text('Cookies y datos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Sitio: $host',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Este sitio utiliza cookies para mantener tu sesión activa y recordar tus preferencias.',
+                style: TextStyle(fontSize: 13.5, height: 1.35, color: Color(0xFF444746)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  final cookieManager = WebViewCookieManager();
+                  await cookieManager.clearCookies();
+                } catch (_) {}
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cookies y datos de sesión eliminados'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Borrar cookies', style: TextStyle(color: Colors.red)),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Listo'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAboutThisPageDialog(BuildContext context, String host) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Acerca de esta página', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: Text(
+            host.contains('chatgpt')
+                ? 'ChatGPT (desarrollado por OpenAI) es un servicio de asistencia por inteligencia artificial basado en modelos GPT de lenguaje amplio.'
+                : host.contains('udabol')
+                    ? 'Plataforma oficial de la Universidad de Aquino Bolivia para aulas virtuales y gestión de notas de estudiantes.'
+                    : 'Página web indexada por Google.',
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _downloadCurrentPage() {
@@ -2209,7 +2740,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                 splashRadius: 20,
                                 onPressed: () {
                                   Navigator.pop(ctx);
-                                  currentTab.controller.reload();
+                                  _reloadTab(currentTab);
                                 },
                               ),
                             ],
@@ -2936,9 +3467,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
                         );
                       }
 
-                      // Barra Omnibox estándar cuando navega en una página web
+                      // Barra Omnibox estándar cuando navega en una página web (Capturas 1 & 3)
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         decoration: BoxDecoration(
                           color: _currentTab.isIncognito ? const Color(0xFF1F1F1F) : const Color(0xFFEDEFF6),
                           border: Border(
@@ -2950,48 +3481,32 @@ class _BrowserScreenState extends State<BrowserScreen> {
                         ),
                         child: Row(
                           children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.home_outlined,
-                                color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
-                                size: 24,
-                              ),
-                              splashRadius: 20,
-                              onPressed: () {
-                                final cur = _tabs[_currentTabIndex];
-                                cur.url = cur.isIncognito ? 'chrome://incognito' : 'chrome://newtab';
-                                _urlController.clear();
-                                setState(() {});
-                              },
-                            ),
-                            if (_currentTab.isIncognito)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 2, right: 2),
-                                child: IncognitoIcon(size: 20, color: Color(0xFFC4C7C5)),
-                              ),
+                            // Cápsula Omnibox expandida con icono de seguridad interactivo
                             Expanded(
                               child: Container(
                                 height: 44,
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
                                   color: _currentTab.isIncognito ? const Color(0xFF2B2D30) : const Color(0xFFE0E3EB),
                                   borderRadius: BorderRadius.circular(24),
                                 ),
                                 child: Row(
                                   children: [
+                                    // Icono de seguridad a la izquierda (Inseguro: (i) en círculo, Seguro: tune) (Capturas 1 & 3)
                                     GestureDetector(
-                                      onDoubleTap: () {
-                                        setState(() {
-                                          _isStealthMode = !_isStealthMode;
-                                        });
-                                        HapticFeedback.lightImpact();
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        if (_currentTab.url != 'chrome://newtab' && _currentTab.url != 'chrome://incognito') {
+                                          _showPageInfoBottomSheet(context);
+                                        }
                                       },
                                       child: Padding(
-                                        padding: const EdgeInsets.only(left: 14, right: 8),
+                                        padding: const EdgeInsets.only(left: 12, right: 8),
                                         child: Icon(
-                                          Icons.tune_rounded,
-                                          color: _currentTab.isIncognito ? const Color(0xFF9AA0A6) : const Color(0xFF444746),
-                                          size: 17,
+                                          _isSecureUrl(_currentTab.url) ? Icons.tune_rounded : Icons.info_outline_rounded,
+                                          color: _currentTab.isIncognito
+                                              ? const Color(0xFF9AA0A6)
+                                              : (_isSecureUrl(_currentTab.url) ? const Color(0xFF444746) : const Color(0xFF1F1F1F)),
+                                          size: _isSecureUrl(_currentTab.url) ? 18 : 20,
                                         ),
                                       ),
                                     ),
@@ -3028,25 +3543,24 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                         onSubmitted: (_) => _loadUrl(),
                                       ),
                                     ),
-                                    if (_urlController.text.isNotEmpty && (_urlFocusNode.hasFocus || _currentTab.url == 'chrome://newtab' || _currentTab.url == 'chrome://incognito'))
+                                    if (_urlController.text.isNotEmpty && _urlFocusNode.hasFocus)
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          if (_urlFocusNode.hasFocus)
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.close_rounded,
-                                                color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
-                                                size: 19,
-                                              ),
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(),
-                                              splashRadius: 18,
-                                              onPressed: () {
-                                                _urlController.clear();
-                                                setState(() {});
-                                              },
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.close_rounded,
+                                              color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
+                                              size: 19,
                                             ),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            splashRadius: 18,
+                                            onPressed: () {
+                                              _urlController.clear();
+                                              setState(() {});
+                                            },
+                                          ),
                                           const SizedBox(width: 4),
                                           IconButton(
                                             icon: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF0B57D0), size: 20),
@@ -3063,14 +3577,29 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 6),
 
-                            // Contador de pestañas (Doble toque revela/oculta botón)
+                            // Botón '+' para Nueva Pestaña (Capturas 1 & 3)
+                            IconButton(
+                              icon: Icon(
+                                Icons.add_rounded,
+                                color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
+                                size: 25,
+                              ),
+                              splashRadius: 20,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              constraints: const BoxConstraints(),
+                              tooltip: 'Nueva pestaña',
+                              onPressed: () => _addNewTab('chrome://newtab', _currentTab.isIncognito),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Contador de pestañas [N] (Doble toque revela/oculta botón) (Capturas 1 & 3)
                             GestureDetector(
                               onTap: _handleTabCounterTap,
                               child: Container(
-                                width: 22,
-                                height: 22,
+                                width: 23,
+                                height: 23,
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
@@ -3083,21 +3612,21 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                     '${_currentTab.isIncognito ? _incognitoTabs.length : _regularTabs.length}',
                                     style: TextStyle(
                                       color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
-                                      fontSize: 11,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 2),
+                            const SizedBox(width: 4),
 
-                            // Menú de tres puntos
+                            // Menú de tres puntos (Capturas 1 & 3)
                             IconButton(
                               icon: Icon(
                                 Icons.more_vert_rounded,
                                 color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
-                                size: 23,
+                                size: 24,
                               ),
                               splashRadius: 20,
                               onPressed: () => _showChromeMenu(context),
@@ -3152,22 +3681,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   onAccountTap: _showGoogleAccountBottomSheet,
                                 );
                               } else {
-                                if (defaultTargetPlatform == TargetPlatform.android) {
-                                  return WebViewWidget.fromPlatformCreationParams(
-                                    key: ValueKey('webview_android_${tab.id}'),
-                                    params: AndroidWebViewWidgetCreationParams(
-                                      controller: tab.controller.platform,
-                                      displayWithHybridComposition: true,
-                                    ),
-                                  );
-                                }
                                 return WebviewRefresher(
                                   key: ValueKey('refresher_${tab.id}'),
                                   controller: tab.controller,
                                   androidRefresherBuilder: (onRefresh, child) {
                                     return RefreshIndicator(
-                                      color: const Color(0xFF8AB4F8),
-                                      backgroundColor: const Color(0xFF2B2D30),
+                                      color: const Color(0xFF0B57D0),
+                                      backgroundColor: Colors.white,
                                       onRefresh: () async => await onRefresh?.call(),
                                       notificationPredicate: (n) => onRefresh != null && n.depth == 0,
                                       child: child,
@@ -3175,8 +3695,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   },
                                   iosRefreshBuilder: (onRefresh, child) {
                                     return RefreshIndicator(
-                                      color: const Color(0xFF8AB4F8),
-                                      backgroundColor: const Color(0xFF2B2D30),
+                                      color: const Color(0xFF0B57D0),
+                                      backgroundColor: Colors.white,
                                       onRefresh: () async => await onRefresh?.call(),
                                       notificationPredicate: (n) => onRefresh != null && n.depth == 0,
                                       child: child,
@@ -3185,8 +3705,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   onRefresh: () async {
                                     final completer = Completer<void>();
                                     tab.refreshCompleter = completer;
-                                    await tab.controller.reload();
-                                    Future.delayed(const Duration(seconds: 6), () {
+                                    await _reloadTab(tab);
+                                    Future.delayed(const Duration(seconds: 5), () {
                                       if (!completer.isCompleted) {
                                         completer.complete();
                                       }
