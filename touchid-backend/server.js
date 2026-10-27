@@ -742,10 +742,11 @@ app.post('/solve', async (req, res) => {
           ],
           verified: true
         });
-        if (verifiedDoc && verifiedDoc.answerText) {
+        if (verifiedDoc && (verifiedDoc.answerText || verifiedDoc.bestAnswer)) {
+          const effectiveAnswerText = (verifiedDoc.answerText || verifiedDoc.bestAnswer).trim();
           const mappedVerified = mapCachedAnswerToStudentOptions({
-            canonical_answer_text: verifiedDoc.answerText,
-            correct_option_text: verifiedDoc.answerText,
+            canonical_answer_text: effectiveAnswerText,
+            correct_option_text: effectiveAnswerText,
             explanation: verifiedDoc.explanation || 'Respuesta verificada en banco oficial.',
             subject: verifiedDoc.course || 'Fisiología II'
           }, options);
@@ -803,8 +804,11 @@ app.post('/solve', async (req, res) => {
           { name: 'gemini-robotics-er-2-preview', provider: 'google', timeoutMs: 4500, thinkingBudget: 0 }
         ];
 
+    let usedModelName = null;
+    let usedInputTokens = 0;
+    let usedOutputTokens = 0;
+
     if (!parsedResult) {
-      let usedModelName = null;
       const solveExecutionPromise = (async () => {
         let candidateResult = null;
         let lastError = null;
@@ -838,6 +842,8 @@ app.post('/solve', async (req, res) => {
                 if (claudeRes && claudeRes.result) {
                   candidateResult = claudeRes.result;
                   usedModelName = claudeRes.modelUsed;
+                  usedInputTokens = claudeRes.inputTokens || 0;
+                  usedOutputTokens = claudeRes.outputTokens || 0;
                   if (!isKType) {
                     candidateResult = enforceNegativeQuestionConsistency(candidateResult, options);
                   }
@@ -994,7 +1000,9 @@ app.post('/solve', async (req, res) => {
                   options: options || [],
                   answer: finalResult.correct_option_letter,
                   bestAnswer: finalResult.correct_option_text,
+                  answerText: finalResult.correct_option_text,
                   correctAnswer: finalResult.correct_option_letter,
+                  course: finalResult.subject || 'General',
                   explanation: finalResult.explanation || '',
                   verified: true,
                   verifiedBy: usedModelName,
@@ -1055,6 +1063,13 @@ app.post('/solve', async (req, res) => {
           source: req.body.source || 'api',
           creditsUsed: isUnlimited ? 0 : 1,
           userType: isUnlimited ? 'ilimitado' : 'estándar',
+          modelUsed: usedModelName || (parsedResult ? 'cache_l1' : 'unknown'),
+          provider: usedModelName && usedModelName.includes('claude') ? 'anthropic' : (usedModelName ? 'google' : 'cache'),
+          inputTokens: usedInputTokens,
+          outputTokens: usedOutputTokens,
+          costUsd: usedModelName && usedModelName.includes('claude')
+            ? Number(((usedInputTokens * 1.00 / 1e6) + (usedOutputTokens * 5.00 / 1e6)).toFixed(6))
+            : Number(((usedInputTokens * 0.075 / 1e6) + (usedOutputTokens * 0.30 / 1e6)).toFixed(6)),
           timestamp: new Date()
         });
       } catch (histError) {
@@ -1669,6 +1684,103 @@ app.delete('/admin/question-bank/:id', checkAdminToken, requireDb, async (req, r
     const { ObjectId } = require('mongodb');
     const result = await req.db.collection('question_bank').deleteOne({ _id: new ObjectId(req.params.id) });
     res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint administrativo para normalizar preguntas de exámenes de hoy en question_bank
+app.post('/admin/normalize-today-exams', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const historyCol = req.db.collection('history');
+    const qbCol = req.db.collection('question_bank');
+
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+
+    const todayHistory = await historyCol.find({
+      $or: [
+        { timestamp: { $gte: startOfToday } },
+        { timestamp: { $gte: new Date(Date.now() - 24 * 3600 * 1000) } }
+      ]
+    }).toArray();
+
+    let normalizedHistologia = 0;
+    let normalizedMicrobiologia = 0;
+    const processedQuestions = [];
+
+    for (const doc of todayHistory) {
+      if (!doc.question || !doc.options || doc.options.length < 2) continue;
+      const text = `${doc.question} ${(doc.options || []).join(' ')} ${doc.subject || ''}`.toLowerCase();
+
+      let targetCourse = null;
+      let examGrade = null;
+
+      if (text.includes('histolog') || text.includes('epitelio') || text.includes('canalículo') || text.includes('tríada portal') || text.includes('neumocito') || text.includes('lobulillo') || text.includes('papila') || text.includes('mucosa oral') || text.includes('pulpa dental') || text.includes('esófago') || text.includes('cartílago')) {
+        targetCourse = 'Histología II';
+        examGrade = '60/60';
+        normalizedHistologia++;
+      } else if (text.includes('microbiolog') || text.includes('bacteri') || text.includes('escherichia') || text.includes('absceso pulmonar') || text.includes('typhi') || text.includes('campylobacter') || text.includes('pylori') || text.includes('diarrea') || text.includes('vibrio') || text.includes('uroanálisis') || text.includes('piuria') || text.includes('orina')) {
+        targetCourse = 'Microbiología I Bacteriología';
+        examGrade = '54/60';
+        normalizedMicrobiologia++;
+      }
+
+      if (targetCourse) {
+        const canonicalSig = buildCanonicalSignature(doc.question, doc.options);
+        const correctText = doc.answer || '';
+        const correctIdx = typeof doc.answerIndex === 'number' ? doc.answerIndex : (doc.options.indexOf(correctText) !== -1 ? doc.options.indexOf(correctText) : 0);
+        const correctLetter = ['A', 'B', 'C', 'D', 'E'][correctIdx] || 'A';
+
+        await qbCol.updateOne(
+          {
+            $or: [
+              { canonicalSignature: canonicalSig },
+              { question: doc.question.trim() }
+            ]
+          },
+          {
+            $set: {
+              canonicalSignature: canonicalSig,
+              course: targetCourse,
+              question: doc.question.trim(),
+              options: doc.options,
+              answer: correctLetter,
+              answerText: correctText,
+              bestAnswer: correctText,
+              correctAnswer: correctLetter,
+              explanation: doc.explanation || 'Respuesta verificada en examen real.',
+              verified: true,
+              verifiedBy: `Examen_Oficial_${examGrade}`,
+              examGrade: examGrade,
+              source: 'examen_oficial_udabol',
+              updatedAt: new Date()
+            },
+            $setOnInsert: {
+              createdAt: new Date(),
+              confidence: 1.0
+            }
+          },
+          { upsert: true }
+        );
+
+        processedQuestions.push({
+          course: targetCourse,
+          question: doc.question.substring(0, 65) + '...',
+          answerText: correctText,
+          examGrade
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      totalProcessed: todayHistory.length,
+      normalizedHistologia,
+      normalizedMicrobiologia,
+      totalNormalized: normalizedHistologia + normalizedMicrobiologia,
+      samples: processedQuestions.slice(0, 6)
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

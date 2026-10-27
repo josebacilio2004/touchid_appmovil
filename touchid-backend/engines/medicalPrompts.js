@@ -1070,6 +1070,47 @@ DOMINIO: DIABETES MELLITUS, TIROIDES, GLÁNDULAS SUPRARRENALES, HIPÓFISIS, META
     - Clínica de hiperexcitabilidad neuromuscular: Parestesias peribucales y en dedos, hiperreflexia, espasmos musculares. Signo de Chvostek (contracción involuntaria de músculos faciales al percutir el nervio facial anterior al trago auditivo) y Signo de Trousseau (espasmo carpopedal al insuflar el manguito de presión >20 mmHg sobre la PAS durante 3 minutos). ECG: Prolongación del intervalo QT.
     - Causa más común: Hipoparatiroidismo postquirúrgico iatrogénico tras tiroidectomía total o paratiroidectomía.`;
 
+const PHYSIOLOGY_PROMPT = `ROL: Catedrático Titular de Fisiología Médica Humana I y II (Guyton & Hall Tratado de Fisiología Médica 14ª Ed., Ganong Fisiología Médica 26ª Ed., Boron & Boulpaep Fisiología Médica 3ª Ed.).
+DOMINIO: FISIOLOGÍA CELULAR, CARDIOVASCULAR, RESPIRATORIA, RENAL, DIGESTIVA, ENDOCRINA Y NEUROFISIOLOGÍA
+- Fisiología Celular y Biofísica de Membrana:
+  * Potencial de Membrana en Reposo (-70 a -90 mV): Determinado predominantemente por la conductancia al K+ a través de canales de fuga (canales Kir/K2P) según la Ecuación de Nernst/Goldman-Hodgkin-Katz.
+  * Bomba Na+/K+ ATPasa: Bombea 3 Na+ hacia el espacio extracelular y 2 K+ hacia el intracelular con hidrólisis de 1 ATP (electrogénica neta: contribuye -4 a -10 mV al potencial). Inhibida por glucósidos cardíacos (ouabaína, digoxina).
+  * Potencial de Acción Nervioso y Muscular: Fase de despolarización rápida por apertura de canales de Na+ dependientes de voltaje (compuertas m de activación rápida y h de inactivación lenta). Fase de repolarización por inactivación de canales de Na+ y apertura de canales de K+ activados por voltaje (rectificadores tardíos).
+  * Período Refractario: Absoluto (canales de Na+ inactivados con compuerta h cerrada; imposible generar otro potencial) y Relativo (canales de K+ abiertos con hiperpolarización transitoria; requiere estímulo suprallumbral).
+- Fisiología Cardiovascular y Hemodinámica:
+  * Ciclo Cardíaco:
+    1) Sístole Ventricular: Contracción isovolumétrica (cierre de válvulas AV [R1], presión ventricular supera la auricular sin cambio de volumen, todas las válvulas cerradas), Eyección Rápida y Eyección Lenta (apertura de válvulas sigmoideas aórtica y pulmonar).
+    2) Diástole Ventricular: Relajación isovolumétrica (cierre de válvulas sigmoideas [R2, componente A2 antes de P2 por mayor presión sistémica], todas las válvulas cerradas), Llenado Rápido (apertura de válvulas AV, R3 fisiológico en jóvenes o patológico por sobrecarga de volumen), Llenado Lento (diastasis) y Sístole Auricular (onda a del pulso venoso yugular, produce R4 patológico por ventrículo rígido no distensible).
+  * Gasto Cardíaco (GC) y Mecanismo de Frank-Starling: GC = Frecuencia Cardíaca (FC) × Volumen Sistólico (VS) (~5 L/min en reposo). El mecanismo de Frank-Starling establece que a mayor longitud de la fibra miocárdica al final de la diástole (precarga / volumen telediastólico), mayor es la fuerza de contracción por óptimo solapamiento de filamentos de actina y miosina.
+  * Presión Arterial: PA = GC × Resistencia Vascular Periférica (RVP). Presión de pulso = Sistólica - Diastólica (depende de compliance arterial y volumen sistólico). Presión Arterial Media (PAM) = Diastólica + 1/3 (Sistólica - Diastólica).
+- Fisiología Respiratoria:
+  * Volúmenes y Capacidades Pulmonares:
+    - Volumen Corriente (VC / Tidal): 500 mL.
+    - Volumen de Reserva Inspiratoria (VRI): ~3000 mL.
+    - Volumen de Reserva Espiratoria (VRE): ~1100 mL.
+    - Volumen Residual (VR): ~1200 mL (NO se puede medir por espirometría simple; requiere pletismografía o dilución de helio).
+    - Capacidad Vital (CV): VC + VRI + VRE (~4600 mL).
+    - Capacidad Pulmonar Total (CPT): CV + VR (~5800 mL).
+    - Capacidad Residual Funcional (CRF): VRE + VR (~2300 mL; volumen de gas alveolar en reposo espiratorio pasivo).
+  * Surfactante Pulmonar (Dipalmitoilfosfatidilcolina): Secretado por Neumocitos Tipo II (células epiteliales alveolares granulares) a partir de la semana 24-28 de gestación. Reduce drásticamente la tensión superficial alveolar de forma proporcional al radio; evita el colapso alveolar según la Ley de Laplace (P = 2T / r) y reduce el trabajo respiratorio.
+  * Transporte de Gases y Efecto Bohr: La hemoglobina transporta hasta 4 moléculas de O2 (cooperatividad positiva, curva sigmoidea). Desviación de la curva a la DERECHA (disminuye afinidad, favorece liberación de O2 a tejidos periféricos): Aumento de H+ (acidosis / menor pH: Efecto Bohr), aumento de pCO2, aumento de temperatura y aumento de 2,3-Bifosfoglicerato (2,3-BPG). Desviación a la IZQUIERDA: Mayor afinidad (alcalosis, hipotermia, metahemoglobina, carboxihemoglobina, HbF fetal).
+- Fisiología Renal y Balance Hidroelectrolítico:
+  * Tasa de Filtración Glomerular (TFG): ~125 mL/min (180 L/día). Barrera de filtración glomerular: Endotelio fenestrado, Membrana Basal Glomerular (colágeno IV y heparán sulfato con cargas negativas polianiónicas que repelen proteínas como albúmina) y Podocitos con pedicelos y diafragma de hendidura (nefrina y podocina).
+  * Fracción de Filtración (FF): FF = TFG / Flujo Plasmático Renal (FPR) (~20% fisiológico).
+  * Segmentos Tubulares:
+    - Túbulo Contorneado Proximal (TCP): Reabsorbe 65-70% de agua y Na+ (isoosmótico), 100% de glucosa (transportadores SGLT2 y SGLT1 acoplados a Na+) y aminoácidos, 85-90% de HCO3- (mediante anhidrasa carbónica luminal y basolateral).
+    - Asa de Henle: Rama descendente delgada (altamente permeable al agua, impermeable a solutos; concentra orina). Rama ascendente gruesa (impermeable al agua; cotransporte electroneutro Na+/K+/2Cl- sensible a furosemida, reabsorbe Mg2+ y Ca2+ por vía paracelular; mecanismo multiplicador por contracorriente).
+    - Túbulo Contorneado Distal (TCD): Cotransporte Na+/Cl- sensible a tiazidas (hidroclorotiazida). Reabsorción de Ca2+ regulada por Parathormona (PTH).
+    - Túbulo Colector: Células Principales (reabsorben Na+ por canal ENaC y secretan K+ reguladas por Aldosterona; reabsorben agua libre reguladas por Vasopresina / ADH mediante inserción de Acuaporina-2 en membrana apical). Células Intercaladas Alfa (secretan H+ por H+-ATPasa y H+/K+-ATPasa, reabsorben K+ y generan nuevo HCO3-).
+- Fisiología Gastrointestinal y Digestiva:
+  * Fases de la Secreción Gástrica: Cefálica (30% mediada por nervio vago / acetilcolina), Gástrica (60% distensión estomacal y aminoácidos estimulan gastrina de células G antrales), Intestinal (10%).
+  * Célula Parietal u Oxíntica: Secreta Ácido Clorhídrico (HCl) por bomba H+/K+ ATPasa basolateralmente estimulada por Histamina (receptor H2, vía AMPc), Gastrina (receptor CCK2, vía Ca2+) y Acetilcolina (receptor M3, vía Ca2+). Secreta además FACTOR INTRÍNSECO (indispensable para absorción de Vitamina B12 en íleon terminal).
+  * Secreción Pancreática Exocrina: Células ductales secretan solución rica en Bicarbonato (HCO3-) estimuladas por SECRETINA (células S duodenales ante pH < 4.5). Células acinares secretan enzimas digestivas zimógenas estimuladas por COLECISTOCININA (CCK, células I duodenales ante ácidos grasos y péptidos).
+- Fisiología Endocrina y Control por Retroalimentación:
+  * Eje Hipotálamo-Hipófisis: Sistema porta hipofisario transporta hormonas liberadoras (TRH, CRH, GnRH, GHRH) a la adenohipófisis.
+  * Tiroides: Síntesis de T4 y T3 por captación de yoduro (simportador NIS), organificación y acoplamiento por Tiroperoxidasa (TPO) en coloide. T3 es la forma biológicamente activa periférica (conversión por 5'-desyodasa). Retroalimentación negativa de T3/T4 libre sobre TSH y TRH.
+  * Suprarrenal: Eje Renina-Angiotensina-Aldosterona (SRAA) regula zona glomerulosa (Aldosterona); ACTH regula zona fasciculada (Cortisol) y reticular (DHEA). El Cortisol ejerce retroalimentación negativa potente sobre ACTH y CRH.`;
+
 function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPromptOverride = '') {
   const trimmedOverride = (systemPromptOverride || '').trim();
   const isLegacyDefault = trimmedOverride.includes('evaluador académico de élite');
@@ -1094,6 +1135,11 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   // 1.1. CIRUGÍA DE TÓRAX (Schwartz / Sabiston / Shields / ATLS)
   if (/cirug[ií]a\s*(de\s*)?t[oó]rax|cirug[ií]a\s*tor[aá]cica|t[oó]rax|toracotom|neumot[oó]rax|hemot[oó]rax|pleurostom|tubo\s*de\s*drenaje|trauma\s*tor[aá]cico|mediastin|lobar|lobectom|enfisema\s*subcut[aá]neo/i.test(fullText)) {
     matchedModules.push(THORACIC_SURGERY_PROMPT);
+  }
+
+  // 1.1b. FISIOLOGÍA HUMANA I Y II (Guyton & Hall / Ganong / Boron)
+  if (/fisiolog[ií]a|fisiol[oó]gic|guyton|ganong|potencial\s*de\s*membrana|bomba\s*na\+|gasto\s*card[ií]aco|ciclo\s*card[ií]aco|precarga|poscarga|frank\s*starling|volumen\s*corriente|capacidad\s*vital|surfactante\s*pulmonar|tasa\s*de\s*filtraci[oó]n\s*glomerular|tfg|aclaramiento|clearence|bomba\s*h\+|factor\s*intr[ií]nseco|secretina|colecistocinina|cck/i.test(fullText)) {
+    matchedModules.push(PHYSIOLOGY_PROMPT);
   }
 
   // 1.2. HISTOLOGÍA I Y II (Ross / Junqueira / Gartner)
