@@ -496,11 +496,12 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
     );
   }
 
-  // Tarjeta "Continuar con esta pestaña" (Captura 1 del usuario)
+  // Tarjeta "Continuar con esta pestaña" (Discreta y sutil para entorno universitario)
   Widget _buildResumeTabSection() {
-    final title = widget.lastVisitedTitle.isNotEmpty ? widget.lastVisitedTitle : 'Gran Sorteo - Ssamath Clothes';
-    final url = widget.lastVisitedUrl.isNotEmpty ? widget.lastVisitedUrl : 'https://ssamath.github.io';
-    final domain = Uri.tryParse(url)?.host ?? 'github.io';
+    final hasHistory = widget.lastVisitedTitle.isNotEmpty;
+    final title = hasHistory ? widget.lastVisitedTitle : 'Portal Académico - Estudiantes';
+    final url = hasHistory ? widget.lastVisitedUrl : 'https://virtual.udabol.edu.bo/carpetaverde/general/modulos';
+    final domain = hasHistory ? (Uri.tryParse(url)?.host ?? 'udabol.edu.bo') : 'virtual.udabol.edu.bo';
 
     return Container(
       decoration: BoxDecoration(
@@ -549,36 +550,15 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
             child: Row(
               children: [
                 Container(
-                  width: 58,
-                  height: 58,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF261D3B), // Fondo púrpura de Captura 1
+                    color: const Color(0xFFE8F0FE), // Fondo sutil azul académico
                     borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFD2E3FC), width: 1.0),
                   ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'SORTEO',
-                            style: TextStyle(
-                              color: Color(0xFFF59E0B),
-                              fontSize: 7.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        const Icon(Icons.shopping_bag_outlined, color: Color(0xFFD8B4FE), size: 20),
-                      ],
-                    ),
+                  child: const Center(
+                    child: Icon(Icons.school_rounded, color: Color(0xFF1967D2), size: 26),
                   ),
                 ),
                 const SizedBox(width: 14),

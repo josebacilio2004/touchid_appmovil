@@ -5,6 +5,20 @@ import 'browser_screen.dart';
 import 'chrome_clear_data_dialog.dart';
 import 'chrome_settings_screen.dart';
 
+class TabGroupData {
+  final String id;
+  String title;
+  final Color color;
+  final List<String> tabIds;
+
+  TabGroupData({
+    required this.id,
+    required this.title,
+    required this.color,
+    required this.tabIds,
+  });
+}
+
 class ChromeTabSwitcherScreen extends StatefulWidget {
   final List<BrowserTab> regularTabs;
   final List<BrowserTab> incognitoTabs;
@@ -39,6 +53,9 @@ class ChromeTabSwitcherScreen extends StatefulWidget {
 
 class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
   late bool _isIncognitoView;
+  late List<BrowserTab> _localRegularTabs;
+  late List<BrowserTab> _localIncognitoTabs;
+  final List<TabGroupData> _tabGroups = [];
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
   bool _isSelectionMode = false;
@@ -48,6 +65,8 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
   @override
   void initState() {
     super.initState();
+    _localRegularTabs = List.from(widget.regularTabs);
+    _localIncognitoTabs = List.from(widget.incognitoTabs);
     _isIncognitoView = widget.initialIsIncognito;
     _searchCtrl.addListener(() {
       setState(() {
@@ -60,6 +79,61 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _handleCloseTab(int index, bool isIncog) {
+    final list = isIncog ? _localIncognitoTabs : _localRegularTabs;
+    if (index >= 0 && index < list.length) {
+      final removed = list[index];
+      setState(() {
+        list.removeAt(index);
+        for (var g in _tabGroups) {
+          g.tabIds.remove(removed.id);
+        }
+        _tabGroups.removeWhere((g) => g.tabIds.length < 2);
+        if (isIncog && _localIncognitoTabs.isEmpty) {
+          _isIncognitoView = false;
+        }
+      });
+      widget.onCloseTab(index, isIncog);
+    }
+  }
+
+  void _createTabGroup() {
+    if (_selectedTabIds.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona al menos 2 pestañas para agrupar')),
+      );
+      return;
+    }
+
+    final colors = [
+      const Color(0xFF0B57D0),
+      const Color(0xFF1E8E3E),
+      const Color(0xFFD93025),
+      const Color(0xFFE37400),
+      const Color(0xFF9334E6),
+    ];
+    final color = colors[_tabGroups.length % colors.length];
+
+    setState(() {
+      _tabGroups.add(TabGroupData(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: 'Grupo de ${_selectedTabIds.length} pestañas',
+        color: color,
+        tabIds: List.from(_selectedTabIds),
+      ));
+      _isSelectionMode = false;
+      _selectedTabIds.clear();
+      _isGroupingView = true;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Pestañas agrupadas con éxito'),
+        backgroundColor: Color(0xFF0B57D0),
+      ),
+    );
   }
 
   void _showTabSwitcherMenu(BuildContext context) {
@@ -286,8 +360,8 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasIncognitoTabs = widget.incognitoTabs.isNotEmpty;
-    final activeList = _isIncognitoView ? widget.incognitoTabs : widget.regularTabs;
+    final hasIncognitoTabs = _localIncognitoTabs.isNotEmpty;
+    final activeList = _isIncognitoView ? _localIncognitoTabs : _localRegularTabs;
     final activeIndex = _isIncognitoView ? widget.currentIncognitoIndex : widget.currentRegularIndex;
 
     final filteredIndices = <int>[];
@@ -300,7 +374,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
       }
     }
 
-    final totalCount = widget.regularTabs.isNotEmpty ? widget.regularTabs.length : 1;
+    final totalCount = _localRegularTabs.isNotEmpty ? _localRegularTabs.length : 1;
 
     final isDark = _isIncognitoView && !_isGroupingView;
     final bgColor = isDark ? const Color(0xFF141518) : const Color(0xFFEDEFF6);
@@ -556,14 +630,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                       TextButton.icon(
                         icon: const Icon(Icons.grid_view_rounded, size: 18),
                         label: const Text('Agrupar'),
-                        onPressed: _selectedTabIds.isEmpty
-                            ? null
-                            : () {
-                                setState(() => _isSelectionMode = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Pestañas agrupadas con éxito')),
-                                );
-                              },
+                        onPressed: _selectedTabIds.length < 2 ? null : _createTabGroup,
                       ),
                       TextButton.icon(
                         icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFFB3261E)),
@@ -669,14 +736,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                               widget.onSelectTab(realIndex, _isIncognitoView);
                               Navigator.pop(context);
                             },
-                            onClose: () {
-                              widget.onCloseTab(realIndex, _isIncognitoView);
-                              setState(() {
-                                if (_isIncognitoView && widget.incognitoTabs.isEmpty) {
-                                  _isIncognitoView = false;
-                                }
-                              });
-                            },
+                            onClose: () => _handleCloseTab(realIndex, _isIncognitoView),
                           );
                         },
                       ),
@@ -690,6 +750,100 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
 
   // Vista vacía de Grupos de Pestañas idéntica a la Captura 2
   Widget _buildTabGroupsEmptyView() {
+    if (_tabGroups.isNotEmpty) {
+      return Expanded(
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          itemCount: _tabGroups.length,
+          itemBuilder: (context, index) {
+            final group = _tabGroups[index];
+            final groupTabs = _localRegularTabs.where((t) => group.tabIds.contains(t.id)).toList();
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: group.color.withValues(alpha: 0.35), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: group.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          group.title,
+                          style: const TextStyle(
+                            color: Color(0xFF1F1F1F),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${groupTabs.length} pestañas',
+                        style: const TextStyle(color: Color(0xFF747775), fontSize: 13),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFF444746), size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _tabGroups.removeAt(index);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 18),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: groupTabs.map((t) {
+                      return ActionChip(
+                        avatar: const Icon(Icons.public_rounded, size: 16, color: Color(0xFF0B57D0)),
+                        label: Text(
+                          t.title.isNotEmpty ? t.title : 'Pestaña',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        backgroundColor: const Color(0xFFEDEFF6),
+                        onPressed: () {
+                          final realIdx = _localRegularTabs.indexWhere((tab) => tab.id == t.id);
+                          if (realIdx != -1) {
+                            widget.onSelectTab(realIdx, false);
+                            Navigator.pop(context);
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    }
+
     return Expanded(
       child: Center(
         child: Padding(

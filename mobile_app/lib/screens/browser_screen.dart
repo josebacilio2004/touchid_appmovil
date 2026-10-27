@@ -181,17 +181,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  // Widget de avatar de perfil de usuario sincronizado de Google/Gmail
+  // Widget de avatar de perfil de usuario sincronizado de Google/Gmail (Foto realista de Captura 3)
   Widget _buildUserProfileAvatar() {
     final photoUrl = widget.config.userPhotoUrl.trim();
-    if (photoUrl.isNotEmpty && photoUrl.startsWith('http')) {
-      return Image.network(
-        photoUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildAvatarFallback(),
-      );
-    }
-    return _buildAvatarFallback();
+    final targetUrl = (photoUrl.isNotEmpty && photoUrl.startsWith('http'))
+        ? photoUrl
+        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';
+
+    return Image.network(
+      targetUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _buildAvatarFallback(),
+    );
   }
 
   Widget _buildAvatarFallback() {
@@ -2876,7 +2877,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
                               // 2. Icono Perfil de Gmail (Foto del usuario logeado; al tocar abre Configuración de Chrome)
                               GestureDetector(
-                                onTap: () => _handleConfigTap(context),
+                                onTap: () => _handleConfigTap(),
                                 child: Container(
                                   width: 32,
                                   height: 32,
@@ -3289,10 +3290,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  void _handleConfigTap(BuildContext ctx) {
-    Navigator.pop(ctx);
-    Navigator.push(
-      context,
+  void _handleConfigTap([BuildContext? ctx]) {
+    if (ctx != null) {
+      Navigator.of(ctx).pop();
+    }
+    Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => ChromeSettingsScreen(
           config: widget.config,
