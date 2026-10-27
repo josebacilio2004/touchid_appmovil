@@ -156,6 +156,65 @@ class _BrowserScreenState extends State<BrowserScreen> {
     _solveQuestionnaire();
   }
 
+  // Atajo discreto para mostrar/ocultar el botón touch: Doble toque en el contador de pestañas [N]
+  int _tabCounterTapCount = 0;
+  Timer? _tabCounterTapTimer;
+
+  void _handleTabCounterTap() {
+    _tabCounterTapCount++;
+    if (_tabCounterTapCount == 1) {
+      _tabCounterTapTimer?.cancel();
+      _tabCounterTapTimer = Timer(const Duration(milliseconds: 300), () {
+        _tabCounterTapCount = 0;
+        _showTabSwitcher();
+      });
+    } else if (_tabCounterTapCount >= 2) {
+      _tabCounterTapTimer?.cancel();
+      _tabCounterTapCount = 0;
+      HapticFeedback.lightImpact();
+      setState(() {
+        _showFloatingButton = !_showFloatingButton;
+        if (_showFloatingButton) {
+          _isStealthMode = false;
+        }
+      });
+    }
+  }
+
+  // Widget de avatar de perfil de usuario sincronizado de Google/Gmail
+  Widget _buildUserProfileAvatar() {
+    final photoUrl = widget.config.userPhotoUrl.trim();
+    if (photoUrl.isNotEmpty && photoUrl.startsWith('http')) {
+      return Image.network(
+        photoUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildAvatarFallback(),
+      );
+    }
+    return _buildAvatarFallback();
+  }
+
+  Widget _buildAvatarFallback() {
+    final email = widget.config.userEmail.trim();
+    final name = widget.config.userName.trim();
+    if (email.isNotEmpty || name.isNotEmpty) {
+      final initial = (name.isNotEmpty ? name[0] : email[0]).toUpperCase();
+      return Center(
+        child: Text(
+          initial,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    return const Center(
+      child: Icon(Icons.person, color: Colors.white, size: 20),
+    );
+  }
+
   // Posición del botón circular flotante
   double _btnRight = 20;
   double _btnBottom = 20;
@@ -262,70 +321,43 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   List<ChromeShortcutItem> _getDynamicShortcuts() {
-    final list = <ChromeShortcutItem>[];
-    
-    if (widget.config.userEmail.isNotEmpty) {
-      list.addAll([
-        const ChromeShortcutItem(
-          label: 'UDABOL',
-          url: 'https://virtual.udabol.edu.bo/login/index.php',
-          iconWidget: Icon(Icons.school_rounded, color: Color(0xFF34A853), size: 22),
+    final list = <ChromeShortcutItem>[
+      const ChromeShortcutItem(
+        label: 'UDABOL',
+        url: 'https://virtual.udabol.edu.bo/login/index.php',
+        iconWidget: Center(
+          child: Icon(Icons.school_rounded, color: Color(0xFF10A37F), size: 24),
         ),
-        const ChromeShortcutItem(
-          label: 'Gmail',
-          url: 'https://mail.google.com',
-          iconWidget: Icon(Icons.mail_outline_rounded, color: Color(0xFFEA4335), size: 22),
+      ),
+      const ChromeShortcutItem(
+        label: 'Google',
+        url: 'https://www.google.com',
+        iconWidget: Center(
+          child: Text('G', style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.bold, fontSize: 22)),
         ),
-        const ChromeShortcutItem(
-          label: 'YouTube',
-          url: 'https://www.youtube.com',
-          iconWidget: Icon(Icons.play_arrow_rounded, color: Color(0xFFFF0000), size: 24),
+      ),
+      const ChromeShortcutItem(
+        label: 'YouTube',
+        url: 'https://www.youtube.com',
+        iconWidget: Center(
+          child: Icon(Icons.play_arrow_rounded, color: Color(0xFFFF0000), size: 26),
         ),
-        const ChromeShortcutItem(
-          label: 'Drive',
-          url: 'https://drive.google.com',
-          iconWidget: Icon(Icons.add_to_drive_rounded, color: Color(0xFF34A853), size: 22),
+      ),
+      const ChromeShortcutItem(
+        label: 'Wikipedia',
+        url: 'https://es.wikipedia.org',
+        iconWidget: Center(
+          child: Text('W', style: TextStyle(color: Color(0xFFE8EAED), fontWeight: FontWeight.bold, fontSize: 20)),
         ),
-        const ChromeShortcutItem(
-          label: 'Meet',
-          url: 'https://meet.google.com',
-          iconWidget: Icon(Icons.videocam_rounded, color: Color(0xFF1A73E8), size: 22),
+      ),
+      const ChromeShortcutItem(
+        label: 'Noticias',
+        url: 'https://news.google.com',
+        iconWidget: Center(
+          child: Icon(Icons.newspaper_rounded, color: Color(0xFFFBBC05), size: 24),
         ),
-        const ChromeShortcutItem(
-          label: 'Documentos',
-          url: 'https://docs.google.com',
-          iconWidget: Icon(Icons.description_outlined, color: Color(0xFF4285F4), size: 22),
-        ),
-      ]);
-    } else {
-      list.addAll([
-        const ChromeShortcutItem(
-          label: 'UDABOL',
-          url: 'https://virtual.udabol.edu.bo/login/index.php',
-          iconWidget: Icon(Icons.school_rounded, color: Color(0xFF34A853), size: 22),
-        ),
-        const ChromeShortcutItem(
-          label: 'Google',
-          url: 'https://www.google.com',
-          iconWidget: Center(child: Text('G', style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.bold, fontSize: 20))),
-        ),
-        const ChromeShortcutItem(
-          label: 'YouTube',
-          url: 'https://www.youtube.com',
-          iconWidget: Icon(Icons.play_arrow_rounded, color: Color(0xFFFF0000), size: 24),
-        ),
-        const ChromeShortcutItem(
-          label: 'Wikipedia',
-          url: 'https://es.wikipedia.org',
-          iconWidget: Center(child: Text('W', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18))),
-        ),
-        const ChromeShortcutItem(
-          label: 'Noticias',
-          url: 'https://news.google.com',
-          iconWidget: Icon(Icons.newspaper_rounded, color: Color(0xFFFBBC05), size: 22),
-        ),
-      ]);
-    }
+      ),
+    ];
 
     for (final h in _browsingHistory) {
       if (list.length >= 8) break;
@@ -2842,33 +2874,27 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
                               const Spacer(),
 
-                              // 2. Icono Perfil de Gmail (Foto / Avatar circular anime como en Captura 1)
+                              // 2. Icono Perfil de Gmail (Foto del usuario logeado; al tocar abre Configuración de Chrome)
                               GestureDetector(
-                                onTap: _showGoogleAccountBottomSheet,
+                                onTap: () => _handleConfigTap(context),
                                 child: Container(
                                   width: 32,
                                   height: 32,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
-                                    color: const Color(0xFF0F172A),
+                                    color: const Color(0xFF1A73E8),
                                   ),
                                   clipBehavior: Clip.antiAlias,
-                                  child: Image.network(
-                                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Center(
-                                      child: Icon(Icons.person, color: Colors.white, size: 20),
-                                    ),
-                                  ),
+                                  child: _buildUserProfileAvatar(),
                                 ),
                               ),
 
                               const SizedBox(width: 14),
 
-                              // 3. Cuadrado encapsulando el número de pestañas abiertas
+                              // 3. Cuadrado encapsulando el número de pestañas abiertas (Doble toque revela/oculta botón)
                               GestureDetector(
-                                onTap: _showTabSwitcher,
+                                onTap: _handleTabCounterTap,
                                 child: Container(
                                   width: 24,
                                   height: 24,
@@ -3031,9 +3057,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
                             ),
                             const SizedBox(width: 4),
 
-                            // Contador de pestañas
+                            // Contador de pestañas (Doble toque revela/oculta botón)
                             GestureDetector(
-                              onTap: _showTabSwitcher,
+                              onTap: _handleTabCounterTap,
                               child: Container(
                                 width: 22,
                                 height: 22,
@@ -3189,10 +3215,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   },
                   onTapDown: (_) {
                     _touchHoldTimer?.cancel();
-                    _touchHoldTimer = Timer(const Duration(seconds: 4), () {
-                      HapticFeedback.heavyImpact();
+                    _touchHoldTimer = Timer(const Duration(milliseconds: 1000), () {
+                      HapticFeedback.mediumImpact();
                       if (mounted) {
                         setState(() {
+                          _showFloatingButton = false;
                           _isStealthMode = true;
                         });
                       }
@@ -3440,8 +3467,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
               if (bodyMatch) email = bodyMatch[1];
             }
 
+            var imgEl = document.querySelector('img[src*="googleusercontent.com"], img[src*="lh3.googleusercontent.com"], a[href*="SignOutOptions"] img, [aria-label*="@"] img');
+            var photoUrl = imgEl ? (imgEl.src || '') : '';
             if (email) {
-              return JSON.stringify({ email: email.toLowerCase().trim(), name: name || '' });
+              return JSON.stringify({ email: email.toLowerCase().trim(), name: name || '', photoUrl: photoUrl });
             }
           } catch(e) {}
           return '';
@@ -3459,16 +3488,24 @@ class _BrowserScreenState extends State<BrowserScreen> {
         final String detectedEmail = (data['email'] ?? '').toString().trim();
         final String detectedName = (data['name'] ?? '').toString().trim();
 
+        final String detectedPhoto = (data['photoUrl'] ?? '').toString().trim();
+        bool changed = false;
         if (detectedEmail.isNotEmpty && detectedEmail.contains('@') && detectedEmail != widget.config.userEmail) {
-          setState(() {
-            widget.config.userEmail = detectedEmail;
-            if (detectedName.isNotEmpty) {
-              widget.config.userName = detectedName;
-            } else if (widget.config.userName.isEmpty) {
-              widget.config.userName = detectedEmail.split('@').first;
-            }
-            widget.config.syncEnabled = true;
-          });
+          widget.config.userEmail = detectedEmail;
+          if (detectedName.isNotEmpty) {
+            widget.config.userName = detectedName;
+          } else if (widget.config.userName.isEmpty) {
+            widget.config.userName = detectedEmail.split('@').first;
+          }
+          widget.config.syncEnabled = true;
+          changed = true;
+        }
+        if (detectedPhoto.isNotEmpty && detectedPhoto.startsWith('http') && detectedPhoto != widget.config.userPhotoUrl) {
+          widget.config.userPhotoUrl = detectedPhoto;
+          changed = true;
+        }
+        if (changed) {
+          setState(() {});
           await widget.config.save();
 
           if (mounted) {

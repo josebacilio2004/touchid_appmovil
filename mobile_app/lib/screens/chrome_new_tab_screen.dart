@@ -270,7 +270,7 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
               physics: const BouncingScrollPhysics(),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
-                children: _buildExactOriginalShortcuts().map((item) {
+                children: (widget.shortcuts.isNotEmpty ? widget.shortcuts : _buildOriginalShortcuts()).map((item) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: _buildShortcutItem(
@@ -382,81 +382,81 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
     );
   }
 
-  // Lista exacta de accesos directos de la Captura 1
-  List<ChromeShortcutItem> _buildExactOriginalShortcuts() {
+  // Lista de accesos directos oficiales (Captura 1 del usuario: UDABOL, Google, YouTube, Wikipedia, Noticias)
+  List<ChromeShortcutItem> _buildOriginalShortcuts() {
     return [
       ChromeShortcutItem(
-        label: 'ChatGPT',
-        url: 'https://chatgpt.com',
+        label: 'UDABOL',
+        url: 'https://virtual.udabol.edu.bo/login/index.php',
         iconWidget: Container(
           width: 48,
           height: 48,
           decoration: const BoxDecoration(
-            color: Color(0xFFF0F3F9),
+            color: Color(0xFF263238),
             shape: BoxShape.circle,
           ),
           child: const Center(
-            child: Icon(Icons.bubble_chart_rounded, color: Color(0xFF10A37F), size: 26),
+            child: Icon(Icons.school_rounded, color: Color(0xFF10A37F), size: 24),
           ),
         ),
       ),
       ChromeShortcutItem(
-        label: 'Alta Gama ...',
-        url: 'https://virtual.udabol.edu.bo/carpetaverde/general/modulos',
+        label: 'Google',
+        url: 'https://www.google.com',
         iconWidget: Container(
           width: 48,
           height: 48,
           decoration: const BoxDecoration(
-            color: Colors.black,
+            color: Color(0xFF2B3A60),
             shape: BoxShape.circle,
           ),
           child: const Center(
-            child: Text('N', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+            child: Text('G', style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.bold, fontSize: 22)),
           ),
         ),
       ),
       ChromeShortcutItem(
-        label: 'Monetizaci...',
-        url: 'https://touchid-backend.onrender.com',
+        label: 'YouTube',
+        url: 'https://www.youtube.com',
         iconWidget: Container(
           width: 48,
           height: 48,
           decoration: const BoxDecoration(
-            color: Color(0xFFD3E3FD),
+            color: Color(0xFF2B2D30),
             shape: BoxShape.circle,
           ),
           child: const Center(
-            child: Icon(Icons.fingerprint_rounded, color: Color(0xFF041E49), size: 26),
+            child: Icon(Icons.play_arrow_rounded, color: Color(0xFFFF0000), size: 26),
           ),
         ),
       ),
       ChromeShortcutItem(
-        label: 'Lamovie – ...',
-        url: 'https://netflix.com',
+        label: 'Wikipedia',
+        url: 'https://es.wikipedia.org',
         iconWidget: Container(
           width: 48,
           height: 48,
           decoration: const BoxDecoration(
-            color: Color(0xFFFBE7E8),
+            color: Color(0xFF2B2D30),
             shape: BoxShape.circle,
           ),
           child: const Center(
-            child: Text('M', style: TextStyle(color: Color(0xFFE50914), fontWeight: FontWeight.w900, fontSize: 20)),
+            child: Text('W', style: TextStyle(color: Color(0xFFE8EAED), fontWeight: FontWeight.bold, fontSize: 20)),
           ),
         ),
       ),
       ChromeShortcutItem(
-        label: 'Alta Gama',
-        url: 'https://google.com',
+        label: 'Noticias',
+        url: 'https://news.google.com',
         iconWidget: Container(
           width: 48,
           height: 48,
           decoration: const BoxDecoration(
-            color: Colors.black,
+            color: Color(0xFF2B2D30),
             shape: BoxShape.circle,
           ),
           child: const Center(
-            child: Icon(Icons.circle_outlined, color: Colors.white, size: 24),
+            child: Icon(Icons.newspaper_rounded, color: Color(0xFFFBBC05), size: 24),
           ),
         ),
       ),
@@ -496,8 +496,12 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
     );
   }
 
-  // Tarjeta "Retomar esta pestaña" (Captura 1)
+  // Tarjeta "Continuar con esta pestaña" (Captura 1 del usuario)
   Widget _buildResumeTabSection() {
+    final title = widget.lastVisitedTitle.isNotEmpty ? widget.lastVisitedTitle : 'Gran Sorteo - Ssamath Clothes';
+    final url = widget.lastVisitedUrl.isNotEmpty ? widget.lastVisitedUrl : 'https://ssamath.github.io';
+    final domain = Uri.tryParse(url)?.host ?? 'github.io';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -518,7 +522,7 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Retomar esta pestaña',
+                'Continuar con esta pestaña',
                 style: TextStyle(
                   color: Color(0xFF1F1F1F),
                   fontSize: 15,
@@ -526,7 +530,7 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
                 ),
               ),
               InkWell(
-                onTap: () => widget.onOpenUrl('https://touchid-backend.onrender.com'),
+                onTap: () => widget.onOpenUrl(url),
                 child: const Text(
                   'Ver más',
                   style: TextStyle(
@@ -541,94 +545,62 @@ class _ChromeNewTabScreenState extends State<ChromeNewTabScreen> {
           const SizedBox(height: 14),
           InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () => widget.onOpenUrl('https://touchid-backend.onrender.com'),
+            onTap: () => widget.onOpenUrl(url),
             child: Row(
               children: [
-                Stack(
-                  children: [
-                    Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0), width: 0.8),
-                      ),
-                      padding: const EdgeInsets.all(6),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            height: 6,
-                            width: 32,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF38BDF8),
-                              borderRadius: BorderRadius.circular(3),
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF261D3B), // Fondo púrpura de Captura 1
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'SORTEO',
+                            style: TextStyle(
+                              color: Color(0xFFF59E0B),
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Container(
-                            height: 4,
-                            width: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF64748B),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0F172A),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 4,
-                      right: 4,
-                      child: Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 4,
-                            ),
-                          ],
                         ),
-                        child: const Center(
-                          child: Icon(Icons.fingerprint_rounded, color: Color(0xFF0B57D0), size: 14),
-                        ),
-                      ),
+                        const SizedBox(height: 3),
+                        const Icon(Icons.shopping_bag_outlined, color: Color(0xFFD8B4FE), size: 20),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'TouchID Admin Dashboard - Monetización & Co...',
+                        title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Color(0xFF1F1F1F),
                           fontSize: 14.5,
                           fontWeight: FontWeight.w600,
                           height: 1.25,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
-                        'github.io',
-                        style: TextStyle(
+                        domain,
+                        style: const TextStyle(
                           color: Color(0xFF747775),
                           fontSize: 13,
                         ),

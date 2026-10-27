@@ -286,6 +286,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasIncognitoTabs = widget.incognitoTabs.isNotEmpty;
     final activeList = _isIncognitoView ? widget.incognitoTabs : widget.regularTabs;
     final activeIndex = _isIncognitoView ? widget.currentIncognitoIndex : widget.currentRegularIndex;
 
@@ -301,18 +302,24 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
 
     final totalCount = widget.regularTabs.isNotEmpty ? widget.regularTabs.length : 1;
 
+    final isDark = _isIncognitoView && !_isGroupingView;
+    final bgColor = isDark ? const Color(0xFF141518) : const Color(0xFFEDEFF6);
+    final primaryTextColor = isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F);
+    final secondaryTextColor = isDark ? const Color(0xFF9AA0A6) : const Color(0xFF444746);
+    final searchBgColor = isDark ? const Color(0xFF282A2D) : const Color(0xFFE0E3EB);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFEDEFF6), // Fondo auténtico claro de la Captura 3
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
-            // 1. Top Bar del Tab Switcher (Captura 3)
+            // 1. Top Bar del Tab Switcher (Captura 2 y Captura 3)
             Container(
               height: 58,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  // Botón Nueva Pestaña [+] en círculo azul oscuro (Captura 3)
+                  // Botón Nueva Pestaña [+] en círculo
                   GestureDetector(
                     onTap: () {
                       widget.onAddNewTab(_isIncognitoView);
@@ -321,8 +328,8 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                     child: Container(
                       width: 44,
                       height: 44,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF385E9D),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF2B2D30) : const Color(0xFF385E9D),
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
@@ -333,53 +340,156 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
 
                   const Spacer(),
 
-                  // Cuadrado encapsulando el número de pestañas abiertas [N] (Captura 3)
-                  GestureDetector(
-                    onTap: () => setState(() => _isIncognitoView = !_isIncognitoView),
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFF444746), width: 1.8),
-                        borderRadius: BorderRadius.circular(6.5),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$totalCount',
-                          style: const TextStyle(
-                            color: Color(0xFF444746),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                  // Cápsula Segmentada Central (Captura 2 y Captura 3 de Chrome)
+                  Container(
+                    height: 38,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2B2D30) : const Color(0xFFDCE1EC),
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Pestaña Incógnito (si hay pestañas de incógnito abiertas o si está en vista incógnito)
+                        if (hasIncognitoTabs || _isIncognitoView)
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isIncognitoView = true;
+                                _isGroupingView = false;
+                              });
+                            },
+                            child: Container(
+                              height: 32,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: (_isIncognitoView && !_isGroupingView)
+                                    ? (isDark ? const Color(0xFF3C4043) : Colors.white)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: (_isIncognitoView && !_isGroupingView)
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.12),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: IncognitoIcon(
+                                  size: 18,
+                                  color: (_isIncognitoView && !_isGroupingView)
+                                      ? (isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F))
+                                      : (isDark ? const Color(0xFF9AA0A6) : const Color(0xFF5F6368)),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // Pestañas Regulares [N]
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isIncognitoView = false;
+                              _isGroupingView = false;
+                            });
+                          },
+                          child: Container(
+                            height: 32,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: (!_isIncognitoView && !_isGroupingView)
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: (!_isIncognitoView && !_isGroupingView)
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.12),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: (!_isIncognitoView && !_isGroupingView)
+                                        ? const Color(0xFF1F1F1F)
+                                        : (isDark ? const Color(0xFF9AA0A6) : const Color(0xFF5F6368)),
+                                    width: 1.6,
+                                  ),
+                                  borderRadius: BorderRadius.circular(5.5),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '$totalCount',
+                                    style: TextStyle(
+                                      color: (!_isIncognitoView && !_isGroupingView)
+                                          ? const Color(0xFF1F1F1F)
+                                          : (isDark ? const Color(0xFF9AA0A6) : const Color(0xFF5F6368)),
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+
+                        // Grupos de Pestañas ⊞ (Captura 2)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isGroupingView = true;
+                            });
+                          },
+                          child: Container(
+                            height: 32,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: _isGroupingView
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: _isGroupingView
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.12),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.grid_view_rounded,
+                                color: _isGroupingView
+                                    ? const Color(0xFF1F1F1F)
+                                    : (isDark ? const Color(0xFF9AA0A6) : const Color(0xFF5F6368)),
+                                size: 19,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(width: 14),
-
-                  // Símbolo de 4 cuadraditos para los grupos (Captura 3)
-                  IconButton(
-                    icon: const Icon(Icons.grid_view_rounded, color: Color(0xFF444746), size: 23),
-                    splashRadius: 20,
-                    onPressed: () {
-                      setState(() {
-                        _isGroupingView = !_isGroupingView;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(_isGroupingView ? 'Vista de grupos activada' : 'Vista regular de pestañas'),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(width: 2),
+                  const Spacer(),
 
                   // Menú de 3 puntos (Captura 3 / Captura 4)
                   IconButton(
-                    icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF444746), size: 24),
+                    icon: Icon(Icons.more_vert_rounded, color: secondaryTextColor, size: 24),
                     splashRadius: 20,
                     onPressed: () => _showTabSwitcherMenu(context),
                   ),
@@ -393,7 +503,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
               child: Container(
                 height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE0E3EB),
+                  color: searchBgColor,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -402,24 +512,24 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                     Expanded(
                       child: TextField(
                         controller: _searchCtrl,
-                        style: const TextStyle(color: Color(0xFF1F1F1F), fontSize: 15),
-                        decoration: const InputDecoration(
+                        style: TextStyle(color: primaryTextColor, fontSize: 15),
+                        decoration: InputDecoration(
                           hintText: 'Realiza búsquedas en las pestañas',
                           hintStyle: TextStyle(
-                            color: Color(0xFF747775),
+                            color: secondaryTextColor,
                             fontSize: 15,
                             fontWeight: FontWeight.w400,
                           ),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     ),
                     if (_searchQuery.isNotEmpty)
                       GestureDetector(
                         onTap: () => _searchCtrl.clear(),
-                        child: const Icon(Icons.close_rounded, color: Color(0xFF444746), size: 20),
+                        child: Icon(Icons.close_rounded, color: secondaryTextColor, size: 20),
                       ),
                   ],
                 ),
@@ -427,120 +537,236 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Barra de acción en Modo Selección
-            if (_isSelectionMode)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: const Color(0xFFD3E3FD),
-                child: Row(
-                  children: [
-                    Text(
-                      '${_selectedTabIds.length} seleccionadas',
-                      style: const TextStyle(color: Color(0xFF041E49), fontWeight: FontWeight.bold),
-                    ),
-                    const Spacer(),
-                    TextButton.icon(
-                      icon: const Icon(Icons.grid_view_rounded, size: 18),
-                      label: const Text('Agrupar'),
-                      onPressed: _selectedTabIds.isEmpty
-                          ? null
-                          : () {
-                              setState(() => _isSelectionMode = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Pestañas agrupadas con éxito')),
-                              );
-                            },
-                    ),
-                    TextButton.icon(
-                      icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFFB3261E)),
-                      label: const Text('Cerrar', style: TextStyle(color: Color(0xFFB3261E))),
-                      onPressed: _selectedTabIds.isEmpty
-                          ? null
-                          : () {
-                              for (var id in _selectedTabIds) {
-                                final idx = activeList.indexWhere((t) => t.id == id);
-                                if (idx != -1) widget.onCloseTab(idx, _isIncognitoView);
+            // Vista de Grupos de Pestañas (Captura 2)
+            if (_isGroupingView)
+              _buildTabGroupsEmptyView()
+            else ...[
+              // Barra de acción en Modo Selección
+              if (_isSelectionMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  color: const Color(0xFFD3E3FD),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${_selectedTabIds.length} seleccionadas',
+                        style: const TextStyle(color: Color(0xFF041E49), fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        icon: const Icon(Icons.grid_view_rounded, size: 18),
+                        label: const Text('Agrupar'),
+                        onPressed: _selectedTabIds.isEmpty
+                            ? null
+                            : () {
+                                setState(() => _isSelectionMode = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Pestañas agrupadas con éxito')),
+                                );
+                              },
+                      ),
+                      TextButton.icon(
+                        icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFFB3261E)),
+                        label: const Text('Cerrar', style: TextStyle(color: Color(0xFFB3261E))),
+                        onPressed: _selectedTabIds.isEmpty
+                            ? null
+                            : () {
+                                for (var id in _selectedTabIds) {
+                                  final idx = activeList.indexWhere((t) => t.id == id);
+                                  if (idx != -1) widget.onCloseTab(idx, _isIncognitoView);
+                                }
+                                setState(() {
+                                  _isSelectionMode = false;
+                                  _selectedTabIds.clear();
+                                });
+                              },
+                      ),
+                    ],
+                  ),
+                ),
+
+              // 3. Grid de Pestañas en 2 Columnas (Captura 3)
+              Expanded(
+                child: activeList.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (_isIncognitoView) ...[
+                              const IncognitoIcon(size: 64, color: Color(0xFFC4C7C5)),
+                              const SizedBox(height: 18),
+                              const Text(
+                                'No tienes pestañas de incógnito abiertas',
+                                style: TextStyle(color: Color(0xFFE8EAED), fontSize: 16, fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 18),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF385E9D),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                ),
+                                icon: const Icon(Icons.add_rounded, size: 18),
+                                label: const Text('Nueva pestaña de incógnito'),
+                                onPressed: () {
+                                  widget.onAddNewTab(true);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ] else ...[
+                              const Icon(Icons.tab_unselected_rounded, size: 56, color: Color(0xFF747775)),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'No tienes pestañas abiertas',
+                                style: TextStyle(color: Color(0xFF444746), fontSize: 16),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF385E9D),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                ),
+                                icon: const Icon(Icons.add_rounded, size: 18),
+                                label: const Text('Abrir nueva pestaña'),
+                                onPressed: () {
+                                  widget.onAddNewTab(false);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.74, // Proporción exacta de tarjeta vertical Chrome Mobile
+                        ),
+                        itemCount: filteredIndices.length,
+                        itemBuilder: (context, gridIndex) {
+                          final realIndex = filteredIndices[gridIndex];
+                          final tab = activeList[realIndex];
+                          final isSelected = realIndex == activeIndex;
+
+                          return _buildTabCard(
+                            tab: tab,
+                            isSelected: isSelected,
+                            onTap: () {
+                              if (_isSelectionMode) {
+                                setState(() {
+                                  if (_selectedTabIds.contains(tab.id)) {
+                                    _selectedTabIds.remove(tab.id);
+                                  } else {
+                                    _selectedTabIds.add(tab.id);
+                                  }
+                                });
+                                return;
                               }
+                              widget.onSelectTab(realIndex, _isIncognitoView);
+                              Navigator.pop(context);
+                            },
+                            onClose: () {
+                              widget.onCloseTab(realIndex, _isIncognitoView);
                               setState(() {
-                                _isSelectionMode = false;
-                                _selectedTabIds.clear();
+                                if (_isIncognitoView && widget.incognitoTabs.isEmpty) {
+                                  _isIncognitoView = false;
+                                }
                               });
                             },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Vista vacía de Grupos de Pestañas idéntica a la Captura 2
+  Widget _buildTabGroupsEmptyView() {
+    return Expanded(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Ilustración tablet con 4 paneles de pestañas (Captura 2)
+              Container(
+                width: 90,
+                height: 110,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC7D8F9),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFF85A7E9), width: 2.2),
+                ),
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                child: Column(
+                  children: [
+                    // Indicador de barra superior / cámara
+                    Row(
+                      children: [
+                        Container(
+                          width: 14,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF385E9D),
+                            borderRadius: BorderRadius.circular(1.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // 4 paneles agrupados
+                    Expanded(
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 6,
+                        mainAxisSpacing: 6,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: List.generate(4, (index) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF385E9D),
+                              borderRadius: BorderRadius.circular(5.5),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
                   ],
                 ),
               ),
-
-            // 3. Grid de Pestañas en 2 Columnas (Captura 3)
-            Expanded(
-              child: activeList.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.tab_unselected_rounded, size: 56, color: Color(0xFF747775)),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No tienes pestañas abiertas',
-                            style: TextStyle(color: Color(0xFF444746), fontSize: 16),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF385E9D),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            icon: const Icon(Icons.add_rounded, size: 18),
-                            label: const Text('Abrir nueva pestaña'),
-                            onPressed: () {
-                              widget.onAddNewTab(_isIncognitoView);
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ],
-                      ),
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.74, // Proporción exacta de tarjeta vertical Chrome Mobile
-                      ),
-                      itemCount: filteredIndices.length,
-                      itemBuilder: (context, gridIndex) {
-                        final realIndex = filteredIndices[gridIndex];
-                        final tab = activeList[realIndex];
-                        final isSelected = realIndex == activeIndex;
-
-                        return _buildTabCard(
-                          tab: tab,
-                          isSelected: isSelected,
-                          onTap: () {
-                            if (_isSelectionMode) {
-                              setState(() {
-                                if (_selectedTabIds.contains(tab.id)) {
-                                  _selectedTabIds.remove(tab.id);
-                                } else {
-                                  _selectedTabIds.add(tab.id);
-                                }
-                              });
-                              return;
-                            }
-                            widget.onSelectTab(realIndex, _isIncognitoView);
-                            Navigator.pop(context);
-                          },
-                          onClose: () {
-                            widget.onCloseTab(realIndex, _isIncognitoView);
-                            setState(() {});
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
+              const SizedBox(height: 36),
+              const Text(
+                'Encontrarás tus grupos de pestañas aquí',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF1F1F1F),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Los grupos de pestañas se guardan y actualizan automáticamente en todos tus dispositivos',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF444746),
+                  fontSize: 13.5,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 60),
+            ],
+          ),
         ),
       ),
     );
@@ -554,14 +780,15 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
     required VoidCallback onTap,
     required VoidCallback onClose,
   }) {
-    final bool isNewTabPage = tab.url == 'chrome://newtab' || tab.url == 'about:blank' || tab.title == 'Nueva pestaña';
+    final bool isIncog = tab.isIncognito;
+    final bool isNewTabPage = tab.url == 'chrome://newtab' || tab.url == 'about:blank' || tab.title == 'Nueva pestaña' || (isIncog && tab.url == 'chrome://incognito');
     final bool isSelectedInMultiMode = _selectedTabIds.contains(tab.id);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isIncog ? const Color(0xFF282A2D) : Colors.white,
           borderRadius: BorderRadius.circular(22),
           // Borde sutil y limpio SIN enmarque azul invasivo para la pestaña activa
           border: Border.all(
@@ -585,7 +812,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
             // Cabecera de la Tarjeta
             Container(
               height: 42,
-              color: isNewTabPage ? const Color(0xFF385E9D) : Colors.white,
+              color: isIncog ? const Color(0xFF2B2D30) : (isNewTabPage ? const Color(0xFF385E9D) : Colors.white),
               padding: const EdgeInsets.only(left: 10, right: 4),
               child: Row(
                 children: [
@@ -599,7 +826,9 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                       ),
                     )
                   else ...[
-                    if (isNewTabPage)
+                    if (isIncog)
+                      const IncognitoIcon(size: 16, color: Color(0xFFC4C7C5))
+                    else if (isNewTabPage)
                       const Icon(Icons.public_rounded, color: Colors.white, size: 18)
                     else
                       _buildFavicon(tab),
@@ -611,7 +840,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: isNewTabPage ? Colors.white : const Color(0xFF1F1F1F),
+                        color: isIncog ? const Color(0xFFE8EAED) : (isNewTabPage ? Colors.white : const Color(0xFF1F1F1F)),
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -620,7 +849,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                   IconButton(
                     icon: Icon(
                       Icons.close_rounded,
-                      color: isNewTabPage ? Colors.white : const Color(0xFF444746),
+                      color: isIncog ? const Color(0xFFC4C7C5) : (isNewTabPage ? Colors.white : const Color(0xFF444746)),
                       size: 18,
                     ),
                     padding: EdgeInsets.zero,
@@ -635,7 +864,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
             // Vista Previa de la Página Web (Mockup idéntico a las capturas)
             Expanded(
               child: Container(
-                color: isNewTabPage ? const Color(0xFFEDEFF6) : Colors.white,
+                color: isIncog ? const Color(0xFF1F1F1F) : (isNewTabPage ? const Color(0xFFEDEFF6) : Colors.white),
                 child: isNewTabPage
                     ? _buildNewTabPreviewMockup()
                     : _buildPageContentPreview(tab),

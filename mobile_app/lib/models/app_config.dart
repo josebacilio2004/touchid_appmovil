@@ -15,6 +15,7 @@ class AppConfig {
   String settingsPin;
   String userName;
   String userEmail;
+  String userPhotoUrl;
   String searchEngine;
   String addressBarPosition;
   bool syncEnabled;
@@ -34,6 +35,7 @@ class AppConfig {
     this.settingsPin = '1234',
     this.userName = '',
     this.userEmail = '',
+    this.userPhotoUrl = '',
     this.searchEngine = 'Google',
     this.addressBarPosition = 'Arriba',
     this.syncEnabled = false,
@@ -74,6 +76,7 @@ class AppConfig {
           backendUrl: map['backendUrl'] ?? 'https://touchid-backend.onrender.com',
           settingsPin: map['settingsPin'] ?? '1234',
           userName: (map['userName'] == 'Jose Bacilio' || map['userName'] == 'SSAMIRA XIOMARA CHECYA PEA') ? '' : (map['userName'] ?? ''),
+          userPhotoUrl: map['userPhotoUrl'] ?? '',
           userEmail: (map['userEmail'] == '74934503@continental.edu.pe' || map['userEmail'] == 'sxchecya-es@udabol.edu.bo') ? '' : (map['userEmail'] ?? ''),
           searchEngine: map['searchEngine'] ?? 'Google',
           addressBarPosition: map['addressBarPosition'] ?? 'Arriba',
@@ -116,6 +119,7 @@ class AppConfig {
       'settingsPin': settingsPin,
       'userName': userName,
       'userEmail': userEmail,
+      'userPhotoUrl': userPhotoUrl,
       'searchEngine': searchEngine,
       'addressBarPosition': addressBarPosition,
       'syncEnabled': syncEnabled,
