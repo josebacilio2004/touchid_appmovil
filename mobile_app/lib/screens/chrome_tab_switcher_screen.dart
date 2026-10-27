@@ -179,6 +179,7 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
                             MaterialPageRoute(
                               builder: (_) => ChromeSettingsScreen(
                                 config: widget.config,
+                                onConfigSaved: widget.onConfigSaved,
                               ),
                             ),
                           );

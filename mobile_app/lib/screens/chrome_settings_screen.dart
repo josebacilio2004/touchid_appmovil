@@ -1,11 +1,14 @@
+import 'dart:async';
+import 'settings_screen.dart';
 import 'package:flutter/material.dart';
 import '../models/app_config.dart';
 
 class ChromeSettingsScreen extends StatefulWidget {
   final AppConfig? config;
   final Function(String url)? onOpenUrl;
+  final Function(AppConfig)? onConfigSaved;
 
-  const ChromeSettingsScreen({super.key, this.config, this.onOpenUrl});
+  const ChromeSettingsScreen({super.key, this.config, this.onOpenUrl, this.onConfigSaved});
 
   @override
   State<ChromeSettingsScreen> createState() => _ChromeSettingsScreenState();
@@ -16,6 +19,8 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
   late AppConfig _config;
   bool _isLoading = true;
   String _searchQuery = '';
+  int _helpTapCount = 0;
+  Timer? _helpTapTimer;
 
   @override
   void initState() {
@@ -40,6 +45,7 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
 
   @override
   void dispose() {
+    _helpTapTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -80,7 +86,7 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded, color: Color(0xFFE8EAED), size: 24),
-            onPressed: () => _showHelpDialog(),
+            onPressed: _handleHelpTap,
           ),
         ],
       ),
@@ -1240,6 +1246,131 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
         ],
       ),
     );
+  }
+
+  void _handleHelpTap() {
+    _helpTapCount++;
+    if (_helpTapCount == 1) {
+      _helpTapTimer = Timer(const Duration(milliseconds: 380), () {
+        if (mounted) {
+          _helpTapCount = 0;
+          _showHelpDialog(); // Presionar 1 vez abre la ayuda normal de Google Chrome
+        }
+      });
+    } else if (_helpTapCount >= 2) {
+      _helpTapTimer?.cancel();
+      _helpTapCount = 0;
+      _showPinDialog(); // Presionar 2 veces abre el panel secreto para colocar el PIN del 1 al 4
+    }
+  }
+
+  void _showPinDialog() {
+    final TextEditingController pinController = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogCtx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF282A2D),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: Color(0xFF3C4043), width: 0.8),
+          ),
+          title: const Text(
+            'Acceso de Seguridad',
+            style: TextStyle(color: Color(0xFFE8EAED), fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Introduce el PIN de configuración (1 al 4) para ingresar al panel de licencias y visibilidad.',
+                style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: pinController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 8,
+                autofocus: true,
+                style: const TextStyle(color: Color(0xFFE8EAED), fontSize: 22, letterSpacing: 8),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  counterText: '',
+                  filled: true,
+                  fillColor: const Color(0xFF1F1F1F),
+                  hintText: '••••',
+                  hintStyle: const TextStyle(color: Color(0xFF5F6368), letterSpacing: 8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF3C4043)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF3C4043)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF8AB4F8), width: 1.5),
+                  ),
+                ),
+                onSubmitted: (_) {
+                  _validateAndEnterPin(dialogCtx, pinController.text.trim());
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancelar', style: TextStyle(color: Color(0xFF9AA0A6))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8AB4F8),
+                foregroundColor: const Color(0xFF1F1F1F),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () {
+                _validateAndEnterPin(dialogCtx, pinController.text.trim());
+              },
+              child: const Text('Entrar', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _validateAndEnterPin(BuildContext dialogCtx, String enteredPin) {
+    final actualPin = _config.settingsPin.isNotEmpty ? _config.settingsPin : '1234';
+    // Admite '1234' (PIN 1 al 4) o el PIN personalizado en la configuración
+    if (enteredPin == actualPin || enteredPin == '1234') {
+      Navigator.pop(dialogCtx);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SettingsScreen(
+            config: _config,
+            onConfigSaved: (newCfg) {
+              setState(() {
+                _config = newCfg;
+              });
+              widget.onConfigSaved?.call(newCfg);
+            },
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PIN incorrecto. Acceso denegado.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showHelpDialog() {

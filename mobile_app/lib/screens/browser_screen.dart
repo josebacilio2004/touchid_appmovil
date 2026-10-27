@@ -3190,30 +3190,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _handleConfigTap(BuildContext ctx) {
-    _configTapCount++;
-    if (_configTapCount == 1) {
-      _configTapTimer?.cancel();
-      _configTapTimer = Timer(const Duration(milliseconds: 500), () {
-        _configTapCount = 0;
-        if (mounted) {
-          Navigator.pop(ctx);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChromeSettingsScreen(
-                config: widget.config,
-                onOpenUrl: _navigateToUrl,
-              ),
-            ),
-          );
-        }
-      });
-    } else if (_configTapCount >= 2) {
-      _configTapTimer?.cancel();
-      _configTapCount = 0;
-      Navigator.pop(ctx);
-      _showPinDialog();
-    }
+    Navigator.pop(ctx);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChromeSettingsScreen(
+          config: widget.config,
+          onConfigSaved: widget.onConfigSaved,
+          onOpenUrl: _navigateToUrl,
+        ),
+      ),
+    );
   }
 
   void _showPinDialog() {
