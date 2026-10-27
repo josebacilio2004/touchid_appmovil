@@ -1354,6 +1354,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
         builder: (context) => ChromeTabSwitcherScreen(
           regularTabs: _regularTabs,
           incognitoTabs: _incognitoTabs,
+          config: widget.config,
+          onConfigSaved: widget.onConfigSaved,
           currentRegularIndex: _regularTabs.indexWhere((t) => t.id == _currentTab.id).clamp(0, _regularTabs.isEmpty ? 0 : _regularTabs.length - 1),
           currentIncognitoIndex: _incognitoTabs.indexWhere((t) => t.id == _currentTab.id).clamp(0, _incognitoTabs.isEmpty ? 0 : _incognitoTabs.length - 1),
           initialIsIncognito: _currentTab.isIncognito,
@@ -1898,7 +1900,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   Widget _buildChromeMenuItem({
-    required IconData icon,
+    IconData? icon,
+    Widget? iconWidget,
     required String title,
     required VoidCallback onTap,
     VoidCallback? onDoubleTap,
@@ -1908,17 +1911,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
       onTap: onTap,
       onDoubleTap: onDoubleTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFFC4C7C5), size: 20),
-            const SizedBox(width: 14),
+            iconWidget ?? Icon(icon, color: const Color(0xFF444746), size: 21),
+            const SizedBox(width: 16),
             Expanded(
               child: Text(
                 title,
                 style: const TextStyle(
-                  color: Color(0xFFE8EAED),
-                  fontSize: 14,
+                  color: Color(0xFF1F1F1F),
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -1930,8 +1933,54 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
+  void _showCustomizeNewTabDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Personalizar nueva pestaña',
+              style: TextStyle(color: Color(0xFF1F1F1F), fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.palette_outlined, color: Color(0xFF0B57D0)),
+              title: const Text('Tema y apariencia'),
+              subtitle: const Text('Tema claro de Google Chrome Mobile activado'),
+              onTap: () => Navigator.pop(ctx),
+            ),
+            ListTile(
+              leading: const Icon(Icons.apps_rounded, color: Color(0xFF0B57D0)),
+              title: const Text('Accesos directos rápidos'),
+              subtitle: const Text('Organización de accesos directos estándar'),
+              onTap: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _groupCurrentTab() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Pestaña agregada al nuevo grupo'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   void _showChromeMenu(BuildContext context) async {
     final currentTab = _tabs[_currentTabIndex];
+    final isBackAvailable = await currentTab.controller.canGoBack();
     final isForwardAvailable = await currentTab.controller.canGoForward();
     final isBookmarked = _isCurrentUrlBookmarked();
 
@@ -1941,27 +1990,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'ChromeMenu',
-      barrierColor: Colors.black26,
-      transitionDuration: const Duration(milliseconds: 180),
+      barrierColor: Colors.black.withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return SafeArea(
           child: Align(
             alignment: Alignment.topRight,
             child: Container(
-              width: 290,
-              margin: const EdgeInsets.only(top: 48, right: 8, bottom: 16),
+              width: 295,
+              margin: const EdgeInsets.only(top: 48, right: 10, bottom: 16),
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.88,
               ),
               decoration: BoxDecoration(
-                color: const Color(0xFF282A2D),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [
                   BoxShadow(
-                    color: Colors.black54,
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                    offset: Offset(0, 4),
+                    color: Colors.black.withValues(alpha: 0.14),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
@@ -1972,22 +2020,37 @@ class _BrowserScreenState extends State<BrowserScreen> {
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // 1. Barra superior de iconos horizontales (Forward, Bookmark, Download, Info, Reload)
+                        // 1. Barra superior de iconos horizontales (Back, Forward, Bookmark, Download, Reload) (Captura 2)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: const BoxDecoration(
                             border: Border(
-                              bottom: BorderSide(color: Color(0xFF3C4043), width: 0.8),
+                              bottom: BorderSide(color: Color(0xFFE0E3EB), width: 0.8),
                             ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              // Forward (->)
+                              // Atrás (<-)
+                              IconButton(
+                                icon: Icon(
+                                  Icons.arrow_back_rounded,
+                                  color: isBackAvailable ? const Color(0xFF444746) : const Color(0xFFC4C7C5),
+                                  size: 22,
+                                ),
+                                splashRadius: 20,
+                                onPressed: isBackAvailable
+                                    ? () {
+                                        Navigator.pop(ctx);
+                                        currentTab.controller.goBack();
+                                      }
+                                    : null,
+                              ),
+                              // Adelante (->)
                               IconButton(
                                 icon: Icon(
                                   Icons.arrow_forward_rounded,
-                                  color: isForwardAvailable ? const Color(0xFFE8EAED) : const Color(0xFF5F6368),
+                                  color: isForwardAvailable ? const Color(0xFF444746) : const Color(0xFFC4C7C5),
                                   size: 22,
                                 ),
                                 splashRadius: 20,
@@ -1998,24 +2061,30 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                       }
                                     : null,
                               ),
-                              // Bookmark (*)
-                              IconButton(
-                                icon: Icon(
-                                  isBookmarked ? Icons.star_rounded : Icons.star_outline_rounded,
-                                  color: isBookmarked ? const Color(0xFF8AB4F8) : const Color(0xFFE8EAED),
-                                  size: 22,
-                                ),
-                                splashRadius: 20,
-                                onPressed: () {
+                              // Favorito (*) con cápsula celeste clara como en la Captura 2
+                              GestureDetector(
+                                onTap: () {
                                   Navigator.pop(ctx);
                                   _toggleCurrentBookmark();
                                 },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: isBookmarked ? const Color(0xFFD3E3FD) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Icon(
+                                    Icons.star_rounded,
+                                    color: isBookmarked ? const Color(0xFF041E49) : const Color(0xFF444746),
+                                    size: 22,
+                                  ),
+                                ),
                               ),
-                              // Download (v)
+                              // Descargas (v)
                               IconButton(
                                 icon: const Icon(
                                   Icons.file_download_outlined,
-                                  color: Color(0xFFE8EAED),
+                                  color: Color(0xFF444746),
                                   size: 22,
                                 ),
                                 splashRadius: 20,
@@ -2024,24 +2093,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   _downloadCurrentPage();
                                 },
                               ),
-                              // Info ((i))
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.info_outline_rounded,
-                                  color: Color(0xFFE8EAED),
-                                  size: 22,
-                                ),
-                                splashRadius: 20,
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _showPageInfoDialog();
-                                },
-                              ),
-                              // Reload (↻)
+                              // Recargar (↻)
                               IconButton(
                                 icon: const Icon(
                                   Icons.refresh_rounded,
-                                  color: Color(0xFFE8EAED),
+                                  color: Color(0xFF444746),
                                   size: 22,
                                 ),
                                 splashRadius: 20,
@@ -2054,12 +2110,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
                           ),
                         ),
 
-                        // 2. Lista de opciones estilo Chrome exacto
+                        // 2. Lista de Opciones EXACTAS de la Captura 2
                         Flexible(
                           child: ListView(
                             shrinkWrap: true,
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             children: [
+                              // 1. Nueva pestaña
                               _buildChromeMenuItem(
                                 icon: Icons.add_box_outlined,
                                 title: 'Nueva pestaña',
@@ -2068,24 +2125,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   _addNewTab('chrome://newtab', false);
                                 },
                               ),
+                              // 2. Nueva pestaña de incógnito
                               _buildChromeMenuItem(
-                                icon: Icons.security_outlined,
+                                iconWidget: const IncognitoIcon(size: 20, color: Color(0xFF444746)),
                                 title: 'Nueva pestaña de incógnito',
                                 onTap: () {
                                   Navigator.pop(ctx);
                                   _addNewTab('chrome://incognito', true);
                                 },
                               ),
+                              // 3. Agregar pestaña a un grupo nuevo
                               _buildChromeMenuItem(
-                                icon: Icons.tab_outlined,
-                                title: 'Añadir pestaña a un grupo...',
+                                icon: Icons.grid_view_rounded,
+                                title: 'Agregar pestaña a un grupo nuevo',
                                 onTap: () {
                                   Navigator.pop(ctx);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Pestaña añadida al grupo')),
-                                  );
+                                  _groupCurrentTab();
                                 },
                               ),
+                              const Divider(color: Color(0xFFE0E3EB), height: 1),
+                              // 4. Historial
                               _buildChromeMenuItem(
                                 icon: Icons.history_rounded,
                                 title: 'Historial',
@@ -2094,6 +2153,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   _showBrowsingHistory();
                                 },
                               ),
+                              // 5. Borrar datos de navegación
                               _buildChromeMenuItem(
                                 icon: Icons.delete_outline_rounded,
                                 title: 'Borrar datos de navegación',
@@ -2102,8 +2162,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   _showClearDataModal();
                                 },
                               ),
+                              const Divider(color: Color(0xFFE0E3EB), height: 1),
+                              // 6. Descargas
                               _buildChromeMenuItem(
-                                icon: Icons.download_rounded,
+                                icon: Icons.file_download_outlined,
                                 title: 'Descargas',
                                 onTap: () {
                                   Navigator.pop(ctx);
@@ -2113,9 +2175,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   );
                                 },
                               ),
+                              // 7. Favoritos
                               _buildChromeMenuItem(
-                                icon: Icons.star_border_rounded,
-                                title: 'Marcadores',
+                                icon: Icons.star_outline_rounded,
+                                title: 'Favoritos',
                                 onTap: () {
                                   Navigator.pop(ctx);
                                   Navigator.push(
@@ -2130,6 +2193,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   );
                                 },
                               ),
+                              // 8. Pestañas recientes
                               _buildChromeMenuItem(
                                 icon: Icons.devices_rounded,
                                 title: 'Pestañas recientes',
@@ -2149,97 +2213,23 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   );
                                 },
                               ),
-                              const Divider(color: Color(0xFF3C4043), height: 8),
-                              _buildChromeMenuItem(
-                                icon: Icons.share_outlined,
-                                title: 'Compartir...',
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  _shareCurrentUrl();
-                                },
-                              ),
-                              _buildChromeMenuItem(
-                                icon: Icons.search_rounded,
-                                title: 'Buscar en la página',
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  setState(() {
-                                    _isSearchingInPage = true;
-                                  });
-                                },
-                              ),
-                              _buildChromeMenuItem(
-                                icon: Icons.translate_rounded,
-                                title: 'Traducir...',
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  _translateCurrentPage();
-                                },
-                              ),
-                              _buildChromeMenuItem(
-                                icon: Icons.chrome_reader_mode_outlined,
-                                title: 'Mostrar modo Lectura',
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  _toggleReaderMode();
-                                },
-                              ),
-                              _buildChromeMenuItem(
-                                icon: Icons.add_to_home_screen_rounded,
-                                title: 'Instalar y crear acceso directo',
-                                onTap: () async {
-                                  Navigator.pop(ctx);
-                                  final tab = _tabs[_currentTabIndex];
-                                  final added = await ChromeAddShortcutDialog.show(
-                                    context,
-                                    title: tab.title,
-                                    url: tab.url,
-                                  );
-                                  if (added == true && mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Acceso directo añadido a la pantalla de inicio')),
-                                    );
-                                  }
-                                },
-                              ),
-                              // Sitio para ordenadores con CHECKBOX funcional
-                              InkWell(
-                                onTap: () {
-                                  _toggleDesktopMode();
-                                  setMenuState(() {});
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.desktop_windows_outlined, color: Color(0xFFC4C7C5), size: 20),
-                                      const SizedBox(width: 14),
-                                      const Expanded(
-                                        child: Text(
-                                          'Sitio para ordenadores',
-                                          style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14),
-                                        ),
-                                      ),
-                                      Checkbox(
-                                        value: currentTab.isDesktopMode,
-                                        activeColor: const Color(0xFF8AB4F8),
-                                        checkColor: const Color(0xFF1F1F1F),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
-                                        onChanged: (val) {
-                                          _toggleDesktopMode();
-                                          setMenuState(() {});
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const Divider(color: Color(0xFF3C4043), height: 8),
+                              const Divider(color: Color(0xFFE0E3EB), height: 1),
+                              // 9. Configuración
                               _buildChromeMenuItem(
                                 icon: Icons.settings_outlined,
                                 title: 'Configuración',
                                 onTap: () => _handleConfigTap(ctx),
                               ),
+                              // 10. Personalizar nueva pestaña
+                              _buildChromeMenuItem(
+                                icon: Icons.edit_outlined,
+                                title: 'Personalizar nueva pestaña',
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  _showCustomizeNewTabDialog();
+                                },
+                              ),
+                              // 11. Ayuda y comentarios
                               _buildChromeMenuItem(
                                 icon: Icons.help_outline_rounded,
                                 title: 'Ayuda y comentarios',
@@ -2747,162 +2737,269 @@ class _BrowserScreenState extends State<BrowserScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF202124),
+        backgroundColor: const Color(0xFFEDEFF6),
         body: SafeArea(
           child: Stack(
             children: [
               Column(
                 children: [
-                  // Barra de navegación estilo Google Chrome (Material 3 Dark)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1F1F1F),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Color(0xFF282A2D),
-                          width: 0.8,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.home_rounded, color: Color(0xFFC4C7C5), size: 24),
-                          splashRadius: 20,
-                          onPressed: () {
-                            final cur = _tabs[_currentTabIndex];
-                            cur.url = cur.isIncognito ? 'chrome://incognito' : 'chrome://newtab';
-                            _urlController.clear();
-                            setState(() {});
-                          },
-                        ),
-                        if (_currentTab.isIncognito)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 2, right: 2),
-                            child: IncognitoIcon(size: 20, color: Color(0xFFC4C7C5)),
-                          ),
-                        Expanded(
-                          child: Container(
-                            height: 44,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2B2D30),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: Row(
-                              children: [
-                                GestureDetector(
-                                  onDoubleTap: () {
-                                    setState(() {
-                                      _isStealthMode = !_isStealthMode;
-                                    });
-                                    HapticFeedback.lightImpact();
-                                  },
-                                  child: const Padding(
-                                    padding: EdgeInsets.only(left: 14, right: 8),
-                                    child: Icon(Icons.tune_rounded, color: Color(0xFF9AA0A6), size: 17),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _urlController,
-                                    focusNode: _urlFocusNode,
-                                    keyboardType: TextInputType.url,
-                                    textInputAction: TextInputAction.go,
-                                    autocorrect: false,
-                                    enableSuggestions: false,
-                                    style: const TextStyle(
-                                      color: Color(0xFFE8EAED),
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w400,
-                                      letterSpacing: 0.1,
-                                    ),
-                                    decoration: const InputDecoration(
-                                      hintText: 'Busca o escribe una dirección web',
-                                      hintStyle: TextStyle(
-                                        color: Color(0xFF8E918F),
-                                        fontSize: 14.0,
-                                      ),
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(vertical: 11),
-                                    ),
-                                    onTap: () {
-                                      _urlController.selection = TextSelection(
-                                        baseOffset: 0,
-                                        extentOffset: _urlController.text.length,
-                                      );
-                                    },
-                                    onChanged: (_) => setState(() {}),
-                                    onSubmitted: (_) => _loadUrl(),
-                                  ),
-                                ),
-                                if (_urlController.text.isNotEmpty && (_urlFocusNode.hasFocus || _currentTab.url == 'chrome://newtab' || _currentTab.url == 'chrome://incognito'))
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (_urlFocusNode.hasFocus)
-                                        IconButton(
-                                          icon: const Icon(Icons.close_rounded, color: Color(0xFFC4C7C5), size: 19),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                          splashRadius: 18,
-                                          onPressed: () {
-                                            _urlController.clear();
-                                            setState(() {});
-                                          },
-                                        ),
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF8AB4F8), size: 20),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                        splashRadius: 18,
-                                        tooltip: 'Ir',
-                                        onPressed: _loadUrl,
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(width: 8),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
+                  // Barra de navegación estilo Google Chrome (Captura 1)
+                  Builder(
+                    builder: (context) {
+                      final bool isNewTabPage = !_currentTab.isIncognito && _currentTab.url == 'chrome://newtab';
 
-                        // Contador de pestañas
-                        GestureDetector(
-                          onTap: _showTabSwitcher,
-                          child: Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: const Color(0xFFC4C7C5), width: 1.8),
-                              borderRadius: BorderRadius.circular(6.5),
+                      if (isNewTabPage) {
+                        // En primer plano en la parte superior: los 4 iconos (Casa, Perfil de Gmail, Cuadrado con N° pestañas, 3 puntos)
+                        return Container(
+                          height: 56,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          color: const Color(0xFFEDEFF6),
+                          child: Row(
+                            children: [
+                              // 1. Icono Casa (Home)
+                              IconButton(
+                                icon: const Icon(Icons.home_outlined, color: Color(0xFF1F1F1F), size: 26),
+                                splashRadius: 22,
+                                onPressed: () {
+                                  final cur = _tabs[_currentTabIndex];
+                                  cur.url = cur.isIncognito ? 'chrome://incognito' : 'chrome://newtab';
+                                  _urlController.clear();
+                                  setState(() {});
+                                },
+                              ),
+
+                              const Spacer(),
+
+                              // 2. Icono Perfil de Gmail (Foto / Avatar circular anime como en Captura 1)
+                              GestureDetector(
+                                onTap: _showGoogleAccountBottomSheet,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0xFFCBD5E1), width: 1.2),
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Image.network(
+                                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.person, color: Colors.white, size: 20),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(width: 14),
+
+                              // 3. Cuadrado encapsulando el número de pestañas abiertas
+                              GestureDetector(
+                                onTap: _showTabSwitcher,
+                                child: Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: const Color(0xFF1F1F1F), width: 1.8),
+                                    borderRadius: BorderRadius.circular(6.5),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${_currentTab.isIncognito ? _incognitoTabs.length : _regularTabs.length}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF1F1F1F),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(width: 4),
+
+                              // 4. Tres puntos verticales
+                              IconButton(
+                                icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF1F1F1F), size: 24),
+                                splashRadius: 22,
+                                onPressed: () => _showChromeMenu(context),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      // Barra Omnibox estándar cuando navega en una página web
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _currentTab.isIncognito ? const Color(0xFF1F1F1F) : const Color(0xFFEDEFF6),
+                          border: Border(
+                            bottom: BorderSide(
+                              color: _currentTab.isIncognito ? const Color(0xFF282A2D) : const Color(0xFFE0E3EB),
+                              width: 0.8,
                             ),
-                            child: Center(
-                              child: Text(
-                                '${_currentTab.isIncognito ? _incognitoTabs.length : _regularTabs.length}',
-                                style: const TextStyle(
-                                  color: Color(0xFFC4C7C5),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.home_outlined,
+                                color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
+                                size: 24,
+                              ),
+                              splashRadius: 20,
+                              onPressed: () {
+                                final cur = _tabs[_currentTabIndex];
+                                cur.url = cur.isIncognito ? 'chrome://incognito' : 'chrome://newtab';
+                                _urlController.clear();
+                                setState(() {});
+                              },
+                            ),
+                            if (_currentTab.isIncognito)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 2, right: 2),
+                                child: IncognitoIcon(size: 20, color: Color(0xFFC4C7C5)),
+                              ),
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                decoration: BoxDecoration(
+                                  color: _currentTab.isIncognito ? const Color(0xFF2B2D30) : const Color(0xFFE0E3EB),
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                child: Row(
+                                  children: [
+                                    GestureDetector(
+                                      onDoubleTap: () {
+                                        setState(() {
+                                          _isStealthMode = !_isStealthMode;
+                                        });
+                                        HapticFeedback.lightImpact();
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(left: 14, right: 8),
+                                        child: Icon(
+                                          Icons.tune_rounded,
+                                          color: _currentTab.isIncognito ? const Color(0xFF9AA0A6) : const Color(0xFF444746),
+                                          size: 17,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _urlController,
+                                        focusNode: _urlFocusNode,
+                                        keyboardType: TextInputType.url,
+                                        textInputAction: TextInputAction.go,
+                                        autocorrect: false,
+                                        enableSuggestions: false,
+                                        style: TextStyle(
+                                          color: _currentTab.isIncognito ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                        decoration: InputDecoration(
+                                          hintText: 'Busca o escribe una dirección web',
+                                          hintStyle: TextStyle(
+                                            color: _currentTab.isIncognito ? const Color(0xFF8E918F) : const Color(0xFF747775),
+                                            fontSize: 14.0,
+                                          ),
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                          contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                                        ),
+                                        onTap: () {
+                                          _urlController.selection = TextSelection(
+                                            baseOffset: 0,
+                                            extentOffset: _urlController.text.length,
+                                          );
+                                        },
+                                        onChanged: (_) => setState(() {}),
+                                        onSubmitted: (_) => _loadUrl(),
+                                      ),
+                                    ),
+                                    if (_urlController.text.isNotEmpty && (_urlFocusNode.hasFocus || _currentTab.url == 'chrome://newtab' || _currentTab.url == 'chrome://incognito'))
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (_urlFocusNode.hasFocus)
+                                            IconButton(
+                                              icon: Icon(
+                                                Icons.close_rounded,
+                                                color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
+                                                size: 19,
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(),
+                                              splashRadius: 18,
+                                              onPressed: () {
+                                                _urlController.clear();
+                                                setState(() {});
+                                              },
+                                            ),
+                                          const SizedBox(width: 4),
+                                          IconButton(
+                                            icon: const Icon(Icons.arrow_forward_rounded, color: Color(0xFF0B57D0), size: 20),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            splashRadius: 18,
+                                            tooltip: 'Ir',
+                                            onPressed: _loadUrl,
+                                          ),
+                                        ],
+                                      ),
+                                    const SizedBox(width: 8),
+                                  ],
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 2),
+                            const SizedBox(width: 4),
 
-                        // Menú de tres puntos
-                        IconButton(
-                          icon: const Icon(Icons.more_vert_rounded, color: Color(0xFFC4C7C5), size: 23),
-                          splashRadius: 20,
-                          onPressed: () => _showChromeMenu(context),
+                            // Contador de pestañas
+                            GestureDetector(
+                              onTap: _showTabSwitcher,
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
+                                    width: 1.8,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6.5),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${_currentTab.isIncognito ? _incognitoTabs.length : _regularTabs.length}',
+                                    style: TextStyle(
+                                      color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+
+                            // Menú de tres puntos
+                            IconButton(
+                              icon: Icon(
+                                Icons.more_vert_rounded,
+                                color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
+                                size: 23,
+                              ),
+                              splashRadius: 20,
+                              onPressed: () => _showChromeMenu(context),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                   if (_isSearchingInPage)
                     _buildInPageSearchBar(),
