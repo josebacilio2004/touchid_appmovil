@@ -414,7 +414,7 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
                   _buildDivider(),
                   _buildSettingTile(
                     title: 'Acerca de Chrome',
-                    subtitle: 'Google Chrome 134.0.6998.39',
+                    subtitle: 'Google Chrome 155.0.8059.86',
                     onTap: () => _showAboutChromeDialog(),
                   ),
                 ],
@@ -1229,7 +1229,7 @@ class _ChromeSettingsScreenState extends State<ChromeSettingsScreen> {
           children: [
             Text('Aplicación: Google Chrome', style: TextStyle(color: Color(0xFFE8EAED), fontSize: 14)),
             SizedBox(height: 6),
-            Text('Versión: 134.0.6998.39 (Versión oficial) (64 bits)', style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13)),
+            Text('Versión: 155.0.8059.86 (Versión oficial) (64 bits)', style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13)),
             SizedBox(height: 6),
             Text('Sistema operativo: Android 14; Build oficial', style: TextStyle(color: Color(0xFF9AA0A6), fontSize: 13)),
             SizedBox(height: 6),
