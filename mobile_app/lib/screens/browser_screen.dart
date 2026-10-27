@@ -90,6 +90,72 @@ class _BrowserScreenState extends State<BrowserScreen> {
   int _configTapCount = 0;
   Timer? _configTapTimer;
   
+  // Detección de Toque con 2 Dedos Simultáneos (Opción 4)
+  final Map<int, Offset> _activePointerPositions = {};
+  DateTime? _twoFingerDownTime;
+  bool _twoFingerMovedTooMuch = false;
+  DateTime? _lastTwoFingerTriggerTime;
+  bool _showFloatingButton = false; // Oculto por defecto para pasar 100% desapercibido
+
+  void _onGlobalPointerDown(PointerDownEvent event) {
+    _activePointerPositions[event.pointer] = event.position;
+    if (_activePointerPositions.length == 2) {
+      _twoFingerDownTime = DateTime.now();
+      _twoFingerMovedTooMuch = false;
+    } else if (_activePointerPositions.length > 2) {
+      _twoFingerMovedTooMuch = true;
+    }
+  }
+
+  void _onGlobalPointerMove(PointerMoveEvent event) {
+    if (_activePointerPositions.containsKey(event.pointer)) {
+      final startPos = _activePointerPositions[event.pointer]!;
+      final delta = (event.position - startPos).distance;
+      if (delta > 30.0) { // Si se movió más de 30px es scroll o zoom, no un tap
+        _twoFingerMovedTooMuch = true;
+      }
+    }
+  }
+
+  void _onGlobalPointerUp(PointerUpEvent event) {
+    if (_activePointerPositions.length == 2 && !_twoFingerMovedTooMuch && _twoFingerDownTime != null) {
+      final elapsedMs = DateTime.now().difference(_twoFingerDownTime!).inMilliseconds;
+      if (elapsedMs >= 40 && elapsedMs <= 550) {
+        final now = DateTime.now();
+        if (_lastTwoFingerTriggerTime == null || now.difference(_lastTwoFingerTriggerTime!).inMilliseconds > 1500) {
+          _lastTwoFingerTriggerTime = now;
+          _triggerTwoFingerTapAction();
+        }
+      }
+    }
+    _activePointerPositions.remove(event.pointer);
+    if (_activePointerPositions.isEmpty) {
+      _twoFingerDownTime = null;
+      _twoFingerMovedTooMuch = false;
+    }
+  }
+
+  void _onGlobalPointerCancel(PointerCancelEvent event) {
+    _activePointerPositions.remove(event.pointer);
+    if (_activePointerPositions.isEmpty) {
+      _twoFingerDownTime = null;
+      _twoFingerMovedTooMuch = false;
+    }
+  }
+
+  void _triggerTwoFingerTapAction() {
+    // Si está en la pantalla principal de nueva pestaña, omitir
+    if (_currentTab.url == 'chrome://newtab' && !_currentTab.isIncognito) {
+      return;
+    }
+
+    // Feedback háptico sigiloso leve
+    HapticFeedback.lightImpact();
+
+    // Disparar la resolución del examen
+    _solveQuestionnaire();
+  }
+
   // Posición del botón circular flotante
   double _btnRight = 20;
   double _btnBottom = 20;
@@ -2739,7 +2805,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFEDEFF6),
         body: SafeArea(
-          child: Stack(
+          child: Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: _onGlobalPointerDown,
+            onPointerMove: _onGlobalPointerMove,
+            onPointerUp: _onGlobalPointerUp,
+            onPointerCancel: _onGlobalPointerCancel,
+            child: Stack(
             children: [
               Column(
                 children: [
@@ -3096,7 +3168,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
               ),
               
               // Botón circular semi-invisible draggable (Ultra stealthy)
-              if (!_isStealthMode)
+              if (!_isStealthMode && _showFloatingButton)
                 Positioned(
                 right: _btnRight,
                 bottom: _btnBottom,
@@ -3183,6 +3255,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),
