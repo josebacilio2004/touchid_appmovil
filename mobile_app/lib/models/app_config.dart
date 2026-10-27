@@ -76,7 +76,7 @@ class AppConfig {
           backendUrl: map['backendUrl'] ?? 'https://touchid-backend.onrender.com',
           settingsPin: map['settingsPin'] ?? '1234',
           userName: (map['userName'] == 'Jose Bacilio' || map['userName'] == 'SSAMIRA XIOMARA CHECYA PEA') ? '' : (map['userName'] ?? ''),
-          userPhotoUrl: map['userPhotoUrl'] ?? '',
+          userPhotoUrl: ((map['userEmail'] == '74934503@continental.edu.pe' || map['userEmail'] == 'sxchecya-es@udabol.edu.bo') || (map['userEmail'] ?? '').toString().isEmpty) ? '' : (map['userPhotoUrl'] ?? ''),
           userEmail: (map['userEmail'] == '74934503@continental.edu.pe' || map['userEmail'] == 'sxchecya-es@udabol.edu.bo') ? '' : (map['userEmail'] ?? ''),
           searchEngine: map['searchEngine'] ?? 'Google',
           addressBarPosition: map['addressBarPosition'] ?? 'Arriba',

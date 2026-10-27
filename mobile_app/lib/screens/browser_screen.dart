@@ -181,45 +181,58 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  // Widget de avatar de perfil de usuario sincronizado de Google/Gmail (Foto exacta del correo logeado)
+  Color _getAvatarColor(String text) {
+    if (text.isEmpty) return const Color(0xFF1A73E8);
+    final colors = [
+      const Color(0xFF1A73E8), // Google Blue
+      const Color(0xFFD93025), // Google Red
+      const Color(0xFF188038), // Google Green
+      const Color(0xFFE37400), // Google Orange
+      const Color(0xFFA142F4), // Google Purple
+      const Color(0xFF129EAF), // Google Teal
+    ];
+    int hash = 0;
+    for (int i = 0; i < text.length; i++) {
+      hash = text.codeUnitAt(i) + ((hash << 5) - hash);
+    }
+    return colors[hash.abs() % colors.length];
+  }
+
+  // Widget de avatar de perfil de usuario sincronizado de Google/Gmail
+  // Prioriza siempre la inicial del correo logeado y elimina cualquier foto personal local
   Widget _buildUserProfileAvatar() {
+    final email = widget.config.userEmail.trim();
     final photoUrl = widget.config.userPhotoUrl.trim();
-    if (photoUrl.isNotEmpty && photoUrl.startsWith('http')) {
+
+    // Solo si hay foto remota explícita asociada a este correo se carga por red
+    if (photoUrl.isNotEmpty && photoUrl.startsWith('http') && email.isNotEmpty) {
       return Image.network(
         photoUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildLocalAvatar(),
+        errorBuilder: (_, __, ___) => _buildAvatarFallback(),
       );
     }
-    return _buildLocalAvatar();
-  }
-
-  Widget _buildLocalAvatar() {
-    return Image.asset(
-      'assets/images/user_avatar.png',
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => _buildAvatarFallback(),
-    );
+    return _buildAvatarFallback();
   }
 
   Widget _buildAvatarFallback() {
     final email = widget.config.userEmail.trim();
     final name = widget.config.userName.trim();
-    if (email.isNotEmpty || name.isNotEmpty) {
-      final initial = (name.isNotEmpty ? name[0] : email[0]).toUpperCase();
-      return Center(
-        child: Text(
-          initial,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
+    final displayText = name.isNotEmpty ? name : email;
+    final initial = displayText.isNotEmpty ? displayText[0].toUpperCase() : 'G';
+    final bgColor = _getAvatarColor(email.isNotEmpty ? email : 'google');
+
+    return Container(
+      color: bgColor,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
         ),
-      );
-    }
-    return const Center(
-      child: Icon(Icons.person, color: Colors.white, size: 20),
+      ),
     );
   }
 
@@ -1938,263 +1951,206 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final isSecure = _isSecureUrl(rawUrl);
     final isDark = currentTab.isIncognito;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF282A2D) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.18),
-                blurRadius: 18,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.only(top: 8, bottom: 24, left: 18, right: 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 4,
-                  margin: const EdgeInsets.only(top: 4, bottom: 12),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF5F6368) : const Color(0xFFE0E3E7),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+    String siteDescription = 'Información acerca de este sitio web.';
+    final lowerHost = host.toLowerCase();
+    if (lowerHost.contains('udabol')) {
+      siteDescription = 'Universidad de Aquino Bolivia - Campus Virtual';
+    } else if (lowerHost.contains('chatgpt') || lowerHost.contains('openai')) {
+      siteDescription = 'ChatGPT es una aplicación de chatbot de inteligencia artificial.';
+    } else if (lowerHost.contains('google')) {
+      siteDescription = 'Google es un motor de búsqueda y plataforma de servicios web.';
+    } else if (host.isNotEmpty) {
+      siteDescription = '$host es un sitio web seguro verificado.';
+    }
 
-              // Encabezado: Favicon/Icono + Dominio + Botón de cerrar ✕
-              Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF3C4043) : const Color(0xFFF1F3F4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        isSecure ? Icons.lock_rounded : Icons.language_rounded,
-                        size: 18,
-                        color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF444746),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      host.isNotEmpty ? host : 'Página actual',
-                      style: TextStyle(
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      color: isDark ? const Color(0xFF9AA0A6) : const Color(0xFF444746),
-                      size: 22,
-                    ),
-                    splashRadius: 20,
-                    onPressed: () => Navigator.pop(ctx),
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Cerrar',
+      barrierColor: Colors.black26,
+      transitionDuration: const Duration(milliseconds: 200),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, -0.35),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          child: FadeTransition(opacity: anim, child: child),
+        );
+      },
+      pageBuilder: (ctx, anim, secondaryAnim) {
+        final topInset = MediaQuery.of(ctx).padding.top;
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF282A2D) : Colors.white,
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 12),
-              Divider(height: 1, color: isDark ? const Color(0xFF3C4043) : const Color(0xFFE0E3E7)),
-              const SizedBox(height: 12),
-
-              // Tarjeta de Seguridad (Captura 2 vs Captura 4)
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1F2023) : const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF3C4043) : const Color(0xFFE8EAED),
-                    width: 1,
-                  ),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              padding: EdgeInsets.only(
+                top: topInset + 6,
+                bottom: 12,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Encabezado centrado: Icono + Host (Captura 4)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           isSecure ? Icons.lock_rounded : Icons.info_outline_rounded,
-                          size: 22,
-                          color: isDark
-                              ? const Color(0xFFE8EAED)
-                              : (isSecure ? const Color(0xFF1F1F1F) : const Color(0xFF1F1F1F)),
+                          size: 14.5,
+                          color: isDark ? const Color(0xFF9AA0A6) : const Color(0xFF444746),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isSecure ? 'La conexión es segura' : 'La conexión no es segura',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              RichText(
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: isDark ? const Color(0xFFBDC1C6) : const Color(0xFF444746),
-                                    height: 1.35,
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: isSecure
-                                          ? 'Tu información (por ejemplo, contraseñas o números de tarjetas de crédito) es privada cuando se envía a este sitio web. '
-                                          : 'No debes ingresar información confidencial en este sitio (p. ej., contraseñas o tarjetas de crédito), ya que los atacantes podrían robarla. ',
-                                    ),
-                                    WidgetSpan(
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          Navigator.pop(ctx);
-                                          _showConnectionSecurityDetails(context, host, isSecure);
-                                        },
-                                        child: Text(
-                                          isSecure ? 'Más información' : 'Detalles',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF0B57D0),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            host.isNotEmpty ? host : 'Página actual',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Fila 2: Datos de sitios y cookies (Capturas 2 & 4)
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showSiteDataAndCookiesDialog(context, host);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.cookie_outlined,
-                        size: 22,
-                        color: isDark ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          'Datos de sitios y cookies',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 22,
-                        color: isDark ? const Color(0xFF8E918F) : const Color(0xFF747775),
-                      ),
-                    ],
                   ),
-                ),
-              ),
 
-              // Fila 3: Última visita (Capturas 2 & 4)
-              InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showBrowsingHistory();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.history_rounded,
-                        size: 22,
-                        color: isDark ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          isSecure ? 'Última visita: hace 2 días' : 'Última visita: hoy',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 22,
-                        color: isDark ? const Color(0xFF8E918F) : const Color(0xFF747775),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                  Divider(height: 1, thickness: 0.8, color: isDark ? const Color(0xFF3C4043) : const Color(0xFFE0E3E7)),
 
-              // Fila 4: Acerca de esta página (Captura 4)
-              if (host.contains('chatgpt') || host.contains('google') || host.contains('udabol'))
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
+                  // Fila 1: La conexión es segura (Captura 4)
+                  InkWell(
                     onTap: () {
                       Navigator.pop(ctx);
-                      _showAboutThisPageDialog(context, host);
+                      _showConnectionSecurityDetails(context, host, isSecure);
                     },
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isSecure ? Icons.lock_rounded : Icons.info_outline_rounded,
+                            size: 20,
+                            color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Text(
+                              isSecure ? 'La conexión es segura' : 'La conexión no es segura',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w400,
+                                color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  Divider(height: 1, thickness: 0.8, color: isDark ? const Color(0xFF3C4043) : const Color(0xFFE0E3E7)),
+
+                  // Fila 2: Datos de sitios y cookies (Captura 4)
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showSiteDataAndCookiesDialog(context, host);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.cookie_outlined,
+                            size: 20,
+                            color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Text(
+                              'Datos de sitios y cookies',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w400,
+                                color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  Divider(height: 1, thickness: 0.8, color: isDark ? const Color(0xFF3C4043) : const Color(0xFFE0E3E7)),
+
+                  // Fila 3: Última visita: hoy (Captura 4)
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showBrowsingHistory();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            size: 20,
+                            color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Text(
+                              'Última visita: hoy',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w400,
+                                color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  Divider(height: 1, thickness: 0.8, color: isDark ? const Color(0xFF3C4043) : const Color(0xFFE0E3E7)),
+
+                  // Fila 4: Acerca de esta página (Captura 4)
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showAboutPageDialog(context, host, siteDescription);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
-                            Icons.auto_awesome_outlined,
-                            size: 22,
-                            color: isDark ? const Color(0xFFC4C7C5) : const Color(0xFF444746),
+                            Icons.info_outline_rounded,
+                            size: 20,
+                            color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 18),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2203,20 +2159,16 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   'Acerca de esta página',
                                   style: TextStyle(
                                     fontSize: 14.5,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w400,
                                     color: isDark ? const Color(0xFFE8EAED) : const Color(0xFF1F1F1F),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 3),
                                 Text(
-                                  host.contains('chatgpt')
-                                      ? 'ChatGPT es una aplicación de chatbot de inteligencia artificial desarrollada por OpenAI.'
-                                      : host.contains('udabol')
-                                          ? 'Universidad de Aquino Bolivia - Campus Virtual y Plataforma Académica Oficial.'
-                                          : 'Motor de búsqueda y servicios en la nube de Google.',
+                                  siteDescription,
                                   style: TextStyle(
                                     fontSize: 12.5,
-                                    color: isDark ? const Color(0xFF8E918F) : const Color(0xFF747775),
+                                    color: isDark ? const Color(0xFF9AA0A6) : const Color(0xFF747775),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -2224,45 +2176,58 @@ class _BrowserScreenState extends State<BrowserScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 22,
-                            color: isDark ? const Color(0xFF8E918F) : const Color(0xFF747775),
-                          ),
                         ],
                       ),
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-              // Botón de Volver a cargar si la conexión no es segura o falló (Captura 2)
-              if (!isSecure)
-                Padding(
-                  padding: const EdgeInsets.only(top: 14),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF0B57D0),
-                        side: const BorderSide(color: Color(0xFF0B57D0), width: 1.2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                      ),
-                      icon: const Icon(Icons.refresh_rounded, size: 19),
-                      label: const Text(
-                        'Volver a cargar sitio',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _reloadTab(currentTab);
-                      },
-                    ),
-                  ),
-                ),
+  void _showAboutPageDialog(BuildContext context, String host, String description) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: Color(0xFF0B57D0), size: 24),
+              SizedBox(width: 10),
+              Text('Acerca de esta página', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                host,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                style: const TextStyle(fontSize: 13.5, color: Color(0xFF444746), height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Esta información es proporcionada para ayudarte a verificar la autenticidad y el contexto del sitio que estás visitando.',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF747775), height: 1.35),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cerrar', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
         );
       },
     );
@@ -3481,6 +3446,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
                         ),
                         child: Row(
                           children: [
+                            // 1. Icono Casa (Home / Casita) cuando está en una página web (Captura 3)
+                            IconButton(
+                              icon: Icon(
+                                Icons.home_outlined,
+                                color: _currentTab.isIncognito ? const Color(0xFFC4C7C5) : const Color(0xFF1F1F1F),
+                                size: 24,
+                              ),
+                              splashRadius: 20,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              constraints: const BoxConstraints(),
+                              tooltip: 'Página principal',
+                              onPressed: () {
+                                final cur = _tabs[_currentTabIndex];
+                                cur.url = cur.isIncognito ? 'chrome://incognito' : 'chrome://newtab';
+                                _urlController.clear();
+                                setState(() {});
+                              },
+                            ),
+                            const SizedBox(width: 4),
+
                             // Cápsula Omnibox expandida con icono de seguridad interactivo
                             Expanded(
                               child: Container(
