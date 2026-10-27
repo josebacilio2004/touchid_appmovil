@@ -68,6 +68,14 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
     _localRegularTabs = List.from(widget.regularTabs);
     _localIncognitoTabs = List.from(widget.incognitoTabs);
     _isIncognitoView = widget.initialIsIncognito;
+    if (_tabGroups.isEmpty && _localRegularTabs.isNotEmpty) {
+      _tabGroups.add(TabGroupData(
+        id: 'group_default',
+        title: '1 pestaña',
+        color: const Color(0xFF5F6368),
+        tabIds: [_localRegularTabs.first.id],
+      ));
+    }
     _searchCtrl.addListener(() {
       setState(() {
         _searchQuery = _searchCtrl.text.trim().toLowerCase();
@@ -753,90 +761,122 @@ class _ChromeTabSwitcherScreenState extends State<ChromeTabSwitcherScreen> {
     if (_tabGroups.isNotEmpty) {
       return Expanded(
         child: ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: _tabGroups.length,
           itemBuilder: (context, index) {
             final group = _tabGroups[index];
             final groupTabs = _localRegularTabs.where((t) => group.tabIds.contains(t.id)).toList();
+            final count = groupTabs.isNotEmpty ? groupTabs.length : 1;
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: group.color.withValues(alpha: 0.35), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: group.color,
-                          shape: BoxShape.circle,
-                        ),
+            return InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: () {
+                if (groupTabs.isNotEmpty) {
+                  final realIdx = _localRegularTabs.indexWhere((t) => t.id == groupTabs.first.id);
+                  if (realIdx != -1) {
+                    widget.onSelectTab(realIdx, false);
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F3F9), // Fondo suave idéntico a la Captura 1 del usuario
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    // Cuadrícula 2x2 en miniatura de la pestaña agrupada (Captura 1)
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          group.title,
-                          style: const TextStyle(
-                            color: Color(0xFF1F1F1F),
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                      padding: const EdgeInsets.all(6),
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 4,
+                        mainAxisSpacing: 4,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: List.generate(4, (tileIndex) {
+                          final hasTab = tileIndex < count;
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F3F4),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: hasTab
+                                ? Center(
+                                    child: CustomPaint(
+                                      size: const Size(14, 14),
+                                      painter: _MiniGoogleGPainter(),
+                                    ),
+                                  )
+                                : null,
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Título y estado "Recién actualizada"
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF5F6368),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '$count ${count == 1 ? "pestaña" : "pestañas"}',
+                                style: const TextStyle(
+                                  color: Color(0xFF1F1F1F),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                          const SizedBox(height: 5),
+                          const Text(
+                            'Recién actualizada',
+                            style: TextStyle(
+                              color: Color(0xFF747775),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        '${groupTabs.length} pestañas',
-                        style: const TextStyle(color: Color(0xFF747775), fontSize: 13),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Color(0xFF444746), size: 20),
-                        onPressed: () {
-                          setState(() {
-                            _tabGroups.removeAt(index);
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 18),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: groupTabs.map((t) {
-                      return ActionChip(
-                        avatar: const Icon(Icons.public_rounded, size: 16, color: Color(0xFF0B57D0)),
-                        label: Text(
-                          t.title.isNotEmpty ? t.title : 'Pestaña',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        backgroundColor: const Color(0xFFEDEFF6),
-                        onPressed: () {
-                          final realIdx = _localRegularTabs.indexWhere((tab) => tab.id == t.id);
-                          if (realIdx != -1) {
-                            widget.onSelectTab(realIdx, false);
-                            Navigator.pop(context);
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ],
+                    ),
+                    // Menú de 3 puntos vertical
+                    IconButton(
+                      icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF444746), size: 22),
+                      splashRadius: 20,
+                      onPressed: () {
+                        setState(() {
+                          _tabGroups.removeAt(index);
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Grupo de pestañas cerrado')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             );
           },

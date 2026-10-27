@@ -181,15 +181,22 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  // Widget de avatar de perfil de usuario sincronizado de Google/Gmail (Foto realista de Captura 3)
+  // Widget de avatar de perfil de usuario sincronizado de Google/Gmail (Foto exacta del correo logeado)
   Widget _buildUserProfileAvatar() {
     final photoUrl = widget.config.userPhotoUrl.trim();
-    final targetUrl = (photoUrl.isNotEmpty && photoUrl.startsWith('http'))
-        ? photoUrl
-        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80';
+    if (photoUrl.isNotEmpty && photoUrl.startsWith('http')) {
+      return Image.network(
+        photoUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildLocalAvatar(),
+      );
+    }
+    return _buildLocalAvatar();
+  }
 
-    return Image.network(
-      targetUrl,
+  Widget _buildLocalAvatar() {
+    return Image.asset(
+      'assets/images/user_avatar.png',
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => _buildAvatarFallback(),
     );
