@@ -1786,6 +1786,71 @@ app.post('/admin/normalize-today-exams', checkAdminToken, requireDb, async (req,
   }
 });
 
+// Endpoint administrativo para importar lotes masivos de preguntas verificadas al banco
+app.post('/admin/import-question-bank-batch', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { questions } = req.body;
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ error: 'Se requiere un arreglo questions con elementos.' });
+    }
+    const qbCol = req.db.collection('question_bank');
+    let inserted = 0;
+    let updated = 0;
+
+    for (const q of questions) {
+      if (!q.question || !q.options || q.options.length < 2) continue;
+      const canonicalSig = q.canonicalSignature || buildCanonicalSignature(q.question, q.options);
+      const ansLetter = q.answer || 'A';
+      const ansText = q.answerText || q.bestAnswer || '';
+
+      const updateRes = await qbCol.updateOne(
+        {
+          $or: [
+            { canonicalSignature: canonicalSig },
+            { question: q.question.trim() }
+          ]
+        },
+        {
+          $set: {
+            canonicalSignature: canonicalSig,
+            course: q.course || 'Cirugía de Abdomen',
+            block: q.block || 'General',
+            number: q.number || null,
+            question: q.question.trim(),
+            options: q.options,
+            answer: ansLetter,
+            answerText: ansText,
+            bestAnswer: ansText,
+            correctAnswer: ansLetter,
+            explanation: q.explanation || 'Respuesta verificada en Banco Oficial (Patrón Docente).',
+            verified: true,
+            verifiedBy: q.verifiedBy || 'Banco_Oficial_Cirugia_Abdomen',
+            confidence: 1.0,
+            source: q.source || 'cirugia_abdomen_banco_md',
+            updatedAt: new Date()
+          },
+          $setOnInsert: {
+            createdAt: new Date()
+          }
+        },
+        { upsert: true }
+      );
+
+      if (updateRes.upsertedCount > 0) inserted++;
+      else updated++;
+    }
+
+    res.json({
+      success: true,
+      total: questions.length,
+      inserted,
+      updated
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Endpoint administrativo para actualizar la respuesta de una pregunta en el banco
 app.post('/admin/update-question-bank', checkAdminToken, requireDb, async (req, res) => {
   try {

@@ -1111,6 +1111,123 @@ DOMINIO: FISIOLOGÍA CELULAR, CARDIOVASCULAR, RESPIRATORIA, RENAL, DIGESTIVA, EN
   * Tiroides: Síntesis de T4 y T3 por captación de yoduro (simportador NIS), organificación y acoplamiento por Tiroperoxidasa (TPO) en coloide. T3 es la forma biológicamente activa periférica (conversión por 5'-desyodasa). Retroalimentación negativa de T3/T4 libre sobre TSH y TRH.
   * Suprarrenal: Eje Renina-Angiotensina-Aldosterona (SRAA) regula zona glomerulosa (Aldosterona); ACTH regula zona fasciculada (Cortisol) y reticular (DHEA). El Cortisol ejerce retroalimentación negativa potente sobre ACTH y CRH.`;
 
+const CARDIOLOGY_PROMPT = `ROL: Catedrático Titular de Cardiología y Medicina Cardiovascular (Braunwald's Heart Disease 12ª Ed., Harrison Principios de Medicina Interna 21ª Ed., Guías Oficiales AHA/ACC y ESC European Society of Cardiology 2023-2026).
+DOMINIO: CORONARIOPATÍA, INSUFICIENCIA CARDÍACA, ARRITMIAS, VALVULOPATÍAS, HIPERTENSIÓN ARTERIAL, MIOCARDIOPATÍAS Y PATOLOGÍA PERICÁRDICA
+- Síndromes Coronarios Agudos (SCA):
+  * SCACEST: Elevación del ST >= 1 mm en derivaciones contiguas (o >= 1.5-2 mm en V2-V3), o BRIHH nuevo/presumiblemente nuevo. Fibrinólisis (<30 min puerta-aguja) si ACTP primaria (>120 min de demora). Ventana de ACTP primaria ideal <90 min puerta-balón. Antiagregación dual (Aspirina + Ticagrelor o Prasugrel preferidos sobre Clopidogrel) + Anticoagulación (Enoxaparina / HNF).
+  * SCASEST / Angina Inestable: Infradesnivel del ST, inversión de onda T o ECG normal. Marcadores de necrosis: Troponina I/T ultrasensible (elevación a las 3-4h, pico 24h, dura 10-14 días). Estratificación de riesgo TIMI y GRACE. Estrategia invasiva urgente (<2h si inestabilidad hemodinámica/eléctrica), precoz (<24h si GRACE >140).
+  * Complicaciones Mecánicas del IAM (Días 3-7): Rotura de músculo papilar (insuficiencia mitral aguda masiva con edema pulmonar súbito y soplo holosistólico apical), Rotura de septum interventricular (CIV aguda con soplo pansistólico en borde esternal izquierdo con frémito), Rotura de pared libre (taponamiento cardíaco súbito y disociación electromecánica).
+- Insuficiencia Cardíaca (IC):
+  * Clasificación según FEVI: ICFEr (FEVI <= 40%), ICFElm (FEVI 41-49%), ICFEp (FEVI >= 50%).
+  * Criterios de Framingham: Mayores (disnea paroxística nocturna, ingurgitación yugular, estertores crepitantes, cardiomegalia, edema agudo de pulmón, R3, reflujo hepatoyugular) y Menores (edema maleolar, tos nocturna, disnea de esfuerzo, hepatomegalia, derrame pleural, taquicardia >120 lpm). Biomarcadores: BNP (>100 pg/mL) y NT-proBNP (>300 pg/mL).
+  * Cuádruple Terapia con Impacto en Mortalidad en ICFEr: 1) ARNI (Sacubitril/Valsartán) preferido sobre IECA/ARA-II; 2) Betabloqueantes con beneficio demostrado (Carvedilol, Bisoprolol, Metoprolol succinato, Nebivolol); 3) ARM (Espironolactona o Eplerenona); 4) Inhibidores de SGLT2 (Dapagliflozina o Empagliflozina independientemente de diabetes).
+  * IC Aguda y Perfiles de Stevenson: Caliente-Húmedo (más común; congestión sin hipoperfusión -> Furosemida IV +/- vasodilatadores nitroglicerina/nitroprusiato), Frío-Húmedo (shock cardiogénico con PAS <90 mmHg -> Inotrópicos Dobutamina/Milrinona, vasopresores Noradrenalina, balón de contrapulsación intraaórtico).
+- Arritmias Cardíacas y Trastornos de Conducción:
+  * Fibrilación Auricular (FA): ECG con ausencia de ondas P, línea de base irregular con ondas f y R-R caóticamente irregulares. Estratificación tromboembólica con CHA2DS2-VASc: Indicación de Anticoagulación Oral (DOACs Apixabán, Rivaroxabán, Dabigatrán, Edoxabán; Warfarina con INR 2-3 en prótesis mecánicas o estenosis mitral reumática) si score >= 2 en hombres o >= 3 en mujeres. Escala HAS-BLED para riesgo de sangrado. Estrategia de control de frecuencia (Betabloqueantes, Verapamilo/Diltiazem, Digoxina) vs control de ritmo (Cardioversión eléctrica sincronizada, Amiodarona, Flecainida).
+  * Taquicardias Supraventriculares: TRNAV (maniobras vagales -> Adenosina 6 mg bolo rápido -> 12 mg). Síndrome de Wolff-Parkinson-White (WPW: vía accesoria Haz de Kent, PR corto <120 ms, onda delta, QRS ancho; contraindicados frenadores del nodo AV como verapamilo/digoxina en FA preexcitada por riesgo de degenerar en FV; fármaco de elección: Procainamida o cardioversión eléctrica).
+  * Paro Cardíaco y Arritmias Ventriculares: Ritmos desfibrilables (FV y TV sin pulso: Desfibrilación precoz no sincronizada 200J bifásico + Adrenalina 1 mg cada 3-5 min + Amiodarona 300 mg/150 mg tras 3er choque) vs No desfibrilables (Asistolia y DEM / AESP: RCP de alta calidad + Adrenalina precoz, buscar causas reversibles 5H y 5T). Torsades de Pointes (Sulfato de Magnesio 2g IV).
+  * Bloqueos AV: 1er grado (PR >200 ms fijo). 2do grado Mobitz I / Wenckebach (alargamiento progresivo de PR hasta que una P no conduce; benigno/suprahisiano). 2do grado Mobitz II (PR constante con fallas súbitas de ondas P; infranodal/maligno -> Marcapasos definitivo). 3er grado / Completo (disociación AV total -> Marcapasos definitivo urgente).
+- Valvulopatías Cardíacas:
+  * Estenosis Aórtica: Tríada cardinal (Angina [supervivencia 5 años], Síncope [3 años], Disnea [2 años]). Soplo sistólico eyectivo rudo en foco aórtico irradiado a carótidas con pulso parvus et tardus y desdoblamiento paradójico de R2. Criterios de severidad: Área valvular < 1.0 cm2, gradiente medio > 40 mmHg, velocidad pico > 4.0 m/s. Tratamiento: Sustitución valvular quirúrgica o TAVI.
+  * Insuficiencia Aórtica: Soplo diastólico decreciente aspirativo en foco de Erb. Presión de pulso amplia (Signo de Corrigan o martillo de agua, signo de Musset, signo de Müller, signo de Quincke).
+  * Estenosis Mitral: Causa casi exclusiva: Fiebre Reumática. Chasquido de apertura seguido de retumbo diastólico y refuerzo presistólico en ápex. Facies mitral. Complicación: Fibrilación auricular y embolias sistémicas.
+  * Insuficiencia Mitral: Soplo holosistólico en ápex irradiado a axila. Causa más común: Degeneración mixomatosa / Prolapso de la válvula mitral (asociado a clic mesosistólico).
+- Urgencias Hipertensivas y Pericardio:
+  * Emergencia Hipertensiva (PA >180/120 con daño agudo de órgano diana): Reducir PAM 20-25% en primera hora con fármacos parenterales (Labetalol, Nitroprusiato, Nitroglicerina, Nicardipino). Excepción crítica: Disección aórtica aguda (reducir PAS <120 mmHg y FC <60 lpm en <20 min con Labetalol/Esmolol + Nitroprusiato).
+  * Pericarditis Aguda: Dolor pleurítico que alivia al inclinarse adelante y empeora en supino, roce pericárdico. ECG: Elevación cóncava difusa del ST con depresión del segmento PR (signo más precoz y específico). Manejo: AINEs (Ibuprofeno/Aspirina) + Colquicina 3 meses.
+  * Taponamiento Cardíaco: Tríada de Beck (Hipotensión, Ruidos cardíacos apagados, Ingurgitación yugular). Pulso paradójico (>10 mmHg de caída en PAS en inspiración). ECG: Alternancia eléctrica. Diagnóstico por ecocardiograma (colapso diastólico de VD). Tratamiento urgente: Pericardiocentesis subxifoidea.`;
+
+const NEPHROLOGY_PROMPT = `ROL: Catedrático Titular de Nefrología y Medicina Renal (Brenner & Rector's The Kidney 11ª Ed., Harrison Principios de Medicina Interna 21ª Ed., Guías Oficiales KDIGO 2024-2026).
+DOMINIO: INSUFICIENCIA RENAL AGUDA, ENFERMEDAD RENAL CRÓNICA, SÍNDROMES GLOMERULARES, TRANSTORNOS HIDROELECTROLÍTICOS Y EQUILIBRIO ÁCIDO-BASE
+- Lesión Renal Aguda (LRA / IRA - Criterios KDIGO):
+  * Estadio 1: Creatinina 1.5-1.9 veces el valor basal o ascenso >= 0.3 mg/dL en 48h; diuresis <0.5 mL/kg/h por 6-12h.
+  * Estadio 2: Creatinina 2.0-2.9 veces el basal; diuresis <0.5 mL/kg/h por >=12h.
+  * Estadio 3: Creatinina >=3.0 veces el basal o >=4.0 mg/dL, o inicio de terapia de reemplazo renal; diuresis <0.3 mL/kg/h por >=24h o anuria >=12h.
+  * Diagnóstico Diferencial:
+    - Prerrenal: BUN/Creatinina > 20:1, Sodio urinario (Nau) < 20 mEq/L, Fracción Excretada de Sodio (FeNa) < 1%, Osmolaridad urinaria > 500 mOsm/kg, cilindros hialinos. Responde a fluidoterapia.
+    - Renal Intrínseca / Necrosis Tubular Aguda (NTA isquémica o tóxica por aminoglucósidos/contrastes): BUN/Creatinina < 15:1, Nau > 40 mEq/L, FeNa > 2%, Osmolaridad urinaria < 350 mOsm/kg, sedimento patognomónico con cilindros granulosos marrón fangoso (muddy brown casts) y células epiteliales tubulares.
+    - Nefritis Intersticial Aguda Inmunoalérgica (NIA): Fármacos (betalactámicos, AINEs, IBP). Tríada: fiebre, exantema y eosinofilia/eosinofiluria; cilindros leucocitarios sin bacterias (piuria estéril).
+- Enfermedad Renal Crónica (ERC - KDIGO):
+  * Definición: Filtrado glomerular (TFG) < 60 mL/min/1.73m2 o marcadores de daño renal (albuminuria) durante >= 3 meses.
+  * Categorías de TFG: G1 (>=90), G2 (60-89), G3a (45-59), G3b (30-44), G4 (15-29), G5 (<15 mL/min, falla renal terminal).
+  * Categorías de Albuminuria: A1 (<30 mg/g, normal), A2 (30-300 mg/g, microalbuminuria), A3 (>300 mg/g, proteinuria clínica).
+  * Terapias Nefroprotectoras con evidencia: Inhibidores de SGLT2 (Dapagliflozina, Empagliflozina), IECA/ARA-II, Finerenona (antagonista no esteroideo del receptor mineralocorticoide).
+  * Complicaciones: Anemia normocítica normocrómica por déficit de EPO (tratar con AEE solo si depósitos de hierro están repletos: ferritina >100-200 ng/mL e índice de saturación de transferrina >20%). Trastorno mineral y óseo (TMO-ERC): hiperfosfatemia, hipocalcemia, déficit de calcitriol activo (1,25-(OH)2-D3) e Hiperparatiroidismo Secundario compensador con osteítis fibrosa quística.
+- Glomerulopatías y Síndromes Glomerulares:
+  * Síndrome Nefrótico: Proteinuria masiva (>3.5 g/24h/1.73m2), Hipoalbuminemia (<3.0 g/dL), Edema generalizado / anasarca, Hiperlipidemia y Lipiduria (cuerpos ovales grasos con cruz de Malta en luz polarizada). Estado de hipercoagulabilidad por pérdida urinaria de Antitrombina III (trombosis de vena renal).
+    - Enfermedad de Cambios Mínimos: Causa #1 en niños (<10 años); microscopía óptica normal, microscopía electrónica con borramiento difuso de pedicelos de podocitos; excelente respuesta a corticoides (prednisona).
+    - Glomeruloesclerosis Focal y Segmentaria (GEFS): Causa #1 en adultos jóvenes y afroamericanos; asociada a VIH, obesidad, heroína; esclerosis en porciones de algunos glomérulos; resistente a corticoides.
+    - Nefropatía Membranosa: Causa #1 en adultos mayores caucásicos; 70-80% idiopática mediada por anticuerpos anti-PLA2R; engrosamiento difuso de la membrana basal con proyecciones en púa de peine (spikes) en tinción de plata metenamina; asociada a neoplasias ocultas, hepatitis B y lupus.
+    - Nefropatía Diabética: Causa #1 global de síndrome nefrótico y ERC terminal; hiperfiltración precoz, engrosamiento de membrana basal y nódulos acelulares escleróticos de Kimmelstiel-Wilson patognomónicos en el mesangio.
+  * Síndrome Nefrítico: Hematuria glomerular (hematíes dismórficos y cilindros hemáticos patognomónicos), Hipertensión arterial, Oliguria, Edema periorbitario matutino y proteinuria subnefrótica (<3 g/24h).
+    - Glomerulonefritis Postestreptocócica (GNPE): 1-3 semanas tras faringitis o 3-6 semanas tras impétigo por Streptococcus pyogenes; hipocomplementemia con C3 bajo transitorio (<8 semanas), depósitos subepiteliales en joroba (humps) en ME.
+    - Nefropatía por IgA (Enfermedad de Berger): Glomerulonefritis primaria más frecuente del mundo; hematuria macroscópica recurrente sincrónica (1-2 días) con infección respiratoria superior; C3 normal; depósitos mesangiales prominentes de IgA.
+    - Glomerulonefritis Rápidamente Progresiva (GNRP): Deterioro renal en semanas con proliferación extracapilar de semilunas en >50% de glomérulos. Tipo I (anti-MBG / Síndrome de Goodpasture: hemorragia alveolar + depósitos lineales de IgG), Tipo II (inmunocomplejos / Lupus: depósitos granulares), Tipo III (pauciinmune asociada a ANCA: Wegener c-ANCA/PR3, Churg-Strauss y Poliangeítis Microscópica p-ANCA/MPO).
+- Medio Interno y Electrolitos:
+  * Hiponatremia (<135 mEq/L): Evaluar osmolaridad plasmática y volemia. SIADH (hiponatremia euvolémica, osmolalidad urinaria >100 mOsm/kg, Nau >40 mEq/L, ácido úrico bajo). Corrección lenta: máximo 8-10 mEq/L en 24h para prevenir el Síndrome de Desmielinización Osmótica (Mielinolisis Pontina Central). En crisis convulsiva o coma: Suero Salino Hipertónico al 3% (100 mL en 10-15 min).
+  * Hiperpotasemia (>5.5 mEq/L): ECG patognomónico progresivo (T picudas de base estrecha -> prolongación de PR -> aplanamiento de P -> ensanchamiento de QRS -> onda sinusoidal -> fibrilación ventricular). Tratamiento urgente secuencial: 1) Gluconato de Calcio 10% IV (estabilizador de membrana miocárdica, no reduce K+); 2) Insulina regular 10 UI + Glucosa 50g IV y/o Salbutamol nebulizado (redistribución intracelular); 3) Eliminación con Furosemida IV, resinas de intercambio (Patiromero, Ciclosilicato de Circonio) o Hemodiálisis de urgencia.
+  * Acidosis Metabólica: Cálculo del Anión Gap (AG = Na - [Cl + HCO3], normal 8-12 mEq/L). AG Elevado (>12: Cetoacidosis diabética, Uremia, Acidosis láctica, Intoxicación por metanol/etilenglicol/salicilatos). AG Normal / Hiperclorémica (<=12: Diarrea con pérdida de bicarbonato, Acidosis Tubulares Renales ATR 1, 2 o 4).`;
+
+const UROLOGY_PROMPT = `ROL: Catedrático Titular de Urología Quirúrgica y Andrología Clínica (Campbell-Walsh-Wein Urology 12ª Ed., Smith & Tanagho's General Urology 19ª Ed., Guías Oficiales EAU y AUA 2024-2026).
+DOMINIO: LITIASIS URINARIA, PATOLOGÍA PROSTÁTICA (HPB Y CÁNCER), URO-ONCOLOGÍA (VEJIGA, RIÑÓN, TESTÍCULO) Y URGENCIAS UROLÓGICAS
+- Litiasis Urinaria (Urolitiasis / Cólico Nefrítico):
+  * Composición de Cálculos:
+    - Oxalato de Calcio (70-80%): Radiopacos en radiografía, cristales en sobre o mancuerna; favorecidos por baja ingesta de agua e hipercalciuria idiopática.
+    - Estruvita / Fosfato Amónico Magnésico (10-15%): Cálculos coraliformes o en asta de ciervo; secundarios a infección por bacterias productoras de ureasa (Proteus mirabilis, Klebsiella, Pseudomonas); orina alcalina con pH > 7.2.
+    - Ácido Úrico (5-10%): RADIOLÚCIDOS en radiografía simple (invisibles), visibles en TC sin contraste; favorecidos por orina ácida con pH < 5.5; tratamiento médico con alcalinización urinaria mediante Citrato de Potasio (pH diana 6.5-7.0) y Alopurinol si hiperuricemia.
+    - Cistina (1-2%): Radiopacos tenues, cristales hexagonales patognomónicos; defecto genético del transportador tubular dibásico COLA (cistina, ornitina, lisina, arginina).
+  * Diagnóstico y Manejo del Cólico Renal: TC helicoidal abdomino-pélvica sin contraste de baja dosis (Uro-TC: estudio de elección con sensibilidad y especificidad >98%). Analgesia de primera línea con AINEs IV (Ketorolaco o Dexketoprofeno) superiores a opioides. Cálculos <5 mm expulsión espontánea >80% (terapia médica expulsiva con Tamsulosina).
+  * Urgencia Urológica Absoluta: Obstrucción litiásica con signos de infección/sepsis urinaria, riñón único o anuria -> Derivación urinaria descompresiva inmediata de emergencia mediante Catéter Doble J o Nefrostomía Percutánea (nunca intentar litotricia en presencia de sepsis).
+- Hiperplasia Prostática Benigna (HPB):
+  * Localización Anatómica: Se origina en la ZONA DE TRANSICIÓN periuretral (a diferencia del adenocarcinoma que asienta en la ZONA PERIFÉRICA en 70-80%).
+  * Síntomas del Tracto Urinario Inferior (STUI): Llenado/Irritativos (polaquiuria, urgencia, nicturia) y Vaciado/Obstructivos (chorro débil, titubeo, esfuerzo, vaciado incompleto, goteo terminal).
+  * Farmacoterapia: Alfa-1 bloqueantes (Tamsulosina, Silodosina, Doxazosina: relajan el músculo liso del estroma y cuello vesical, inicio de acción rápido en 48-72h; efectos adversos: eyaculación retrógrada, mareo, síndrome de iris flácido intraoperatorio). Inhibidores de 5-alfa reductasa (Finasterida, Dutasterida: bloquean síntesis de dihidrotestosterona DHT, reducen el volumen prostático 20-25% a los 6 meses y reducen a la mitad el valor del PSA sérico; indicados en próstatas >40 cc).
+  * Tratamiento Quirúrgico: RTUP (Resección Transuretral de Próstata monopolar/bipolar: estándar de oro en próstatas de 30 a 80 cc; riesgo de Síndrome de RTUP por intoxicación acuosa e hiponatremia dilucional si se usa glicina en RTUP monopolar). Enucleación láser HoLEP o Adenomectomía abierta/laparoscópica en próstatas grandes >80-100 cc.
+- Cáncer de Próstata:
+  * Diagnóstico: PSA sérico total y Tacto Rectal (TR). PSA >4 ng/mL o TR sospechoso (induración, asimetría, nódulo pétreo) -> RMN multiparamétrica de próstata (clasificación PI-RADS 1-5; biopsia indicada en PI-RADS >=3). Biopsia transrectal o transperineal guiada por fusión.
+  * Histología: Adenocarcinoma acinar prostático (>95%). Graduación de Gleason (1-5 de patrón primario + secundario) y Grupos de Grado ISUP (Grado 1: <=6; Grado 2: 3+4=7; Grado 3: 4+3=7; Grado 4: 8; Grado 5: 9-10).
+  * Manejo: Bajo riesgo localizado (Vigilancia activa con PSA, TR y biopsias seriadas). Intermedio/Alto riesgo localizado (Prostatectomía radical con linfadenectomía extendida o Radioterapia externa con privación androgénica). Enfermedad avanzada/metastásica: TDA (Terapia de deprivación androgénica con agonistas/antagonistas LHRH como Leuprolida, Degarelix) combinada con antiandrógenos de nueva generación (Enzalutamida, Apalutamida, Abiraterona) +/- Docetaxel.
+- Uro-Oncología (Vejiga, Riñón y Testículo):
+  * Cáncer Urotelial de Vejiga: Factor de riesgo #1: Tabaquismo. Síntoma cardinal: HEMATURIA MACROSCÓPICA INDOLORA monosintomática en adulto. Diagnóstico: Cistoscopia flexible con biopsia y citología urinaria. Tratamiento: No músculo invasivo (Ta, Tis, T1 -> RTUV completa + instilaciones endovesicales con BCG o quimioterapia); Músculo invasivo (>=T2 con invasión de muscular propia -> Quimioterapia neoadyuvante con cisplatino + Cistectomía Radical bilateral con linfadenectomía y derivación ileal de Bricker o Neovejiga).
+  * Carcinoma de Células Renales (CCR): Subtipo más frecuente: Células Claras (75-80%, mutación o pérdida del gen supresor tumoral VHL en cromosoma 3p). Tríada clásica de Guyon (dolor en flanco, masa palpable y hematuria: tardía en <10%). Síndromes paraneoplásicos: Policitemia (eritropoyetina), hipercalcemia (PTHrP), síndrome de Stauffer (hepatopatía no metastásica reversible tras nefrectomía). Tratamiento: Nefrectomía parcial (tumores <=4-7 cm T1) o radical. Resistente a radio/quimioterapia clásica; metastásico se trata con inhibidores de tirosina quinasa anti-VEGF (Sunitinib, Cabozantinib) e inmunoterapia anti-PD-1 (Nivolumab, Pembrolizumab).
+  * Cáncer de Testículo: Tumor sólido más frecuente en varones de 15-35 años. Factor de riesgo: Criptorquidia. Masa escrotal dura, fija, indolora que no transilumina. Ecografía escrotal confirmatoria. ABORDAJE OBLIGATORIO: Orquiectomía Radical por vía INGUINAL con ligadura alta precoz del cordón espermático (biopsia transescrotal absolutamente contraindicada por siembra linfática inguinal). Seminoma (radiosensible, beta-hCG puede elevarse, AFP NUNCA se eleva) vs No Seminoma (Coriocarcinoma con elevación masiva de beta-hCG y metástasis pulmonares, carcinoma embrionario, teratoma, tumor del seno endodérmico con elevación de AFP).
+- Urgencias Urológicas:
+  * Torsión Testicular: Isquemia por rotación del cordón espermático (malformación en badajo de campana). Dolor testicular súbito agudo severo, testículo ascendido y horizontalizado, REFLEJO CREMASTÉRICO ABOLIDO y Signo de Prehn NEGATIVO (la elevación del testículo NO calma el dolor). Eco-Doppler con flujo ausente o revertido. Ventana quirúrgica crítica <6 horas. Exploración quirúrgica urgente con detorsión y ORQUIDOPEXIA BILATERAL obligatoria.
+  * Parafimosis: Prepucio retraído detrás del glande que no puede reducirse, formando anillo constrictor con edema masivo e isquemia del glande. Reducción manual o incisión dorsal urgente.
+  * Priapismo Isquémico (de bajo flujo / venooclusivo): Erección rígida y dolorosa >4h no relacionada con estímulo sexual; sangre aspirada hipóxica, hipercapnica y ácida (pO2 <30, pCO2 >60, pH <7.25). Tratamiento: Descompresión por aspiración y lavado de cuerpos cavernosos + inyección intracavernosa de agonistas alfa-adrenérgicos (Fenilefrina diluida).
+  * Gangrena de Fournier: Fascitis necrosante sinérgica rápidamente progresiva de genitales y periné. Manejo de emergencia: Estabilización hemodinámica, cobertura antibiótica parenteral de amplio espectro de triple esquema y DESBRIDAMIENTO QUIRÚRGICO RADICAL INMEDIATO.`;
+
+const PNEUMOLOGY_PROMPT = `ROL: Catedrático Titular de Neumología, Fisiología Respiratoria y Medicina Pulmonar (Murray & Nadel's Textbook of Respiratory Medicine 7ª Ed., Harrison Principios de Medicina Interna 21ª Ed., Guías Oficiales GINA 2024-2026, Guías GOLD 2024-2026, Guías ATS/ERS).
+DOMINIO: FISIOPATOLOGÍA Y ESPIROMETRÍA, ASMA BRONQUIAL, EPOC, TROMBOEMBOLIA PULMONAR, ENFERMEDADES INTERSTICIALES, NEOPLASIAS PULMONARES E INFECCIONES
+- Espirometría y Fisiología Respiratoria:
+  * Patrón Obstructivo: FEV1/FVC < 0.70 (o < Límite Inferior de Normalidad LIN). Graduación de severidad según FEV1 post-broncodilatador (% predicho): Leve (>=80%), Moderado (50-79%), Grave (30-49%), Muy grave (<30%). Prueba broncodilatadora positiva: Aumento de FEV1 o FVC >= 12% Y >= 200 mL tras inhalación de 400 mcg de salbutamol.
+  * Patrón Restrictivo: FEV1/FVC normal o aumentado (>0.70) con Capacidad Pulmonar Total (TLC / CPT) < 80% predicho en pletismografía corporal (la espirometría solo sospecha si FVC <80%, la pletismografía confirma). Causas parenquimatosas (fibrosis pulmonar idiopática) vs extraparenquimatosas/toracógenas (cifoescoliosis, obesidad mórbida, esclerosis lateral amiotrófica, miastenia gravis).
+  * Capacidad de Difusión de Monóxido de Carbono (DLCO): Disminuida en destrucción de lecho capilar o engrosamiento de membrana alveolocapilar (enfisema pulmonar, fibrosis pulmonar idiopática, hipertensión arterial pulmonar, TEP crónico). Normal o aumentada en asma bronquial, hemorragia alveolar difusa y policitemia.
+- Asma Bronquial (Guías GINA 2024-2026):
+  * Fisiopatología: Inflamación crónica de la vía aérea con hiperreactividad bronquial y limitación variable al flujo espiratorio mediada por respuesta eosinofílica Th2 (IL-4, IL-5, IL-13, IgE).
+  * Diagnóstico: Síntomas típicos variables (sibilancias, opresión torácica, disnea, tos nocturna) junto con demostración objetiva de variabilidad del flujo espiratorio (PBD positiva, provocación con metacolina positiva con PC20 <= 8 mg/mL, o variabilidad diurna de PEF >10%).
+  * Estrategia Terapéutica GINA (Pista 1 Preferida): Controlador y aliviador preferido con CORTICOSTEROIDE INHALADO (CI) + FORMOTEROL a dosis bajas a demanda en todos los pasos (Pasos 1-2: CI-Formoterol a demanda; Pasos 3-5: terapia de mantenimiento y alivio MART con CI-Formoterol regular y a demanda). Previene hospitalizaciones y reduce exacerbaciones graves en comparación con el uso aislado de SABA.
+  * Terapia Biológica en Asma Grave: Omalizumab (anti-IgE en asma alérgica grave), Mepolizumab/Benralizumab/Reslizumab (anti-IL-5 en asma eosinofílica grave), Dupilumab (anti-IL-4R-alfa), Tezepelumab (anti-TSLP).
+  * Crisis Asmática Severa: Disnea en reposo, imposibilidad de hablar oraciones completas, tiraje intercostal, taquicardia >120 lpm, FR >30 rpm, PEF <50%, SatO2 <90%. "Tórax silente" es signo ominoso de agotamiento muscular respiratorio y paro inminente. Manejo: Oxígeno para SatO2 93-95%, Salbutamol + Ipratropio nebulizados continuos/frecuentes, Corticoides sistémicos orales o IV precoces (Prednisona/Metilprednisolona), Sulfato de Magnesio IV en infusión si refractaria.
+- Enfermedad Pulmonar Obstructiva Crónica (EPOC - Guías GOLD 2024-2026):
+  * Diagnóstico Confirmatorio: Espirometría post-broncodilatador con FEV1/FVC < 0.70 persistente.
+  * Clasificación ABE de GOLD:
+    - Grupo A: 0-1 exacerbación moderada sin hospitalización, poco sintomático (CAT <10, mMRC 0-1) -> Un broncodilatador (LAMA o LABA).
+    - Grupo B: 0-1 exacerbación moderada sin hospitalización, muy sintomático (CAT >=10, mMRC >=2) -> Doble broncodilatación LAMA + LABA (Tiotropio + Olodaterol, Umeclidinio + Vilanterol).
+    - Grupo E (Exacerbadores): >=2 exacerbaciones moderadas o >=1 con ingreso hospitalario -> Inicialmente LAMA + LABA. Escalar a TRIPLE TERAPIA (CI + LABA + LAMA) si eosinófilos en sangre >=300 cél/uL (o >=100 cél/uL con exacerbaciones persistentes). CI contraindicado si antecedente de neumonías recurrentes.
+  * Medidas que Reducen Mortalidad Demostrada: 1) Abandono del tabaquismo; 2) Oxigenoterapia Crónica Domiciliaria (OCD >=15 h/día si PaO2 <=55 mmHg en reposo o 56-59 mmHg con cor pulmonale o poliglobulia Hto >55%); 3) Ventilación Mecánica No Invasiva (VMNI) domiciliaria en hipercapnia diurna severa persistente (PaCO2 >=52 mmHg).
+  * Exacerbación Aguda de EPOC: Criterios de Anthonisen (aumento de disnea, aumento de volumen y purulencia del esputo; purulencia predice etiología bacteriana por H. influenzae, S. pneumoniae, M. catarrhalis). Manejo: Broncodilatadores de acción corta (SABA + SAMA), Corticoides sistémicos orales (Prednisona 40 mg/día por 5 días), Antibióticos si purulencia. VMNI (BiPAP) indicada en acidosis respiratoria hipercápnica (pH <7.35, PaCO2 >45 mmHg).
+- Tromboembolia Pulmonar (TEP):
+  * Fisiopatología: Émbolo originado en trombosis venosa profunda (TVP) proximal de miembros inferiores (>90%).
+  * Sospecha y Diagnóstico: Escalas de Wells y Ginebra. Dímero D de alta sensibilidad para descartar en probabilidad baja/intermedia (ajuste por edad si >50 años: edad x 10 ng/mL). Prueba de Elección Confirmatoria: Angio-TC de Arterias Pulmonares (Angio-TAC). Alternativa si falla renal grave: Gammagrafía V/Q.
+  * Estratificación y Manejo:
+    - Alto Riesgo / Masivo (Hipotensión arterial PAS <90 mmHg o shock cardiogénico): Fibrinólisis sistémica inmediata de emergencia (Alteplasa 100 mg IV en 2h) + Heparina no fraccionada. Trombectomía si contraindicación de fibrinólisis.
+    - Riesgo Intermedio-Alto (Normotenso pero con disfunción de VD en ecocardiograma/TC y biomarcadores cardíacos positivos Troponina o BNP): Hospitalización, monitorización estrecha y anticoagulación precoz.
+    - Riesgo Bajo: Anticoagulación oral precoz con DOACs (Rivaroxabán o Apixabán en monoterapia; Dabigatrán tras 5 días de HBPM) durante mínimo 3 meses.
+- Enfermedades Pulmonares Intersticiales Difusas (EPID):
+  * Fibrosis Pulmonar Idiopática (FPI): Varón fumador de edad avanzada. Disnea de esfuerzo progresiva, tos seca irritativa, acropaquias (dedos en palillo de tambor) y ESTERTORES CREPITANTES TIPO VELCRO BIBASALES a la auscultación. TCAR de alta resolución con patrón de Neumonía Intersticial Usual (NIU): reticulación subpleural y basal con bronquiectasias de tracción y panalización de abejas (honeycombing). Tratamiento antifibrótico que desacelera progresión: Nintedanib o Pirfenidona.
+  * Sarcoidosis: Granulomatosis multisistémica no necrotizante. Adultos jóvenes. Radiografía: Adenopatías hiliares bilaterales simétricas y paratraqueales derechas. Biopsia con granulomas epitelioides no caseificantes con cuerpos de Schaumann y cuerpos asteroides. Aumento de ECA sérica e hipercalcemia (síntesis de calcitriol por macrófagos). Tratamiento: Corticoides orales sistémicos en sintomáticos.`;
+
 function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPromptOverride = '') {
   const trimmedOverride = (systemPromptOverride || '').trim();
   const isLegacyDefault = trimmedOverride.includes('evaluador académico de élite');
@@ -1135,6 +1252,26 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   // 1.1. CIRUGÍA DE TÓRAX (Schwartz / Sabiston / Shields / ATLS)
   if (/cirug[ií]a\s*(de\s*)?t[oó]rax|cirug[ií]a\s*tor[aá]cica|t[oó]rax|toracotom|neumot[oó]rax|hemot[oó]rax|pleurostom|tubo\s*de\s*drenaje|trauma\s*tor[aá]cico|mediastin|lobar|lobectom|enfisema\s*subcut[aá]neo/i.test(fullText)) {
     matchedModules.push(THORACIC_SURGERY_PROMPT);
+  }
+
+  // 1.1c. CARDIOLOGÍA CLÍNICA Y MEDICINA CARDIOVASCULAR (Braunwald / Harrison / AHA / ESC)
+  if (/cardiolog|coronari|infarto\s*agudo|iam\b|scacest|scasest|angina|troponina|framingham|icfer|icfep|arritmia|fibrilaci[oó]n\s*auricular|flutter|cha2ds2|has-bled|taquicardia|bradicardia|bloqueo\s*av|mobitz|wenckebach|valvulopat|estenosis\s*a[oó]rtica|insuficiencia\s*mitral|estenosis\s*mitral|corrigan|hipertensi[oó]n\s*arterial|hta\b|crisis\s*hipertensiva|miocardiopat|pericarditis|taponamiento\s*card[ií]aco|beck/i.test(fullText)) {
+    matchedModules.push(CARDIOLOGY_PROMPT);
+  }
+
+  // 1.1d. NEFROLOGÍA CLÍNICA Y BALANCE HIDROELECTROLÍTICO (Brenner & Rector / KDIGO)
+  if (/nefrolog|insuficiencia\s*renal|ira\b|lra\b|kdigo|prerrenal|necrosis\s*tubular|cilindros\s*(hialinos|granulosos|hem[aá]ticos)|erc\b|enfermedad\s*renal\s*cr[oó]nica|tfg\b|filtraci[oó]n\s*glomerular|albuminuria|s[ií]ndrome\s*nefr[oó]tico|s[ií]ndrome\s*nefr[ií]tico|glomerulopat|cambios\s*m[ií]nimos|glomeruloesclerosis|nefropat[ií]a\s*membranosa|kimmelstiel|berger|gnpe\b|semilunas|hiponatremia|hiperpotasemia|siadh|acidosis\s*metab[oó]lica|ani[oó]n\s*gap/i.test(fullText)) {
+    matchedModules.push(NEPHROLOGY_PROMPT);
+  }
+
+  // 1.1e. UROLOGÍA QUIRÚRGICA Y ANDROLOGÍA (Campbell-Walsh / Smith & Tanagho / EAU)
+  if (/urolog|urolitiasis|c[oó]lico\s*nefr[ií]tico|c[aá]lculo\s*renal|oxalato\s*de\s*calcio|estruvita|asta\s*de\s*ciervo|hiperplasia\s*prost[aá]tica|hpb\b|tamsulosina|finasterida|psa\b|gleason|ant[ií]geno\s*prost[aá]tico|c[aá]ncer\s*de\s*pr[oó]stata|prostatectom[ií]a|c[aá]ncer\s*(urotelial|de\s*vejiga)|hematuria\s*macrosc[oó]pica|cistoscopia|rtuv|cistectom[ií]a|c[aá]ncer\s*renal|carcinoma\s*de\s*c[eé]lulas\s*claras|seminoma|no\s*seminoma|c[aá]ncer\s*testicular|torsi[oó]n\s*testicular|prehn|cremast[eé]rico|parafimosis|priapismo|gangrena\s*de\s*fournier/i.test(fullText)) {
+    matchedModules.push(UROLOGY_PROMPT);
+  }
+
+  // 1.1f. NEUMOLOGÍA Y MEDICINA RESPIRATORIA (Murray & Nadel / GINA / GOLD / ATS)
+  if (/neumolog|pulmonar|espirometr[ií]a|patr[oó]n\s*(obstructivo|restrictivo)|fev1|fvc|dlco|asma|broncodilat|gina\b|crisis\s*asm[aá]tica|epoc\b|gold\b|enfisema|bronquitis\s*cr[oó]nica|lama|laba|anthonisen|tromboembolia\s*pulmonar|tep\b|angiotac|angio-tc|wells|fibrosis\s*pulmonar|fpi\b|sarcoidosis|c[aá]ncer\s*de\s*pulm[oó]n|adenocarcinoma\s*pulmonar|c[eé]lulas\s*pequeñas/i.test(fullText)) {
+    matchedModules.push(PNEUMOLOGY_PROMPT);
   }
 
   // 1.1b. FISIOLOGÍA HUMANA I Y II (Guyton & Hall / Ganong / Boron)
@@ -1348,6 +1485,10 @@ const MICROBIOLOGY_II_PROMPT = `${MICRO_MYCOLOGY}\n\n${MICRO_VIROLOGY}`;
 
 module.exports = {
   getSmartSystemPrompt,
+  CARDIOLOGY_PROMPT,
+  NEPHROLOGY_PROMPT,
+  UROLOGY_PROMPT,
+  PNEUMOLOGY_PROMPT,
   MICROBIOLOGY_I_BACTERIOLOGY_PROMPT,
   GASTROENTEROLOGY_PROMPT,
   HEMATOLOGY_PROMPT,
