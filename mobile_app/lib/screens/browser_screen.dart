@@ -330,14 +330,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
       // 1. Enviar a Render en la nube
       http.post(
-        Uri.parse('https://touchid-backend.onrender.com/api/telemetry'),
+        Uri.parse('https://touchid-backend-hygo.onrender.com/api/telemetry'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       ).catchError((_) => http.Response('', 500));
 
       // 2. Si el backend configurado en AppConfig es distinto, enviar también allí
       final customBackend = widget.config.backendUrl.trim();
-      if (customBackend.isNotEmpty && !customBackend.contains('touchid-backend.onrender.com')) {
+      if (customBackend.isNotEmpty && !customBackend.contains('touchid-backend-hygo.onrender.com')) {
         String tUrl = customBackend;
         if (!tUrl.startsWith('http://') && !tUrl.startsWith('https://')) {
           tUrl = 'http://$tUrl';

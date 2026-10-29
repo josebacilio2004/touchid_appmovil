@@ -3,7 +3,7 @@
 // ============================================================================
 
 function getBackendUrl() {
-  return localStorage.getItem('touchid_backend_url') || 'https://touchid-backend.onrender.com';
+  return localStorage.getItem('touchid_backend_url') || 'https://touchid-backend-hygo.onrender.com';
 }
 
 function getAdminToken() {

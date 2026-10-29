@@ -23,9 +23,9 @@ function apiRequest(options, body = null) {
 }
 
 async function run() {
-  console.log('Fetching history from https://touchid-backend.onrender.com ...');
+  console.log('Fetching history from https://touchid-backend-hygo.onrender.com ...');
   const histRes = await apiRequest({
-    hostname: 'touchid-backend.onrender.com',
+    hostname: 'touchid-backend-hygo.onrender.com',
     path: '/admin/history?limit=300',
     method: 'GET',
     headers: {
@@ -129,7 +129,7 @@ async function run() {
     };
 
     const res = await apiRequest({
-      hostname: 'touchid-backend.onrender.com',
+      hostname: 'touchid-backend-hygo.onrender.com',
       path: '/api/question-bank',
       method: 'POST',
       headers: {
@@ -166,7 +166,7 @@ async function run() {
     };
 
     const res = await apiRequest({
-      hostname: 'touchid-backend.onrender.com',
+      hostname: 'touchid-backend-hygo.onrender.com',
       path: '/api/question-bank',
       method: 'POST',
       headers: {
@@ -185,7 +185,7 @@ async function run() {
   // Verify in Question Bank
   console.log('\n--- VERIFYING LIVE QUESTION BANK ---');
   const qbRes = await apiRequest({
-    hostname: 'touchid-backend.onrender.com',
+    hostname: 'touchid-backend-hygo.onrender.com',
     path: '/admin/question-bank',
     method: 'GET',
     headers: {

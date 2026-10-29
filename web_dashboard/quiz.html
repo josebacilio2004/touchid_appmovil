@@ -1410,7 +1410,7 @@
       try {
         const defaultBackend = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
           ? 'http://127.0.0.1:3001'
-          : 'https://touchid-backend.onrender.com';
+          : 'https://touchid-backend-hygo.onrender.com';
         const backendUrl = localStorage.getItem('touchid_backend_url') || defaultBackend;
 
         const response = await fetch(`${backendUrl}/solve`, {
@@ -1589,7 +1589,7 @@
       try {
         const defaultBackend = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
           ? 'http://127.0.0.1:3001'
-          : 'https://touchid-backend.onrender.com';
+          : 'https://touchid-backend-hygo.onrender.com';
         const backendUrl = localStorage.getItem('touchid_backend_url') || defaultBackend;
         const response = await fetch(`${backendUrl}/solve`, {
           method: 'POST',

@@ -401,7 +401,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           decoration: InputDecoration(
                             labelText: 'Servidor API Backend',
                             labelStyle: TextStyle(color: Colors.grey[400]),
-                            hintText: 'https://touchid-backend.onrender.com',
+                            hintText: 'https://touchid-backend-hygo.onrender.com',
                             hintStyle: TextStyle(color: Colors.grey[600]),
                             filled: true,
                             fillColor: const Color(0xFF0F172A).withOpacity(0.6),

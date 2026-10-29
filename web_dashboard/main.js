@@ -2,7 +2,7 @@
 import './crm.js';
 
 // Estado global de la aplicación
-let backendUrl = localStorage.getItem('touchid_backend_url') || 'https://touchid-backend.onrender.com';
+let backendUrl = localStorage.getItem('touchid_backend_url') || 'https://touchid-backend-hygo.onrender.com';
 let adminToken = localStorage.getItem('touchid_admin_token') || '';
 let refreshInterval = null;
 
@@ -1708,7 +1708,7 @@ if (sandboxLoadMoodleBtn) {
 // ============================================================================
 async function fetchLlmStats() {
   const adminToken = localStorage.getItem('touchid_admin_token') || 'TouchID@2026#SecureAdmin!';
-  const backendUrl = localStorage.getItem('touchid_backend_url') || 'https://touchid-backend.onrender.com';
+  const backendUrl = localStorage.getItem('touchid_backend_url') || 'https://touchid-backend-hygo.onrender.com';
 
   try {
     const res = await fetch(`${backendUrl}/admin/llm-stats`, {

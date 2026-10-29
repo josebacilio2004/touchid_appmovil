@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (items.backendUrl) {
       backendUrlInput.value = items.backendUrl;
     } else {
-      backendUrlInput.value = 'https://touchid-backend.onrender.com';
+      backendUrlInput.value = 'https://touchid-backend-hygo.onrender.com';
     }
   });
 
