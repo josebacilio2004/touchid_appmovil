@@ -21,8 +21,8 @@ app.use(express.static(path.join(__dirname, '../docs')));
 
 // Formatear URI asegurando directConnection=true para conexiones remotas/túneles
 function getFormattedMongoUri() {
-  let uri = process.env.MONGODB_URI || 'mongodb://admin:touchid_secure_2026@bore.pub:52133/touchid?authSource=admin&directConnection=true';
-  if (!uri.includes('directConnection=')) {
+  let uri = process.env.MONGODB_URI || 'mongodb+srv://74934503_db_user:jE4Kw1JusXWLWm41@cluster0.xukbtfb.mongodb.net/touchid?retryWrites=true&w=majority';
+  if (!uri.startsWith('mongodb+srv://') && !uri.includes('directConnection=')) {
     uri += (uri.includes('?') ? '&' : '?') + 'directConnection=true';
   }
   return uri;
