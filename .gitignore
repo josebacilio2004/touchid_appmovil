@@ -36,3 +36,5 @@ touchid-backend/*.json
 *.apk
 *.bak
 screen_*.png
+touchid-backend/migrate_*.js
+touchid-backend/finalize_*.js
