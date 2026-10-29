@@ -282,7 +282,8 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
     const data = await res.json();
     const rawContent = data.content?.[0]?.text || '';
     const cleanJson = rawContent.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim();
-    const parsed = JSON.parse(cleanJson);
+    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleanJson);
     const elapsed = Date.now() - startTime;
     const inTokens = data.usage?.input_tokens || Math.round((prompt.length + (systemInstructionText || '').length) / 3.8);
     const outTokens = data.usage?.output_tokens || Math.round(cleanJson.length / 3.8);
@@ -930,7 +931,9 @@ app.post('/solve', async (req, res) => {
                 const geminiData = await geminiRes.json();
                 const candidateText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (candidateText) {
-                  candidateResult = JSON.parse(candidateText.trim());
+                  const geminiClean = candidateText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                  const geminiMatch = geminiClean.match(/\{[\s\S]*\}/);
+                  candidateResult = JSON.parse(geminiMatch ? geminiMatch[0] : candidateText.trim());
                   if (!isKType) {
                     candidateResult = enforceNegativeQuestionConsistency(candidateResult, options);
                   }
