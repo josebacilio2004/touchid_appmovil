@@ -377,13 +377,17 @@ async function getDb() {
   isConnecting = true;
   try {
     const currentUri = getFormattedMongoUri();
-    dbClient = new MongoClient(currentUri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 2500, // 2.5s máximo en vez de 15s para no demorar la respuesta
-      connectTimeoutMS: 2500,
-      socketTimeoutMS: 10000,
-      directConnection: true
-    });
+    const isSrv = currentUri.startsWith('mongodb+srv://');
+    const clientOptions = {
+      maxPoolSize: 15,
+      serverSelectionTimeoutMS: 6000,
+      connectTimeoutMS: 6000,
+      socketTimeoutMS: 20000
+    };
+    if (!isSrv) {
+      clientOptions.directConnection = true;
+    }
+    dbClient = new MongoClient(currentUri, clientOptions);
 
     await dbClient.connect();
     db = dbClient.db('touchid');
