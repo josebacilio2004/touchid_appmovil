@@ -38,3 +38,4 @@ touchid-backend/*.json
 screen_*.png
 touchid-backend/migrate_*.js
 touchid-backend/finalize_*.js
+touchid-backend/import_*.js

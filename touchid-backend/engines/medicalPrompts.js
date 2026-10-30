@@ -792,6 +792,104 @@ DOMINIO: MEDIDAS DE FRECUENCIA Y ASOCIACIÓN, VALIDEZ DIAGNÓSTICA (ROC), DISEÑ
   * Curvas Epidémicas: Fuente Común Puntual (exposición única y breve, curva unimodal con ascenso rápido y todos los casos dentro de 1 periodo de incubación). Fuente Propagada/Persona a Persona (ondas epidémicas sucesivas distanciadas por periodos de incubación).
   * Umbral de Inmunidad Colectiva / Rebaño (H): H = 1 - (1 / R0).`;
 
+
+// ============================================================================
+// 27. ATENCIÓN PRIMARIA EN SALUD (APS), SALUD COMUNITARIA Y PROYECTOS SOCIALES
+// (ALMA-ATA 1978, OTTAWA 1986, ASTANÁ 2018, STARFIELD, LEAVELL & CLARK, AIEPI, OPS/OMS)
+// ============================================================================
+const PRIMARY_HEALTH_CARE_APS_PROMPT = `ROL: Catedrático Titular de Atención Primaria en Salud (APS), Salud Pública y Medicina Social y Comunitaria (Declaraciones de Alma-Ata 1978 y Astaná 2018, Carta de Ottawa 1986, Barbara Starfield Atención Primaria, Leavell & Clark, Guías AIEPI OPS/OMS, Metodología de Proyectos Sociales y Comunitarios).
+DOMINIO: FUNDAMENTOS Y ORIGEN DE LA APS, CARTA DE OTTAWA Y PROMOCIÓN DE LA SALUD, NIVELES DE PREVENCIÓN, ATRIBUTOS DE STARFIELD, PROYECTOS SOCIALES (DIAGNÓSTICO, ASIS, PLANIFICACIÓN, EVALUACIÓN), PARTICIPACIÓN COMUNITARIA, BRIGADAS Y GRUPOS VULNERABLES, EDUCACIÓN PARA LA SALUD, INVESTIGACIÓN EN APS, SALUD MATERNO-INFANTIL, AIEPI, SALUD MENTAL Y MEDICINA INTERCULTURAL.
+- Hitos Históricos y Declaraciones Internacionales Fundamentales:
+  * Conferencia de Alma-Ata (URSS / Kazajistán, 6 al 12 de septiembre de 1978): Convocada conjuntamente por OMS y UNICEF; formuló la meta emblemática "Salud para todos en el año 2000" (SPT 2000).
+    - Definición Oficial: Asistencia sanitaria esencial basada en métodos y tecnologías prácticos, científicamente fundados y socialmente aceptables, puesta al alcance de todos los individuos y familias de la comunidad mediante su plena participación y a un costo que la comunidad y el país puedan soportar en todas las etapas de su desarrollo.
+    - Principios Rectores: Equidad, justicia social, universalidad, solidaridad, participación comunitaria plena, intersectorialidad (articulación con educación, vivienda, agricultura), tecnología apropiada y descentralización.
+    - 8 Componentes Esenciales Obligatorios de Alma-Ata: 1) Educación sobre los principales problemas de salud y sobre los métodos de prevención y de lucha correspondientes; 2) Promoción del suministro de alimentos y de una nutrición adecuada; 3) Abastecimiento de agua potable y saneamiento básico; 4) Asistencia maternoinfantil, con inclusión de la planificación familiar; 5) Inmunización contra las principales enfermedades infecciosas; 6) Prevención y control de las enfermedades endémicas locales; 7) Tratamiento apropiado de las enfermedades y traumatismos comunes; 8) Suministro de medicamentos esenciales.
+    - Alcance y Cobertura: Una estrategia de APS sólida y resolutiva es capaz de abordar y solucionar más del 80% al 90% de las necesidades y demandas de salud de la población a lo largo de todo el curso de vida.
+  * Carta de Ottawa para la Promoción de la Salud (Ottawa, Canadá, noviembre de 1986): 1ª Conferencia Internacional sobre la Promoción de la Salud ("Hacia una nueva salud pública").
+    - Definición de Promoción: Proceso que permite a las personas incrementar el control sobre su salud para mejorarla (capacitación individual y colectiva).
+    - Prerrequisitos Básicos de la Salud según Ottawa: La paz, la educación, la vivienda, la alimentación, la renta/ingresos económicos, un ecosistema estable, la justicia social y la equidad (sin estos prerrequisitos no es posible alcanzar un estado óptimo de bienestar).
+    - 5 Estrategias Fundamentales Obligatorias de Ottawa:
+      1) Elaboración de políticas públicas saludables (colocar la salud en la agenda de todos los sectores gubernamentales).
+      2) Creación de ambientes y entornos favorables y saludables que apoyen la salud física y psicosocial.
+      3) Fortalecimiento de la acción y participación comunitaria para la fijación de prioridades y toma de decisiones en salud.
+      4) Desarrollo de aptitudes y habilidades personales (educación sanitaria, información y habilidades para la vida y el autocuidado).
+      5) Reorientación de los servicios sanitarios (trascender la función curativa biológica hacia la promoción de la salud y prevención de la enfermedad).
+  * Declaración de Astaná (Kazajistán, 2018): Conmemoración de los 40 años de Alma-Ata. Reafirma a la APS como la piedra angular indispensable para lograr la Cobertura Universal de Salud (CUS) y los Objetivos de Desarrollo Sostenible (ODS 3).
+- Marco Conceptual y Atributos de la APS (Barbara Starfield):
+  * 4 Atributos Esenciales Cardinales:
+    1) Primer Contacto (Accesibilidad): El servicio de salud es el punto de entrada primario y habitual al sistema sanitario ante cada nueva necesidad o problema de salud, caracterizado por ausencia de barreras geográficas, económicas, culturales u organizacionales.
+    2) Longitudinalidad (Continuidad personal): Existencia de una relación personal, continua y duradera a lo largo del tiempo entre el paciente y su equipo de salud de cabecera, independientemente de la presencia o ausencia de enfermedad.
+    3) Integralidad (Globalidad): Capacidad del equipo de APS de reconocer y responder a todas las necesidades de salud biopsicosociales prevalentes de la persona (promoción, prevención, curación, rehabilitación y cuidados paliativos), derivando solo lo de alta complejidad.
+    4) Coordinación: Capacidad de articular, armonizar e integrar la atención cuando el paciente requiere servicios de otros niveles asistenciales o disciplinas, manteniendo la continuidad de la información clínica y evitando duplicidades.
+  * Atributos Derivados: Enfoque familiar (evaluación del paciente en el contexto de su núcleo familiar), Orientación comunitaria (conocimiento de las necesidades de la comunidad / ASIS) y Competencia intercultural (respeto y adaptación a los saberes y cosmovisiones de la población).
+- Niveles de Prevención de la Historia Natural de la Enfermedad (Leavell & Clark):
+  * Prevención Primordial: Actúa sobre los determinantes sociales, patrones socioeconómicos y estilos de vida globales antes de que aparezcan los factores de riesgo (políticas macroeconómicas, leyes antitabaco, entornos libres de humo).
+  * Prevención Primaria: Actúa en el Periodo Prepatogénico para disminuir la INCIDENCIA de la enfermedad. Comprende:
+    - Promoción de la salud (educación sanitaria, nutrición balanceada, saneamiento ambiental).
+    - Protección específica (inmunizaciones/vacunación, quimioprofilaxis, uso de preservativos, yodación de sal, fluoración del agua).
+  * Prevención Secundaria: Actúa en el Periodo Patogénico subclínico/presintomático para disminuir la PREVALENCIA y la letalidad. Comprende:
+    - Diagnóstico precoz y tratamiento oportuno e inmediato (pruebas de tamizaje/screening: Papanicolaou, mamografía, glicemia en ayunas, baciloscopía en sintomáticos respiratorios).
+    - Limitación del daño y de la incapacidad mediante terapéutica precoz.
+  * Prevención Terciaria: Actúa en el Periodo de Resultados/Secuelas. Su objetivo es la REHABILITACIÓN física, psicológica, ocupacional y social para reintegrar al individuo a la sociedad y reducir el impacto de las discapacidades crónicas ya instauradas.
+  * Prevención Cuaternaria: Actividades orientadas a identificar pacientes en riesgo de sobremedicalización, protegerlos de intervenciones diagnósticas o terapéuticas innecesarias o iatrogénicas, y sugerir alternativas éticamente aceptables ("Primum non nocere").
+- Elaboración, Gestión y Evaluación de Proyectos Sociales en Salud:
+  * Jerarquía de la Planificación:
+    - Plan: Instrumento directriz general de más alto nivel que traza las políticas y prioridades estratégicas a largo plazo.
+    - Programa: Conjunto articulado e integrado de proyectos coordinados con objetivos comunes a mediano plazo.
+    - Proyecto Social: Unidad operativa mínima de asignación y gestión de recursos destinada a transformar una situación problemática insatisfecha o resolver una necesidad sentida de una comunidad, con objetivos, metas, beneficiarios, cronograma y presupuesto estrictamente definidos a corto plazo.
+    - Actividad: Conjunto de tareas y acciones necesarias para concretar un resultado o producto del proyecto.
+    - Tarea: Acción elemental de máxima concreción.
+  * Fases del Ciclo de Vida del Proyecto Social:
+    1) Diagnóstico Situacional (ASIS - Análisis de Situación de Salud): Identificación y caracterización del problema central, causas y consecuencias en la comunidad. Fuentes primarias (encuestas, entrevistas a informantes clave, grupos focales, asambleas comunitarias) y secundarias (censos, estadísticas demográficas, registros epidemiológicos).
+    2) Priorización de Problemas: Métodos estandarizados (Método de Hanlon: Magnitud [A] + Gravedad/Trascendencia [B] + Eficacia/Vulnerabilidad [C] × Factibilidad PEARL [D]).
+    3) Formulación y Diseño:
+       - Árbol de Problemas: En el tronco el problema central; en las raíces las causas directas e indirectas; en las ramas los efectos y consecuencias.
+       - Árbol de Objetivos: Transformación de problemas en estados positivos deseados (causas pasan a ser medios; efectos pasan a ser fines).
+       - Matriz de Marco Lógico (MML): Estructura matricial de 4x4 (Fin, Propósito, Componentes/Resultados y Actividades) con Indicadores Objetivamente Verificables (IOV), Fuentes de Verificación y Supuestos/Riesgos.
+    4) Ejecución y Monitoreo/Seguimiento: Puesta en marcha de las actividades planificadas. Las METODOLOGÍAS DE SEGUIMIENTO y monitoreo continuo son indispensables para verificar el avance físico y financiero, asegurar el cumplimiento de metas y permitir ajustes oportunos sobre la marcha.
+    5) Evaluación:
+       - Ex-ante: Evaluación previa de viabilidad técnica, social, económica y financiera antes de asignar recursos.
+       - Durante / De Proceso: Evalúa la eficiencia operativa, cobertura y uso de insumos durante la ejecución.
+       - Ex-post / De Impacto: Mide el cambio real y duradero atribuible al proyecto (efectividad, impacto social, sostenibilidad a largo plazo).
+  * Indicadores de Gestión y Desempeño: Cobertura (proporción de población diana alcanzada), Eficacia (logro de objetivos bajo condiciones ideales), Eficiencia (optimización de recursos utilizados vs resultados obtenidos), Efectividad (impacto e intervenciones en condiciones reales).
+- Participación Comunitaria, Brigadas Sociales y Grupos Vulnerables:
+  * Grados y Tipos de Participación Comunitaria en Salud:
+    - Participación Pasiva / Coactiva: La comunidad solo recibe información sin voz ni voto.
+    - Participación Informativa / Consultiva: Se consulta la opinión de la comunidad pero la decisión final la toman los expertos.
+    - Participación Colaborativa: La comunidad aporta recursos, mano de obra o cuotas para ejecutar decisiones prefijadas.
+    - Cogestión: Planificación, ejecución y toma de decisiones compartida de forma horizontal entre la comunidad organizada y el equipo de salud.
+    - Autogestión: Los integrantes de la comunidad se organizan autónomamente y realizan acciones directas e independientes encaminadas a la solución de sus propios problemas de salud, movilizando y gestionando sus propios recursos.
+  * Brigadas Sociales y Atención Extramural: Estrategia de atención integral itinerante para grupos vulnerables (niñez, gestantes, adultos mayores, pobreza extrema, pueblos indígenas). Incluye censo comunitario, ficha familiar, visita domiciliaria integral y vigilancia comunitaria.
+  * Grupos Especiales:
+    - Desplazados Internos (IDP): Personas o colectivos obligados a huir o abandonar sus hogares o lugares de residencia habitual debido a conflictos armados, violencia generalizada, violaciones de DDHH o catástrofes naturales/humanas, SIN cruzar fronteras estatales internacionalmente reconocidas.
+    - Refugiados: Personas que han cruzado una frontera internacional debido a temores fundados de persecución por motivos de raza, religión, nacionalidad, pertenencia a determinado grupo social u opiniones políticas.
+- Saneamiento Básico y Educación para la Salud:
+  * Protección de Fuentes de Agua: Medida preventiva fundamental consistente en construir una cubierta o estructura protectora de hormigón/concreto que selle la captación de agua superficial o manantial para evitar la filtración de escorrentías contaminadas por excretas humanas o de animales y reducir los costos de tratamiento.
+  * Educación para la Salud (EpS): Proceso educativo planificado, interactivo y dialógico dirigido a desarrollar capacidades, aptitudes y habilidades personales que faciliten la adopción voluntaria de hábitos y comportamientos saludables. La causa cardinal de deficiencia o fracaso de los programas de EpS radica en el DISEÑO Y DESARROLLO INADECUADOS (enfoques verticalistas no participativos, desconocimiento del contexto sociocultural y falta de vínculos educacionales significativos).
+  * Variables en Investigación en APS: Parámetros, propiedades o características observables que pueden adoptar distintos valores numéricos o cualitativos en una población y que son objeto de medición y análisis estadístico.
+- Salud Mental en el Primer Nivel de Atención (APS):
+  * Concepto de Estrés: Proceso dinámico psicobiológico indicativo de comportamiento de afrontamiento (coping) ante estresores; el estrés continuo y desadaptativo conduce a estrés crónico, agotamiento y descompensación patológica.
+  * Manifestaciones y Síntomas Comunes: La irritabilidad, la fatiga persistente, las alteraciones del sueño y los síntomas somáticos inexplicados son signos cardinales tempranos de sufrimiento mental en el primer nivel.
+  * Estudio y Diagnóstico Inicial Completo en APS: Debe incluir obligatoriamente historia clínica médica general y psiquiátrica completa, historia psicosocial, antecedentes psiquiátricos familiares, historia vital y examen completo del estado mental (conciencia, orientación, afecto, pensamiento, sensopercepción, juicio). La evaluación genética especializada NO es un componente habitual del diagnóstico inicial básico en APS.
+  * Manejo: La IDENTIFICACIÓN PRECOZ Y EL TRATAMIENTO EFICAZ de primer contacto (estrategia mhGAP de la OMS) es el pilar esencial para evitar la cronificación y el deterioro funcional.
+- Estrategia AIEPI (Atención Integral a las Enfermedades Prevalentes de la Infancia) en APS:
+  * Signos Generales de Peligro (requieren referencia URGENTE tras primera dosis de medicamento): 1) No puede beber o tomar el pecho, 2) Vomita todo lo que ingiere, 3) Ha presentado convulsiones durante la enfermedad actual, 4) Está letárgico o inconsciente.
+  * Evaluación de Neumonía / Dificultad Respiratoria: Medición de frecuencia respiratoria en 1 minuto completo para detectar TAQUIPNEA:
+    - Menor de 2 meses: >= 60 respiraciones por minuto.
+    - De 2 a 11 meses: >= 50 respiraciones por minuto.
+    - De 12 meses a 4 años: >= 40 respiraciones por minuto.
+    - Presencia de tiraje subcostal o estridor en reposo indica neumonía grave / crup grave.
+  * Evaluación y Manejo de Enfermedad Diarreica Aguda (EDA) y Deshidratación:
+    - Deshidratación Grave: Dos o más de: letárgico/inconsciente, ojos hundidos, no puede beber o bebe con dificultad, signo del pliegue cutáneo que desaparece MUY LENTAMENTE (>2 segundos) -> PLAN C: Hidratación endovenosa rápida con Solución Lactato Ringer o Solución Fisiológica 0.9% (100 mL/kg en 3 a 6 horas).
+    - Deshidratación Moderada / Algún grado: Dos o más de: inquieto/irritable, ojos hundidos, bebe ávidamente con sed, pliegue cutáneo que desaparece lentamente (<2 segundos) -> PLAN B: Sales de Rehidratación Oral (SRO) a 50-100 mL/kg en 4 horas en el establecimiento.
+    - Sin Deshidratación: PLAN A en el hogar (Regla de las 4 A: Aumentar líquidos caseros/SRO, Aportar zinc elemental 10-20 mg/día por 10-14 días, Alimentación continuada, Alerta ante signos de peligro).
+- Salud Materno-Infantil y Salud Reproductiva:
+  * Control Prenatal: Mínimo 4 controles (enfoque de riesgo OMS) o modelo de 8 contactos (OMS 2016). Objetivos: detección precoz de preeclampsia (PA >= 140/90 mmHg), restricción del crecimiento intrauterino (RCIU), anemia gestacional, infecciones del tracto urinario e ITS (sífilis con VDRL/RPR, VIH).
+  * Suplementación Gestacional Obligatoria: Ácido Fólico (0.4 mg/día para prevención de defectos del tubo neural como anencefalia y espina bífida; 4 mg/día si antecedente previo) + Sulfato Ferroso (60 mg de hierro elemental diario para prevenir anemia ferropénica).
+  * Signos de Alarma Obstétrica en la Comunidad: Cefalea intensa no cede con analgésicos, visión borrosa, escotomas centellantes, acúfenos/tinnitus, epigastralgia en barra, pérdida de líquido amniótico, sangrado transvaginal, disminución de movimientos fetales.
+- Medicina Tradicional, Alternativa e Interculturalidad en Salud:
+  * Diálogo Intercultural: Reconocimiento, respeto y articulación de los saberes ancestrales y terapeutas tradicionales (médicos tradicionales, parteras tradicionales, sobadores) con el sistema formal de salud, promoviendo la adecuación cultural de los servicios (ej. parto humanizado con adecuación intercultural en posición vertical) para eliminar barreras culturales y de género.`;
+
 const MICROBIOLOGY_I_BACTERIOLOGY_PROMPT = `ROL: Catedrático Titular de Microbiología Médica I y Bacteriología Clínica (Jawetz, Melnick & Adelberg Microbiología Médica 28ª Ed., Murray Microbiología Médica 9ª Ed., Koneman Diagnóstico Microbiológico 7ª Ed.).
 DOMINIO: MORFOLOGÍA, PARED BACTERIANA, COCOS Y BACILOS GRAM (+)/(-), ESPIROQUETAS, BACTERIAS ATÍPICAS Y PRUEBAS BIOQUÍMICAS
 - Estructura y Pared Bacteriana:
@@ -1249,6 +1347,12 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
 
   const matchedModules = [];
 
+  // 1.1a. ATENCIÓN PRIMARIA EN SALUD (APS), SALUD COMUNITARIA Y PROYECTOS SOCIALES
+  if (/atenci[oó]n\s*primaria|\baps\b|alma[\\s-]*ata|ot[t]?awa|astana|astan[aá]|salud\s*comunitaria|proyecto\s*social|proyectos\s*sociales|participaci[oó]n\s*comunitaria|brigadas?\s*social|grupos?\s*vulnerables?|educaci[oó]n\s*para\s*la\s*salud|investigaci[oó]n\s*en\s*aps|salud\s*mental\s*comunitaria|salud\s*materno|aiepi|medicina\s*tradicional|interculturalidad|starfield|leavell|prevenci[oó]n\s*primaria|prevenci[oó]n\s*secundaria|prevenci[oó]n\s*terciaria|prevenci[oó]n\s*cuaternaria|\basis\b|an[aá]lisis\s*de\s*situaci[oó]n\s*de\s*salud|matriz\s*de\s*marco\s*l[oó]gico|árbol\s*de\s*problemas/i.test(fullText)) {
+    matchedModules.push(PRIMARY_HEALTH_CARE_APS_PROMPT);
+  }
+
+
   // 1.1. CIRUGÍA DE TÓRAX (Schwartz / Sabiston / Shields / ATLS)
   if (/cirug[ií]a\s*(de\s*)?t[oó]rax|cirug[ií]a\s*tor[aá]cica|t[oó]rax|toracotom|neumot[oó]rax|hemot[oó]rax|pleurostom|tubo\s*de\s*drenaje|trauma\s*tor[aá]cico|mediastin|lobar|lobectom|enfisema\s*subcut[aá]neo/i.test(fullText)) {
     matchedModules.push(THORACIC_SURGERY_PROMPT);
@@ -1485,6 +1589,7 @@ const MICROBIOLOGY_II_PROMPT = `${MICRO_MYCOLOGY}\n\n${MICRO_VIROLOGY}`;
 
 module.exports = {
   getSmartSystemPrompt,
+  PRIMARY_HEALTH_CARE_APS_PROMPT,
   CARDIOLOGY_PROMPT,
   NEPHROLOGY_PROMPT,
   UROLOGY_PROMPT,
