@@ -68,28 +68,65 @@ function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = []) {
     }
   }
 
-  // 2. Coincidencia por texto normalizado de la respuesta en 2 pasadas estrictas
+  // 2. Coincidencia por texto normalizado de la respuesta en pasadas estrictas
   const targetNorm = normalizeText(cachedEntry.canonical_answer_text || cachedEntry.correct_option_text || '');
+  if (!targetNorm) {
+    return null;
+  }
+
   let bestIndex = -1;
 
-  // Pasada 1 (Prioridad Absoluta): Únicamente coincidencia exacta
+  // Pasada 1 (Prioridad Absoluta): Coincidencia exacta
   // Evita falsos positivos como "fisis" en "apofisis" o "...IL-25" en "...IL-25, IL-4"
-  if (targetNorm.length > 0) {
+  for (let i = 0; i < studentOptions.length; i++) {
+    const optNorm = normalizeText(studentOptions[i]);
+    if (optNorm === targetNorm) {
+      bestIndex = i;
+      break;
+    }
+  }
+
+  // Pasada 1.5: Equivalencia Canónica de "Todas" y "Ninguna"
+  const isAllVariants = /^(todas|todas las anteriores|todas son correctas|todas son verdaderas)$/i.test(targetNorm);
+  const isNoneVariants = /^(ninguna|ninguna de las anteriores|ninguna es correcta|ninguna es verdadera)$/i.test(targetNorm);
+
+  if (bestIndex === -1 && (isAllVariants || isNoneVariants)) {
     for (let i = 0; i < studentOptions.length; i++) {
       const optNorm = normalizeText(studentOptions[i]);
-      if (optNorm === targetNorm) {
+      if (isAllVariants && /^(todas|todas las anteriores|todas son correctas|todas son verdaderas)$/i.test(optNorm)) {
+        bestIndex = i;
+        break;
+      }
+      if (isNoneVariants && /^(ninguna|ninguna de las anteriores|ninguna es correcta|ninguna es verdadera)$/i.test(optNorm)) {
         bestIndex = i;
         break;
       }
     }
   }
 
-  // Pasada 2 (Fallback): Solo si ninguna opción coincidió exactamente, buscar subcadena eligiendo la longitud más cercana a targetNorm
-  if (bestIndex === -1 && targetNorm.length > 3) {
+  // Pasada 2 (Fallback Subcadena Seguro): Solo si ninguna coincidió exactamente
+  if (bestIndex === -1 && !isAllVariants && !isNoneVariants) {
     let minLenDiff = Infinity;
     for (let i = 0; i < studentOptions.length; i++) {
       const optNorm = normalizeText(studentOptions[i]);
-      if (optNorm.length > 0 && (optNorm.includes(targetNorm) || targetNorm.includes(optNorm))) {
+      if (!optNorm) continue;
+
+      let isMatch = false;
+      if (targetNorm.length <= 4) {
+        // Para respuestas muy cortas (ej. "IgG", "ADN", "1986"), exigir límite de palabra o prefijo exacto
+        const escaped = targetNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const wordRegex = new RegExp(`(^|\\s)${escaped}(\\s|$)`, 'i');
+        if (wordRegex.test(optNorm)) {
+          isMatch = true;
+        }
+      } else {
+        // Para textos medianos y largos
+        if (optNorm.includes(targetNorm) || targetNorm.includes(optNorm)) {
+          isMatch = true;
+        }
+      }
+
+      if (isMatch) {
         const lenDiff = Math.abs(optNorm.length - targetNorm.length);
         if (lenDiff < minLenDiff) {
           minLenDiff = lenDiff;
@@ -99,12 +136,18 @@ function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = []) {
     }
   }
 
-  const alphabet = ['A', 'B', 'C', 'D', 'E'];
-  const resolvedLetter = bestIndex !== -1 ? alphabet[bestIndex] : (cachedEntry.correct_option_letter || 'A');
-  const resolvedText = bestIndex !== -1 ? studentOptions[bestIndex] : cachedEntry.correct_option_text;
+  // ⚠️ CRÍTICO: Si no se encontró ninguna opción del alumno que coincida con la respuesta guardada,
+  // NO asumir la opción 'A'. Retornar null para que el backend active la IA con los prompts médicos.
+  if (bestIndex === -1) {
+    return null;
+  }
+
+  const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const resolvedLetter = alphabet[bestIndex] || 'A';
+  const resolvedText = studentOptions[bestIndex];
 
   return {
-    correct_option_index: bestIndex !== -1 ? bestIndex : (cachedEntry.correct_option_index ?? 0),
+    correct_option_index: bestIndex,
     correct_option_letter: resolvedLetter,
     correct_option_text: resolvedText,
     explanation: cachedEntry.explanation || '',

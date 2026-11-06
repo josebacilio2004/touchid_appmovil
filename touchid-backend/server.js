@@ -740,26 +740,48 @@ app.post('/solve', async (req, res) => {
     // 3. BANCO OFICIAL VERIFICADO EN DB: Consultar MongoDB si no estaba en RAM
     if (!parsedResult && database && options && options.length > 0) {
       try {
-        const verifiedDoc = await database.collection('question_bank').findOne({
-          $or: [
-            { canonicalSignature: canonicalSig },
-            { question: effectiveQuestion.trim() }
-          ],
+        let verifiedDoc = await database.collection('question_bank').findOne({
+          canonicalSignature: canonicalSig,
           verified: true
         });
+
+        // Fallback controlado por enunciado: Solo si no hubo coincidencia por firma canónica
+        // y verificando que la respuesta candidata exista entre las opciones del alumno actual
+        if (!verifiedDoc) {
+          const candidates = await database.collection('question_bank').find({
+            question: effectiveQuestion.trim(),
+            verified: true
+          }).limit(5).toArray();
+
+          for (const cand of candidates) {
+            const candAns = (cand.answerText || cand.bestAnswer || '').trim();
+            if (!candAns) continue;
+            const testMap = mapCachedAnswerToStudentOptions({
+              canonical_answer_text: candAns,
+              correct_option_text: candAns,
+              explanation: cand.explanation || 'Respuesta verificada en banco oficial.',
+              subject: cand.course || 'General'
+            }, options);
+            if (testMap) {
+              verifiedDoc = cand;
+              break;
+            }
+          }
+        }
+
         if (verifiedDoc && (verifiedDoc.answerText || verifiedDoc.bestAnswer)) {
           const effectiveAnswerText = (verifiedDoc.answerText || verifiedDoc.bestAnswer).trim();
           const mappedVerified = mapCachedAnswerToStudentOptions({
             canonical_answer_text: effectiveAnswerText,
             correct_option_text: effectiveAnswerText,
             explanation: verifiedDoc.explanation || 'Respuesta verificada en banco oficial.',
-            subject: verifiedDoc.course || 'Fisiología II'
+            subject: verifiedDoc.course || 'General'
           }, options);
           if (mappedVerified) {
             console.log(`[DB-VERIFIED-HIT] Resuelto con banco oficial: "${mappedVerified.correct_option_letter}" -> "${mappedVerified.correct_option_text}"`);
             l1Cache.set(canonicalSig, {
               ...mappedVerified,
-              canonical_answer_text: verifiedDoc.answerText,
+              canonical_answer_text: effectiveAnswerText,
               is_k_type: false
             });
             parsedResult = mappedVerified;
@@ -995,10 +1017,7 @@ app.post('/solve', async (req, res) => {
           if (database && options && options.length > 0) {
             database.collection('question_bank').updateOne(
               {
-                $or: [
-                  { canonicalSignature: canonicalSig },
-                  { question: effectiveQuestion.trim() }
-                ]
+                canonicalSignature: canonicalSig
               },
               {
                 $set: {
