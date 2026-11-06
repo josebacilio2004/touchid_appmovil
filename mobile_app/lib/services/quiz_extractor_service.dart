@@ -555,7 +555,7 @@ class QuizExtractorService {
         if (lbl) {
           var lblText = clean(lbl.innerText || lbl.textContent).toLowerCase();
           lblText = lblText.replace(/^[a-z0-9][\\.\\)\\-]\\s*/i, '');
-          if (lblText === cleanTarget || (cleanTarget.length > 3 && (lblText.indexOf(cleanTarget) !== -1 || cleanTarget.indexOf(lblText) !== -1))) {
+          if (lblText === cleanTarget || lblText === cleanTarget.replace(/^[a-z0-9][\\.\\)\\-]\\s*/i, '')) {
             targetElement = r;
             labelElement = lbl;
             targetIdx = i;
@@ -603,7 +603,7 @@ class QuizExtractorService {
           var cleanT = targetText.toLowerCase();
           for (var c = 0; c < customOptions.length; c++) {
             var cTxt = clean(customOptions[c].innerText || customOptions[c].textContent).toLowerCase();
-            if (cTxt.indexOf(cleanT) !== -1 || cleanT.indexOf(cTxt) !== -1) {
+            if (cTxt === cleanT || cTxt.replace(/^[a-z0-9][\\.\\)\\-]\\s*/i, '') === cleanT) {
               targetElement = customOptions[c];
               targetIdx = c;
               break;

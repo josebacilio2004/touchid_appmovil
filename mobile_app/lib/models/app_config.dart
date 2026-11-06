@@ -73,7 +73,7 @@ class AppConfig {
           touchOpacity: (map['touchOpacity'] as num?)?.toDouble() ?? 0.08,
           systemPrompt: map['systemPrompt'] ?? 'Actúa como un experto académico de alto nivel y responde con precisión y el 100% de tasa de acierto.',
           userId: userId,
-          backendUrl: map['backendUrl'] ?? 'https://touchid-backend-hygo.onrender.com',
+          backendUrl: (map['backendUrl'] == null || (map['backendUrl'] as String).trim().isEmpty || (map['backendUrl'] as String).contains('onrender.com')) ? 'https://touchid-backend-hygo.onrender.com' : map['backendUrl'],
           settingsPin: map['settingsPin'] ?? '1234',
           userName: (map['userName'] == 'Jose Bacilio' || map['userName'] == 'SSAMIRA XIOMARA CHECYA PEA') ? '' : (map['userName'] ?? ''),
           userPhotoUrl: ((map['userEmail'] == '74934503@continental.edu.pe' || map['userEmail'] == 'sxchecya-es@udabol.edu.bo') || (map['userEmail'] ?? '').toString().isEmpty) ? '' : (map['userPhotoUrl'] ?? ''),
