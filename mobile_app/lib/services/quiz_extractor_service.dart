@@ -205,7 +205,7 @@ class QuizExtractorService {
       rGroup.forEach(function(radio, rIdx) {
         var optText = getOptionTextFromInput(radio);
         // Limpiar letras iniciales de la alternativa si ya las tenía ("A. Lima" -> "Lima")
-        optText = optText.replace(/^[A-Za-z0-9][\.\)\-]\s*/, '').trim();
+        optText = optText.replace(/^[A-Za-z0-9][\.\)\-]\s+/, '').trim();
         if (optText) {
           optionsList.push({
             id: letters[rIdx] || String(rIdx + 1),
@@ -288,7 +288,7 @@ class QuizExtractorService {
     var chkOptions = [];
     var chkLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
     visibleCheckboxes.forEach(function(chk, cIdx) {
-      var ot = getOptionTextFromInput(chk).replace(/^[A-Za-z0-9][\.\)\-]\s*/, '').trim();
+      var ot = getOptionTextFromInput(chk).replace(/^[A-Za-z0-9][\.\)\-]\s+/, '').trim();
       if (ot) {
         chkOptions.push({
           id: chkLetters[cIdx] || String(cIdx + 1),

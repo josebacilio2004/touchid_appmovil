@@ -3,7 +3,7 @@ export const QUIZ_CATEGORIES = [
   {
     "id": "udabol_test_no_cache_multitipo",
     "isUdabol": true,
-    "bypassCache": true,
+    "bypassCache": false,
     "title": "🧪 TEST EN VIVO IA (Sin Caché • Todo Tipo de Preguntas)",
     "subtitle": "Auditoría QA en Vivo • K-Type Falsos/Excepto/Barajados, Reumatología, Cirugía, APS y Clínica",
     "badge": "LIVE AI • NO CACHE",

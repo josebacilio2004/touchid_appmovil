@@ -1352,7 +1352,7 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
     (!/tr[aá]nsito|conductor|brevete/i.test(trimmedOverride) && /tr[aá]nsito|conductor|brevete/i.test(questionText))
   );
 
-  if (!isLegacyDefault && !isMismatchedRole && trimmedOverride.length > 50) {
+  if (false && !isLegacyDefault && !isMismatchedRole && trimmedOverride.length > 50) {
     return `${trimmedOverride}\n\n${ANTI_TRAP_DIRECTIVES}\n\n${CORE_RULES}`;
   }
 
@@ -1492,7 +1492,7 @@ function getSmartSystemPrompt(questionText = '', optionsArray = [], systemPrompt
   }
 
   // 7.4. REUMATOLOGÍA CLÍNICA Y AUTOINMUNIDAD (Kelley & Firestein / ACR / EULAR)
-  if (/reumatol|artritis|artrosis|lupus|l[uú]pico|artropat|artralgia|poliartritis|monoartritis|oligoartritis|rigidez\s*matutina|anti-ccp|acpa|factor\s*reumatoide|heparin|metotrexato|leflunomida|azatioprin|azatioprim|pregabalina|nicardipino|alodini|alodine|hiperalgesi|hipertalgesi|fibromialgia|sydenham|sidenham|estreptolisina|coombs|ep[ií]tope|suicidio\s*aut[oó]nomo|cuello\s*de\s*cisne|inter[oó]seos|espondil|hla-b27|sacroile[ií]tis|entesitis|sch[oö]ber|reiter|gota\b|gotos|podagra|hiperuricemia|[aá]cido\s*[uú]rico|alpurinol|alopurinol|colquicina|colchicina|urato\s*monos[oó]dico|birrefringencia|pseudogota|condrocalcinosis|pirofosfato|escleroderm|morfea|acroesclerosis|crest|raynaud|esclerodactilia|anti-scl|anti-centr[oó]mero|sj[oö]gren|xerostom[ií]a|xeroftalm|anti-ro|anti-la|anti-dna|anti-sm|anti-histona|antifosfol[ií]pid|anticoagulante\s*l[uú]pico|vasculitis|takayasu|arteritis\s*de\s*(c[eé]lulas\s*gigantes|la\s*temporal)|claudicaci[oó]n\s*mandibular|wegener|poliange[ií]tis|churg-strauss|c-anca|p-anca|pr3\b|mpo\b/i.test(fullText)) {
+  if (/reumatol|artritis|artrosis|lupus|l[uú]pico|artropat|artralgia|poliartritis|monoartritis|oligoartritis|rigidez\s*matutina|capacidad\s*funcional|autocuidado|acr\s*1991|acr\s*1987|\bfarme\b|anti-ccp|acpa|factor\s*reumatoide|heparin|metotrexato|leflunomida|azatioprin|azatioprim|pregabalina|nicardipino|alodini|alodine|hiperalgesi|hipertalgesi|fibromialgia|sydenham|sidenham|estreptolisina|coombs|ep[ií]tope|suicidio\s*aut[oó]nomo|cuello\s*de\s*cisne|inter[oó]seos|espondil|hla-b27|sacroile[ií]tis|entesitis|sch[oö]ber|reiter|gota\b|gotos|podagra|hiperuricemia|[aá]cido\s*[uú]rico|alpurinol|alopurinol|colquicina|colchicina|urato\s*monos[oó]dico|birrefringencia|pseudogota|condrocalcinosis|pirofosfato|escleroderm|morfea|acroesclerosis|crest|raynaud|esclerodactilia|anti-scl|anti-centr[oó]mero|sj[oö]gren|xerostom[ií]a|xeroftalm|anti-ro|anti-la|anti-dna|anti-sm|anti-histona|antifosfol[ií]pid|anticoagulante\s*l[uú]pico|vasculitis|takayasu|arteritis\s*de\s*(c[eé]lulas\s*gigantes|la\s*temporal)|claudicaci[oó]n\s*mandibular|wegener|poliange[ií]tis|churg-strauss|c-anca|p-anca|pr3\b|mpo\b/i.test(fullText)) {
     matchedModules.push(RHEUMATOLOGY_PROMPT);
   }
 
