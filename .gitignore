@@ -39,3 +39,7 @@ screen_*.png
 touchid-backend/migrate_*.js
 touchid-backend/finalize_*.js
 touchid-backend/import_*.js
+touchid-backend/normalize_*.js
+touchid-backend/check_*.js
+touchid-backend/inspect_*.js
+touchid-backend/audit_*.js
