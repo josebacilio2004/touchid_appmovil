@@ -266,7 +266,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
       },
       body: JSON.stringify({
         model: modelName,
-        max_tokens: 1200,
+        max_tokens: 650,
         temperature: 0.0,
         system: (systemInstructionText || '') + '\n\n' + jsonInstruction,
         messages: [{ role: 'user', content: prompt }]
@@ -278,6 +278,8 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
     if (!res.ok) {
       const errTxt = await res.text();
       console.warn(`[CLAUDE-ERROR] HTTP ${res.status} en ${modelName}: ${errTxt.slice(0, 100)}`);
+      const cooldownMs = (res.status === 401 || res.status === 403 || res.status === 404 || res.status === 400) ? 600000 : 45000;
+      penalizeModel(modelName, cooldownMs);
       return null;
     }
 
@@ -294,7 +296,8 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
     return { result: parsed, modelUsed: modelName, elapsed, inputTokens: inTokens, outputTokens: outTokens };
   } catch (err) {
     clearTimeout(timeoutId);
-    console.warn(`[CLAUDE-EXCEPTION] ${err.message}`);
+    console.warn(`[CLAUDE-EXCEPTION] ${modelName} (${Date.now() - startTime}ms): ${err.message}`);
+    penalizeModel(modelName, 45000);
     return null;
   }
 }
@@ -827,7 +830,7 @@ app.post('/solve', async (req, res) => {
         ]
       : [
           { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
-          { name: 'claude-haiku-5-5',          provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
+          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 4500, thinkingBudget: 0 },
           { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6000, thinkingBudget: 256 },
@@ -853,7 +856,7 @@ app.post('/solve', async (req, res) => {
           }
 
           const currentActiveModels = [
-            ...baseModels.filter(m => m.provider === 'anthropic' || (!isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && isModelHealthy(m.name))),
+            ...baseModels.filter(m => (m.provider === 'anthropic' && isModelHealthy(m.name)) || (m.provider !== 'anthropic' && !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && isModelHealthy(m.name))),
             ...baseModels.filter(m => m.provider !== 'anthropic' && !isModelDailyExhaustedOnAllKeys(m.name, rawApiKeys) && !isModelHealthy(m.name))
           ];
 
