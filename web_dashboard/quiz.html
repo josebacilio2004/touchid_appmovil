@@ -1419,7 +1419,8 @@
           body: JSON.stringify({
             userId: 'unlimited_user_touchid',
             question: q.question,
-            options: q.options
+            options: q.options,
+            bypassCache: !!(currentCategory && currentCategory.bypassCache)
           })
         });
 
@@ -1450,7 +1451,7 @@
               feedbackBox.style.display = 'block';
               if (expEl) expEl.textContent = `✅ Alternativa ${data.correct_option_letter} (${data.correct_option_text}): ${data.explanation}`;
               if (thoughtEl && data.thought) thoughtEl.textContent = `Cadena de pensamiento médica: ${data.thought}`;
-              if (badgeEl) badgeEl.textContent = data.from_cache ? '⚡ Resuelto desde Caché L1 (<15ms)' : '🧠 Resuelto por Motor K-Type';
+              if (badgeEl) badgeEl.textContent = data.bypassedCache ? `🧪 IA EN VIVO (Sin Caché • ${data.model || 'LLM'})` : (data.from_cache || data.model === 'cache_l1' ? '⚡ Resuelto desde Caché L1 (<15ms)' : `🧠 Resuelto por Motor IA (${data.model || 'K-Type'})`);
             }
           }
         } else {
@@ -1597,7 +1598,8 @@
           body: JSON.stringify({
             userId: 'unlimited_user_touchid',
             question: q.question,
-            options: q.options
+            options: q.options,
+            bypassCache: !!(currentCategory && currentCategory.bypassCache)
           })
         }).catch(() => null);
 

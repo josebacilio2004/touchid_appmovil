@@ -6,6 +6,7 @@
 
 const crypto = require('crypto');
 const { LRUCache } = require('lru-cache');
+const { isKTypeQuestion, resolveKTypeDeterministically } = require('./kTypeSolver');
 
 // L1 Cache en memoria (hasta 10,000 preguntas, TTL 24 horas)
 const l1Cache = new LRUCache({
@@ -20,12 +21,12 @@ const inFlightRequests = new Map();
  * Normaliza una cadena de texto para hacer comparaciones canónicas
  */
 function normalizeText(str = '') {
-  return str
+  return String(str || '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/^(?:pregunta\s*\d+[\s:.-]*|\d+[\s.)-]+)/i, '')
-    .replace(/^[a-e][\s.)-]+/i, '')
+    .replace(/^[a-e][.)-]\s*/i, '') // Solo quitar prefijos con signo explícito ("a) ", "b. ", "c- ")
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -44,21 +45,25 @@ function buildCanonicalSignature(questionText = '', optionsArray = []) {
 /**
  * Re-mapea la respuesta de caché al orden específico de alternativas del alumno actual
  */
-function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = []) {
+function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = [], questionText = '') {
   if (!cachedEntry || !studentOptions || studentOptions.length === 0) {
     return null;
   }
 
   // 1. Si es pregunta K-Type y tiene vector booleano guardado
-  if (cachedEntry.is_k_type && cachedEntry.true_indices) {
-    const { resolveKTypeDeterministically } = require('./kTypeSolver');
+  if (cachedEntry.is_k_type && Array.isArray(cachedEntry.true_indices)) {
+    const trueSet = new Set(cachedEntry.true_indices);
     const mockLlm = {
-      propositions: cachedEntry.true_indices.map(idx => ({ index: idx, is_true: true, fact_check: '' })),
+      propositions: [1, 2, 3, 4].map(idx => ({
+        index: idx,
+        is_true: trueSet.has(idx),
+        fact_check: ''
+      })),
       suggested_letter: cachedEntry.correct_option_letter,
       explanation: cachedEntry.explanation,
       subject: cachedEntry.subject
     };
-    const resolved = resolveKTypeDeterministically(mockLlm, studentOptions);
+    const resolved = resolveKTypeDeterministically(mockLlm, studentOptions, questionText || cachedEntry.question || '');
     if (resolved) {
       return {
         ...resolved,
@@ -69,7 +74,8 @@ function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = []) {
   }
 
   // 2. Coincidencia por texto normalizado de la respuesta en pasadas estrictas
-  const targetNorm = normalizeText(cachedEntry.canonical_answer_text || cachedEntry.correct_option_text || '');
+  const rawTarget = String(cachedEntry.canonical_answer_text || cachedEntry.correct_option_text || '').trim();
+  const targetNorm = normalizeText(rawTarget);
   if (!targetNorm) {
     return null;
   }
@@ -77,7 +83,6 @@ function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = []) {
   let bestIndex = -1;
 
   // Pasada 1 (Prioridad Absoluta): Coincidencia exacta
-  // Evita falsos positivos como "fisis" en "apofisis" o "...IL-25" en "...IL-25, IL-4"
   for (let i = 0; i < studentOptions.length; i++) {
     const optNorm = normalizeText(studentOptions[i]);
     if (optNorm === targetNorm) {
@@ -86,18 +91,32 @@ function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = []) {
     }
   }
 
+  // Pasada 1.2: Si es K-Type (ej. "B 2,3 y 4" vs "2,3, 4"), comparar sin la letra inicial impresa
+  if (bestIndex === -1 && isKTypeQuestion(questionText, studentOptions)) {
+    const stripKLetter = (s) => normalizeText(String(s || '').replace(/^\s*[a-e]\s+(?=\d|todos)/i, ''));
+    const targetK = stripKLetter(rawTarget);
+    if (targetK) {
+      for (let i = 0; i < studentOptions.length; i++) {
+        if (stripKLetter(studentOptions[i]) === targetK) {
+          bestIndex = i;
+          break;
+        }
+      }
+    }
+  }
+
   // Pasada 1.5: Equivalencia Canónica de "Todas" y "Ninguna"
-  const isAllVariants = /^(todas|todas las anteriores|todas son correctas|todas son verdaderas)$/i.test(targetNorm);
-  const isNoneVariants = /^(ninguna|ninguna de las anteriores|ninguna es correcta|ninguna es verdadera)$/i.test(targetNorm);
+  const isAllVariants = /^(todas|todas las anteriores|todas son correctas|todas son verdaderas|todos|todos son correctos)$/i.test(targetNorm);
+  const isNoneVariants = /^(ninguna|ninguna de las anteriores|ninguna es correcta|ninguna es verdadera|ninguno)$/i.test(targetNorm);
 
   if (bestIndex === -1 && (isAllVariants || isNoneVariants)) {
     for (let i = 0; i < studentOptions.length; i++) {
       const optNorm = normalizeText(studentOptions[i]);
-      if (isAllVariants && /^(todas|todas las anteriores|todas son correctas|todas son verdaderas)$/i.test(optNorm)) {
+      if (isAllVariants && /^(todas|todas las anteriores|todas son correctas|todas son verdaderas|todos|todos son correctos)$/i.test(optNorm)) {
         bestIndex = i;
         break;
       }
-      if (isNoneVariants && /^(ninguna|ninguna de las anteriores|ninguna es correcta|ninguna es verdadera)$/i.test(optNorm)) {
+      if (isNoneVariants && /^(ninguna|ninguna de las anteriores|ninguna es correcta|ninguna es verdadera|ninguno)$/i.test(optNorm)) {
         bestIndex = i;
         break;
       }
@@ -112,15 +131,15 @@ function mapCachedAnswerToStudentOptions(cachedEntry, studentOptions = []) {
       if (!optNorm) continue;
 
       let isMatch = false;
-      if (targetNorm.length <= 4) {
-        // Para respuestas muy cortas (ej. "IgG", "ADN", "1986"), exigir límite de palabra o prefijo exacto
+      // Prohibir coincidencia por subcadena si hay números romanos distintos (ej. "Clase II" en "Clase III")
+      const hasRoman = /\b(i|ii|iii|iv|v|vi)\b/i.test(targetNorm) || /\b(i|ii|iii|iv|v|vi)\b/i.test(optNorm);
+      if (targetNorm.length <= 4 || hasRoman) {
         const escaped = targetNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const wordRegex = new RegExp(`(^|\\s)${escaped}(\\s|$)`, 'i');
-        if (wordRegex.test(optNorm)) {
+        if (wordRegex.test(optNorm) && !hasRoman) {
           isMatch = true;
         }
       } else {
-        // Para textos medianos y largos
         if (optNorm.includes(targetNorm) || targetNorm.includes(optNorm)) {
           isMatch = true;
         }

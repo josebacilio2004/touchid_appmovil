@@ -12,7 +12,7 @@ const CLINICAL_REASONING_SCHEMA = {
   properties: {
     subject: {
       type: "STRING",
-      description: "Especialidad médica detectada (ej. Pediatría, Técnica Quirúrgica, Ginecología, Patología, Fisiopatología, Farmacología)."
+      description: "Especialidad médica detectada (ej. Pediatría, Técnica Quirúrgica, Ginecología, Patología, Fisiopatología, Farmacología, Reumatología)."
     },
     is_negative_question: {
       type: "BOOLEAN",
@@ -66,10 +66,12 @@ const CLINICAL_REASONING_SCHEMA = {
   ]
 };
 
+const ALL_OPTION_REGEX = /^\s*([a-e][\)\.\-]\s*)?(todas|todas\s+las\s+anteriores|todas\s+son\s+correctas|todas\s+son\s+verdaderas|todos|todos\s+son\s+correctos)\s*\.?\s*$/i;
+const NONE_OPTION_REGEX = /^\s*([a-e][\)\.\-]\s*)?(ninguna|ninguna\s+de\s+las\s+anteriores|ninguna\s+es\s+correcta|ninguno)\s*\.?\s*$/i;
+
 /**
- * Guardia Determinista Post-LLM para Preguntas en Negativo ("EXCEPTO" / "FALSO") y Afirmativas.
- * Corrige el clásico error donde el modelo identifica cuál es la opción FALSA en su análisis
- * pero por inercia decodificadora marca una opción VERDADERA en correct_option_index.
+ * Guardia Determinista Post-LLM para Preguntas en Negativo ("EXCEPTO" / "FALSO"), Afirmativas
+ * y anti-trampa para opciones "Todas" / "Ninguna".
  */
 function enforceNegativeQuestionConsistency(llmResult, studentOptions) {
   if (!llmResult || !studentOptions || !Array.isArray(studentOptions) || studentOptions.length === 0) {
@@ -92,25 +94,56 @@ function enforceNegativeQuestionConsistency(llmResult, studentOptions) {
       }
     }
   } else {
-    // En preguntas afirmativas, si solo hay 1 opción con verdict "VERDADERO"
-    const trueOptions = evals.filter(e => e && e.verdict === "VERDADERO");
-    if (trueOptions.length === 1) {
-      const targetIdx = trueOptions[0].index;
-      if (typeof targetIdx === "number" && targetIdx >= 0 && targetIdx < studentOptions.length) {
-        if (llmResult.correct_option_index !== targetIdx) {
-          console.log(`[GUARDIA-AFIRMATIVA] Alineando índice con única opción verdadera: ${llmResult.correct_option_index} -> ${targetIdx}`);
-          llmResult.correct_option_index = targetIdx;
-          llmResult.correct_option_text = studentOptions[targetIdx];
+    // Separar opciones específicas de opciones meta ("Todas", "Ninguna")
+    const specificEvals = evals.filter(e => {
+      if (!e || typeof e.index !== "number" || e.index < 0 || e.index >= studentOptions.length) return false;
+      const optTxt = String(studentOptions[e.index] || '');
+      return !ALL_OPTION_REGEX.test(optTxt) && !NONE_OPTION_REGEX.test(optTxt);
+    });
+
+    const specificTrue = specificEvals.filter(e => e.verdict === "VERDADERO");
+    const specificFalse = specificEvals.filter(e => e.verdict === "FALSO");
+
+    const allOptionIdx = studentOptions.findIndex(o => ALL_OPTION_REGEX.test(String(o || '')));
+    const noneOptionIdx = studentOptions.findIndex(o => NONE_OPTION_REGEX.test(String(o || '')));
+
+    // Caso A: El modelo marcó "Todas", pero en su evaluación solo 1 opción específica es VERDADERA y hay específicas FALSAS
+    if (allOptionIdx !== -1 && llmResult.correct_option_index === allOptionIdx && specificTrue.length === 1 && specificFalse.length >= 1) {
+      const realIdx = specificTrue[0].index;
+      console.warn(`[GUARDIA-ANTI-TODAS] ⚠️ Bloqueado falso "Todas": solo la opción ${realIdx} ("${studentOptions[realIdx]}") es verdadera.`);
+      llmResult.correct_option_index = realIdx;
+      llmResult.correct_option_text = studentOptions[realIdx];
+    }
+    // Caso B: Solo hay 1 opción con verdict "VERDADERO" en total
+    else {
+      const trueOptions = evals.filter(e => e && e.verdict === "VERDADERO");
+      if (trueOptions.length === 1) {
+        const targetIdx = trueOptions[0].index;
+        if (typeof targetIdx === "number" && targetIdx >= 0 && targetIdx < studentOptions.length) {
+          if (llmResult.correct_option_index !== targetIdx) {
+            console.log(`[GUARDIA-AFIRMATIVA] Alineando índice con única opción verdadera: ${llmResult.correct_option_index} -> ${targetIdx}`);
+            llmResult.correct_option_index = targetIdx;
+            llmResult.correct_option_text = studentOptions[targetIdx];
+          }
+        }
+      } else if (specificEvals.length >= 2 && specificTrue.length === 0 && noneOptionIdx !== -1) {
+        // Todas las opciones específicas son FALSAS y existe "Ninguna"
+        if (llmResult.correct_option_index !== noneOptionIdx) {
+          console.log(`[GUARDIA-NINGUNA] Todas las opciones específicas son falsas -> seleccionando "Ninguna" (índice ${noneOptionIdx})`);
+          llmResult.correct_option_index = noneOptionIdx;
+          llmResult.correct_option_text = studentOptions[noneOptionIdx];
         }
       }
     }
   }
 
-  // Asegurar que el texto coincida exactamente con la opción del estudiante en dicho índice
+  // Asegurar que el texto y la letra coincidan exactamente con la opción del estudiante en dicho índice
+  const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
   if (typeof llmResult.correct_option_index === "number" && 
       llmResult.correct_option_index >= 0 && 
       llmResult.correct_option_index < studentOptions.length) {
     llmResult.correct_option_text = studentOptions[llmResult.correct_option_index];
+    llmResult.correct_option_letter = alphabet[llmResult.correct_option_index] || 'A';
   }
 
   return llmResult;

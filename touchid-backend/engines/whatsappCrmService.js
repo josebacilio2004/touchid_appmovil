@@ -104,7 +104,7 @@ class WhatsAppCrmService {
 
       const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true,
+        printQRInTerminal: false,
         logger: pino({ level: 'silent' }),
         browser: ['TouchID CRM', 'Chrome', '1.0.0'],
         connectTimeoutMs: 60000,
@@ -129,7 +129,7 @@ class WhatsAppCrmService {
           } catch (qrErr) {
             console.error('Error generando DataURL del QR:', qrErr);
           }
-          console.log('📲 [WHATSAPP-CRM] Código QR generado. Escanéalo en el Dashboard Web o terminal.');
+          // Silenciado en Render para evitar spam de QR en consola
         }
 
         if (connection === 'close') {
@@ -139,7 +139,7 @@ class WhatsAppCrmService {
           const statusCode = lastDisconnect?.error?.output?.statusCode;
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
           
-          console.warn(`⚠️ [WHATSAPP-CRM] Conexión cerrada. Código: ${statusCode}. ¿Reconectar?: ${shouldReconnect}`);
+          // Silenciado en Render para evitar spam de desconexión 408 en consola
 
           if (statusCode === DisconnectReason.loggedOut) {
             console.warn('🔒 [WHATSAPP-CRM] Sesión cerrada desde el celular. Limpiando credenciales...');

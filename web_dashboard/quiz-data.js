@@ -1,6 +1,280 @@
 // Banco de Preguntas Multidisciplinario para el Simulador Web TouchID
 export const QUIZ_CATEGORIES = [
   {
+    "id": "udabol_test_no_cache_multitipo",
+    "isUdabol": true,
+    "bypassCache": true,
+    "title": "🧪 TEST EN VIVO IA (Sin Caché • Todo Tipo de Preguntas)",
+    "subtitle": "Auditoría QA en Vivo • K-Type Falsos/Excepto/Barajados, Reumatología, Cirugía, APS y Clínica",
+    "badge": "LIVE AI • NO CACHE",
+    "badgeColor": "#10b981",
+    "subjectCode": "QA-2026: Diagnóstico Multi-Especialidad en Vivo (Bypass Cache Activo)",
+    "sessionName": "Test de Certificación IA en Vivo (20 Preguntas = 60 Puntos)",
+    "description": "Suite de prueba con bypassCache=true garantizado (no lee ni contamina la caché de MongoDB ni RAM). Incluye: tu pregunta exacta #6 de Neuroanatomía K-Type ('identifica cuales son falsos' con opciones barajadas 'B 2,3 y 4'), K-Type 'verdaderos, excepto', K-Type 'falsos, excepto', K-Type positivo, Reumatología trampas ('Todas', 'Ninguna', 'Clase II vs III', '6 semanas', 'Azatioprina'), Técnica Quirúrgica, APS y Clínica.",
+    "questions": [
+      {
+        "id": "live_nc_1",
+        "question": "6. LEA DETENIDAMENTE Y RESPONDA SEGÚN CORRESPONDA PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS, Con respecto a los siguientes enunciados identifica cuales son falsos: 1. En la embriología del tubo neural, en su etapa de inducción ocurrirá el cambio de ectodermo a neuroectodermo formando la placa neural 2. La sustancia blanca de la médula espinal va a estar formada por fibras amielínicas, células glía y vasos sanguíneos 3. La longitud del vaso arterial del tronco basilar es de 3.5 cm 4. El bulbo raquideo anteriormente se relaciona con la apófisis odontoides del atlas",
+        "options": [
+          "B 2,3 y 4",
+          "E TODOS VERDADEROS O FALSOS",
+          "C 2 y 3",
+          "D 1 y 4",
+          "A 1,2 y 3"
+        ],
+        "correctIndex": 0,
+        "explanation": "Pregunta K-Type negativa ('identifica cuales son falsos') con opciones barajadas: 1 es VERDADERO (inducción forma placa neural). 2 es FALSO (sustancia blanca tiene fibras MIELÍNICAS, no amielínicas). 3 es FALSO (tronco basilar mide ~3 cm, no 3.5 cm). 4 es FALSO (la apófisis odontoides pertenece al AXIS C2, no al atlas C1). Los enunciados falsos son 2, 3 y 4 -> opción 'B 2,3 y 4' ubicada en la primera posición (índice 0)."
+      },
+      {
+        "id": "live_nc_2",
+        "question": "LEA DETENIDAMENTE Y RESPONDA SEGÚN CORRESPONDA PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a la anatomía de la pared anterolateral del abdomen (Rouvière), identifica cuales son falsos: 1. El músculo recto del abdomen está contenido dentro de una vaina fibrosa formada por las aponeurosis de los músculos oblicuo externo, oblicuo interno y transverso 2. El músculo piramidal del abdomen es constante en el 100% de los individuos y se sitúa profundo (posterior) al músculo recto del abdomen 3. El ligamento de Henle (hoz inguinal) corresponde a una expansión lateral de inserción del tendón conjunto 4. La línea alba es un rafe tendinoso medio situado entre ambos músculos rectos del abdomen",
+        "options": [
+          "A 1,2 y 3",
+          "C 2 y 3",
+          "E TODOS VERDADEROS O FALSOS",
+          "D 1 y 4",
+          "B 2,3 y 4"
+        ],
+        "correctIndex": 1,
+        "explanation": "K-Type negativo ('identifica cuales son falsos'): 1 y 4 son VERDADEROS. 2 es FALSO (el piramidal es inconstante y está ANTERIOR al recto). 3 es FALSO (el ligamento de Henle es expansión lateral del recto del abdomen o aponeurosis del transverso, no del tendón conjunto). Falsos: 2 y 3 ('C 2 y 3' en índice 1)."
+      },
+      {
+        "id": "live_nc_3",
+        "question": "LEA DETENIDAMENTE Y RESPONDA SEGÚN CORRESPONDA PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a la anatomía hepatobiliar y esplácnica, identifica cuales son verdaderos, excepto: 1. El conducto colédoco se forma directamente por la unión del conducto cístico con el conducto pancreático principal de Wirsung 2. La arteria gástrica izquierda (coronaria estomáquica) se origina habitualmente del tronco celíaco 3. El riñón derecho se sitúa ligeramente más bajo que el riñón izquierdo por la relación con el lóbulo derecho del hígado 4. La vena porta hepática se forma por la unión de la vena cava inferior con la vena renal izquierda detrás del páncreas",
+        "options": [
+          "B 2,3 y 4",
+          "C 2 y 3",
+          "D 1 y 4",
+          "A 1,2 y 3",
+          "E TODOS VERDADEROS O FALSOS"
+        ],
+        "correctIndex": 2,
+        "explanation": "K-Type negativo ('verdaderos, excepto' = busca los FALSOS): 1 es FALSO (el colédoco se forma por unión del conducto hepático común y el cístico). 2 y 3 son VERDADEROS. 4 es FALSO (la vena porta se forma por la vena mesentérica superior y el tronco esplenomesaraico/vena esplénica). Falsos: 1 y 4 ('D 1 y 4' en índice 2)."
+      },
+      {
+        "id": "live_nc_4",
+        "question": "LEA DETENIDAMENTE Y RESPONDA SEGÚN CORRESPONDA PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a los músculos de la pared posterior del tronco (Rouvière), identifica cuales son falsos, excepto: 1. El grupo muscular medio está situado en el plano de las apófisis transversas e incluye los músculos intertransversos y el cuadrado lumbar 2. El músculo cuadrado lumbar se inserta superiormente en el borde inferior de la duodécima costilla 3. El grupo muscular anterior está constituido por el músculo iliopsoas (psoas mayor e ilíaco) y el psoas menor 4. El músculo cuadrado lumbar se sitúa superficialmente por detrás del músculo dorsal ancho",
+        "options": [
+          "D 1 y 4",
+          "C 2 y 3",
+          "E TODOS VERDADEROS O FALSOS",
+          "A 1,2 y 3",
+          "B 2,3 y 4"
+        ],
+        "correctIndex": 3,
+        "explanation": "K-Type doble negación ('identifica cuales son falsos, excepto' = busca los VERDADEROS): 1, 2 y 3 son VERDADEROS según Rouvière; 4 es FALSO. Respuesta correcta: 'A 1,2 y 3' (índice 3)."
+      },
+      {
+        "id": "live_nc_5",
+        "question": "LEA DETENIDAMENTE Y RESPONDA SEGÚN CORRESPONDA PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a los pares craneales y sus agujeros en la base del cráneo, identifica cuales son verdaderos: 1. El nervio oculomotor (III), troclear (IV), abducens (VI) y la rama oftálmica del trigémino (V1) atraviesan la fisura orbitaria superior (hendidura esfenoidal) 2. El nervio maxilar (V2) sale del cráneo a través del agujero redondo mayor 3. El nervio mandibular (V3) atraviesa el agujero oval junto con la arteria meníngea menor 4. El nervio facial (VII) y el vestibulococlear (VIII) ingresan por el conducto auditivo interno en la porción petrosa del temporal",
+        "options": [
+          "A 1,2 y 3",
+          "E TODOS VERDADEROS O FALSOS",
+          "B 2,3 y 4",
+          "C 2 y 3",
+          "D 1 y 4"
+        ],
+        "correctIndex": 1,
+        "explanation": "K-Type positivo donde las 4 proposiciones (1, 2, 3 y 4) son anatómicamente VERDADERAS. Por tanto corresponde 'E TODOS VERDADEROS O FALSOS' (índice 1)."
+      },
+      {
+        "id": "live_nc_6",
+        "question": "LEA DETENIDAMENTE Y RESPONDA SEGÚN CORRESPONDA PATRON DE RESPUESTAS: A si 1,2 y 3 son VERDADEROS B si 2,3y4 son VERDADEROS C si 2y3 son VERDADEROS D si 1y4 es VERDADERO E si todos son FALSOS o VERDADEROS. Con respecto a la inmunología de las enfermedades reumáticas, identifica cuales son verdaderos: 1. El factor reumatoide clásico detectado por látex o nefelometría es predominantemente un autoanticuerpo de clase IgE dirigido contra la porción Fab de la IgG 2. Los anticuerpos anti-péptido citrulinado cíclico (anti-CCP) poseen mayor especificidad diagnóstica (>95%) para artritis reumatoide que el factor reumatoide 3. El epítope (determinante antigénico) es la región específica del antígeno que se une al parátopo del anticuerpo o receptor de linfocito T 4. La prueba de Coombs directa detecta anticuerpos libres circulantes en el suero sin unión a eritrocitos",
+        "options": [
+          "D 1 y 4",
+          "A 1,2 y 3",
+          "B 2,3 y 4",
+          "E TODOS VERDADEROS O FALSOS",
+          "C 2 y 3"
+        ],
+        "correctIndex": 4,
+        "explanation": "K-Type positivo: 1 es FALSO (el FR clásico es IgM contra la fracción Fc de la IgG). 2 y 3 son VERDADEROS. 4 es FALSO (Coombs directa detecta anticuerpos adheridos a la membrana eritrocitaria; la indirecta detecta libres en suero). Verdaderos: 2 y 3 ('C 2 y 3' en índice 4)."
+      },
+      {
+        "id": "live_nc_7",
+        "question": "En la fisiopatología celular de los tejidos sinoviales, las enzimas que participan directamente en la ejecución del proceso de suicidio celular autónomo (apoptosis) son:",
+        "options": [
+          "Enzimas endógenas",
+          "Enzimas exógenas bacterianas",
+          "Toxinas líticas extracelulares",
+          "Todas",
+          "Ninguna"
+        ],
+        "correctIndex": 0,
+        "explanation": "Trampa Anti-'Todas': La apoptosis es un proceso de muerte celular programada ejecutado exclusivamente por enzimas ENDÓGENAS intracelulares (caspasas y endonucleasas). Las enzimas exógenas no participan, por lo que está prohibido marcar 'Todas'."
+      },
+      {
+        "id": "live_nc_8",
+        "question": "Según los criterios de clasificación de la Esclerosis Sistémica (Esclerodermia), señale cuál constituye el ÚNICO criterio mayor para el diagnóstico:",
+        "options": [
+          "Esclerosis cutánea proximal a las articulaciones metacarpofalángicas o metatarsofalángicas (por encima de los dedos)",
+          "Esclerodactilia limitada a las falanges distales",
+          "Cicatrices puntiformes digitales o pérdida de sustancia en el pulpejo",
+          "Fibrosis pulmonar bibasal en radiografía o tomografía",
+          "Todas"
+        ],
+        "correctIndex": 0,
+        "explanation": "El único criterio mayor de esclerosis sistémica (ACR 1980) es la esclerosis cutánea proximal a las MCF/MTF. Esclerodactilia, cicatrices digitales y fibrosis pulmonar bibasal son los 3 criterios menores. No se debe marcar 'Todas'."
+      },
+      {
+        "id": "live_nc_9",
+        "question": "La variante clínica de esclerodermia localizada que se manifiesta exclusivamente por parches o placas cutáneas induradas bien delimitadas con halo violáceo, sin afectación visceral ni fenómeno de Raynaud sistémico, se denomina:",
+        "options": [
+          "Esclerodermia sistémica difusa",
+          "Acroesclerosis progresiva",
+          "Ninguna",
+          "Esclerosis sistémica sin esclerodermia",
+          "Todas"
+        ],
+        "correctIndex": 2,
+        "explanation": "La esclerodermia localizada en placas o parches es la MORFEA. Como 'Morfea' no figura entre las alternativas específicas listadas, la respuesta correcta es 'Ninguna'."
+      },
+      {
+        "id": "live_nc_10",
+        "question": "De acuerdo con la clasificación de capacidad funcional del Colegio Americano de Reumatología (ACR 1991) para la Artritis Reumatoide, el paciente que conserva capacidad para realizar sus actividades habituales de autocuidado personal, pero presenta limitación tanto en las actividades vocacionales (trabajo) como en las no vocacionales (recreación), se encuentra en:",
+        "options": [
+          "Clase I",
+          "Clase II",
+          "Clase III",
+          "Clase IV",
+          "Ninguna"
+        ],
+        "correctIndex": 2,
+        "explanation": "Prueba de no-colisión de números romanos (Clase II vs Clase III): En Clase II está limitado solo en actividades no vocacionales; en Clase III puede realizar autocuidado pero está limitado en vocacionales y no vocacionales; en Clase IV está limitado incluso en el autocuidado."
+      },
+      {
+        "id": "live_nc_11",
+        "question": "Entre los criterios diagnósticos de clasificación de la Artritis Reumatoide (ACR 1987), varios parámetros clínicos exigen obligatoriamente una duración continua mayor o igual a 6 semanas; señale cuál de los siguientes debe cumplir dicho requisito temporal:",
+        "options": [
+          "Nódulos reumatoideos subcutáneos en superficies extensoras",
+          "Factor reumatoide sérico positivo",
+          "Alteraciones radiográficas con erosiones periarticulares",
+          "Artritis de 3 o más áreas articulares",
+          "Ninguna"
+        ],
+        "correctIndex": 3,
+        "explanation": "Los criterios 1 al 4 de ACR 1987 (rigidez matutina >=1h, artritis de >=3 áreas articulares, artritis de las manos y artritis simétrica) requieren duración >=6 semanas. Los nódulos reumatoideos (criterio 5), FR (criterio 6) y radiografía (criterio 7) no requieren el criterio de 6 semanas."
+      },
+      {
+        "id": "live_nc_12",
+        "question": "En el tratamiento farmacológico modificador de la enfermedad (FARME) de la artritis reumatoide activa refractaria, la dosis terapéutica habitual de mantenimiento de la azatioprina por vía oral no debe superar:",
+        "options": [
+          "10 mg/Kg/día",
+          "6 mg/Kg/día",
+          "15 mg/Kg/día",
+          "2.5 a 3 mg/Kg/día",
+          "20 mg/Kg/día"
+        ],
+        "correctIndex": 3,
+        "explanation": "La azatioprina en artritis reumatoide se inicia a 1 mg/kg/día y se incrementa gradualmente hasta una dosis máxima habitual de 2.5 a 3 mg/kg/día."
+      },
+      {
+        "id": "live_nc_13",
+        "question": "En la semiología del dolor neuropático y reumatológico, la percepción de dolor desencadenada por un estímulo mecánico o térmico inocuo que en condiciones normales NO provoca dolor (por ejemplo, el roce suave de la ropa o la sábana sobre la piel) se define como:",
+        "options": [
+          "Hiperalgesia primaria",
+          "Alodinia",
+          "Hiperpatía explosiva",
+          "Analgesia dolorosa",
+          "Sinestesia"
+        ],
+        "correctIndex": 1,
+        "explanation": "Según la IASP, la alodinia es el dolor debido a un estímulo que normalmente no provoca dolor; mientras que la hiperalgesia es una respuesta aumentada ante un estímulo que normalmente ya es doloroso."
+      },
+      {
+        "id": "live_nc_14",
+        "question": "En relación con los principios de drenajes quirúrgicos en Técnica Quirúrgica, todas las siguientes afirmaciones son verdaderas, EXCEPTO:",
+        "options": [
+          "El drenaje de Penrose es un drenaje pasivo blando de látex que evacúa fluidos por capilaridad",
+          "El drenaje laminar corrugado posee acanaladuras paralelas que mantienen permeables los canales de salida por capilaridad y gravedad",
+          "El drenaje de Jackson-Pratt es un sistema pasivo abierto que funciona sin reservorio de presión negativa",
+          "El drenaje en cigarrillo (Mikulicz modificado) combina un tubo de goma o látex con una mecha de gasa en su interior",
+          "Los drenajes pasivos deben exteriorizarse preferentemente por contrabertura y no por la herida quirúrgica principal"
+        ],
+        "correctIndex": 2,
+        "explanation": "Pregunta negativa (EXCEPTO): El drenaje de Jackson-Pratt NO es pasivo ni abierto; es un drenaje ACTIVO aspirativo cerrado conectado a una pera o reservorio compresible de succión negativa."
+      },
+      {
+        "id": "live_nc_15",
+        "question": "En el marco conceptual de la Atención Primaria en Salud (APS) y la historia natural de la enfermedad, el conjunto de acciones destinadas a identificar pacientes en riesgo de sobremedicalización o intervencionismo diagnóstico-terapéutico excesivo (previniendo la iatrogenia clínica) corresponde a:",
+        "options": [
+          "Prevención primaria",
+          "Prevención secundaria",
+          "Prevención terciaria",
+          "Prevención cuaternaria",
+          "Promoción primordial de la salud"
+        ],
+        "correctIndex": 3,
+        "explanation": "La prevención cuaternaria (Marc Jamoulle) busca evitar o atenuar las consecuencias de la actividad excesiva o innecesaria del sistema sanitario (sobremedicalización e iatrogenia)."
+      },
+      {
+        "id": "live_nc_16",
+        "question": "En la semiología abdominal hepatobiliar, el hallazgo físico de una vesícula biliar distendida, palpable e indolora en el hipocondrio derecho en un paciente con ictericia obstructiva progresiva sugiere neoplasia periampular o de cabeza de páncreas y se conoce como:",
+        "options": [
+          "Signo de Murphy positivo",
+          "Signo de Courvoisier-Terrier",
+          "Signo de Blumberg",
+          "Signo de Rovsing",
+          "Tríada de Charcot"
+        ],
+        "correctIndex": 1,
+        "explanation": "La Ley y Signo de Courvoisier-Terrier establece que una vesícula palpable e indolora en presencia de ictericia mecánica obedece a obstrucción maligna extrahepática distal (ej. cáncer de cabeza de páncreas) y no a litiasis vesicular crónica (donde la vesícula está fibrosa y retraída)."
+      },
+      {
+        "id": "live_nc_17",
+        "question": "En un paciente que ingresa a urgencias con traumatismo torácico precordial penetrante, la presencia simultánea de hipotensión arterial, ingurgitación yugular bilateral marcada y ruidos cardíacos apagados (hipofonéticos) constituye la clásica:",
+        "options": [
+          "Tríada de Cushing de hipertensión intracraneal",
+          "Tríada de Virchow de trombogénesis",
+          "Tríada de Beck del taponamiento cardíaco agudo",
+          "Tríada de Whipple del insulinoma",
+          "Tríada de Dieulafoy"
+        ],
+        "correctIndex": 2,
+        "explanation": "La Tríada de Beck (hipotensión arterial, distensión venosa yugular y ruidos cardíacos velados) es el sello semiológico clásico del taponamiento cardíaco agudo."
+      },
+      {
+        "id": "live_nc_18",
+        "question": "Gestante de 34 semanas con diagnóstico de preeclampsia con criterios de severidad en tratamiento endovenoso con sulfato de magnesio (esquema de Zuspan). En el control horario se constata abolición del reflejo rotuliano (arreflexia patelar) y frecuencia respiratoria de 9 respiraciones por minuto. Además de suspender la infusión, ¿cuál es el antídoto específico de elección?",
+        "options": [
+          "Sulfato de protamina 50 mg EV lento",
+          "Gluconato de calcio al 10% (1 gramo = 10 mL EV lento)",
+          "Flumazenilo 0.5 mg EV",
+          "N-acetilcisteína en infusión continua",
+          "Naloxona 0.4 mg EV"
+        ],
+        "correctIndex": 1,
+        "explanation": "Ante intoxicación por sulfato de magnesio (cuyo primer signo clínico es la pérdida del reflejo patelar seguida de depresión respiratoria), el antídoto específico es el Gluconato de calcio al 10% (10 mL = 1 g EV en 3-5 minutos)."
+      },
+      {
+        "id": "live_nc_19",
+        "question": "Escolar de 8 años que dos semanas después de presentar una infección faríngea estreptocócica desarrolla edema palpebral matutino, oliguria, hipertensión arterial y hematuria macroscópica glomerular con cilindros hemáticos. ¿Qué perfil del complemento sérico es característico de esta entidad?",
+        "options": [
+          "Disminución marcada de C3 con niveles de C4 normales (activación de la vía alternativa)",
+          "Disminución aislada de C1q y C4 con C3 persistentemente elevado",
+          "Elevación simultánea de C3, C4 y CH50 por encima del percentil 99",
+          "Ausencia congénita irreversible del complejo de ataque a membrana C5b-9",
+          "Consumo exclusivo de la vía clásica con C3 normal"
+        ],
+        "correctIndex": 0,
+        "explanation": "En la glomerulonefritis aguda postestreptocócica (GNAPE) se activa predominantemente la vía alternativa y de las lectinas del complemento, produciendo caída de C3 y CH50 en >90% de los casos (que se normaliza en 6-8 semanas) con C4 normal."
+      },
+      {
+        "id": "live_nc_20",
+        "question": "Un paciente de 22 años sufre un traumatismo craneoencefálico cerrado en la región temporoparietal (pterion), presenta pérdida fugaz del conocimiento, se recupera completamente durante 90 minutos ('intervalo lúcido') y luego desarrolla coma rápido con anisocoria por midriasis ipsilateral. ¿Qué hallazgo tomográfico y qué vaso lesionado explican este cuadro?",
+        "options": [
+          "Hematoma epidural agudo (imagen hiperdensa biconvexa o lenticular) por ruptura de la arteria meníngea media",
+          "Hematoma subdural crónico (imagen hipodensa en semiluna) por desgarro de venas corticales puente",
+          "Hemorragia subaracnoidea aneurismática por ruptura de la arteria comunicante anterior",
+          "Contusión hemorrágica cerebelosa por lesión de la arteria cerebelosa posteroinferior (PICA)",
+          "Trombosis del seno longitudinal superior con signo del delta vacío"
+        ],
+        "correctIndex": 0,
+        "explanation": "El traumatismo del pterion lesiona la arteria meníngea media, causando un hematoma epidural agudo caracterizado clínicamente por el 'intervalo lúcido' y tomográficamente por una colección hiperdensa biconvexa (lenticular) que no cruza las suturas."
+      }
+    ]
+  },
+  {
     "id": "udabol_cirugia_maxilofacial",
     "isUdabol": true,
     "title": "🩺 UDABOL: Cirugía Maxilofacial & Trauma Cervical (60/60 Examen)",

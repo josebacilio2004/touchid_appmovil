@@ -1145,7 +1145,16 @@ class _BrowserScreenState extends State<BrowserScreen> {
       // Marcar automáticamente la alternativa en la página web
       try {
         int targetIdx = -1;
+        // Pasada 1: Coincidencia exacta por texto de alternativa
         for (int i = 0; i < activeQuestion.alternatives.length; i++) {
+          final alt = activeQuestion.alternatives[i];
+          if (aiSolution.answerText.trim().isNotEmpty &&
+              alt.text.trim().toLowerCase() == aiSolution.answerText.trim().toLowerCase()) {
+            targetIdx = i;
+            break;
+          }
+        }
+        for (int i = 0; targetIdx == -1 && i < activeQuestion.alternatives.length; i++) {
           final alt = activeQuestion.alternatives[i];
           if (alt.id.toUpperCase() == aiSolution.answer.toUpperCase() ||
               alt.text.trim().toLowerCase() == aiSolution.answerText.trim().toLowerCase()) {

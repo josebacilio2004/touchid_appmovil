@@ -188,7 +188,9 @@ async function triggerShadowVerification(db, question, options, isKType, canonic
     if (!text) return;
 
     let shadowResult = JSON.parse(text.trim());
-    if (!isKType) {
+    if (isKType && shadowResult.propositions) {
+      shadowResult = resolveKTypeDeterministically(shadowResult, options, question);
+    } else if (!isKType) {
       shadowResult = enforceNegativeQuestionConsistency(shadowResult, options);
     }
 
@@ -252,7 +254,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
 
   try {
     const jsonInstruction = isKType
-      ? 'Responde ÚNICAMENTE un objeto JSON válido con este formato: {"subject": "...", "propositions": [{"index": 1, "is_true": true, "fact_check": "..."}], "suggested_letter": "A", "explanation": "max 15 words"}.'
+      ? 'Responde ÚNICAMENTE un objeto JSON válido con este formato: {"subject": "...", "target_polarity": "VERDADEROS/FALSOS", "propositions": [{"index": 1, "is_true": true, "fact_check": "..."}], "true_indices": [1, 2, 3], "suggested_letter": "A", "explanation": "max 15 words"}.'
       : 'Responde ÚNICAMENTE un objeto JSON válido con este formato: {"subject": "...", "options_evaluation": [{"index": 0, "verdict": "VERDADERO/FALSO", "trap_check": "..."}], "correct_option_index": 0, "correct_option_letter": "A", "correct_option_text": "...", "explanation": "max 15 words"}.';
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -576,7 +578,7 @@ app.post('/credits/set', async (req, res) => {
 
 // 3. Endpoint para resolver preguntas (Gemini API Gateway)
 app.post('/solve', async (req, res) => {
-  const { userId, question, options, systemPrompt } = req.body;
+  const { userId, question, options, systemPrompt, bypassCache } = req.body;
 
   // Validación estricta anti-NoSQL Injection
   if (!userId || typeof userId !== 'string' || !question || typeof question !== 'string') {
@@ -716,9 +718,9 @@ app.post('/solve', async (req, res) => {
     // =========================================================================
 
     // 1. FAST-PATH: Caché Semántico L1 en Memoria RAM (< 0.01 ms)
-    const cachedHit = l1Cache.get(canonicalSig);
+    const cachedHit = !bypassCache ? l1Cache.get(canonicalSig) : null;
     if (cachedHit) {
-      const mapped = mapCachedAnswerToStudentOptions(cachedHit, options);
+      const mapped = mapCachedAnswerToStudentOptions(cachedHit, options, effectiveQuestion);
       if (mapped) {
         console.log(`[CACHE-L1-HIT] Resuelto en RAM (<0.01ms): "${mapped.correct_option_letter}" -> "${mapped.correct_option_text}"`);
         parsedResult = mapped;
@@ -726,11 +728,11 @@ app.post('/solve', async (req, res) => {
     }
 
     // 2. COALESCENCIA: Si ya hay una consulta idéntica resolviéndose en paralelo
-    if (!parsedResult && inFlightRequests.has(canonicalSig)) {
+    if (!bypassCache && !parsedResult && inFlightRequests.has(canonicalSig)) {
       console.log(`[IN-FLIGHT-COALESCE] Reutilizando solicitud en vuelo para: "${effectiveQuestion.substring(0, 35)}..."`);
       try {
         const sharedResult = await inFlightRequests.get(canonicalSig);
-        const mapped = mapCachedAnswerToStudentOptions(sharedResult, options);
+        const mapped = mapCachedAnswerToStudentOptions(sharedResult, options, effectiveQuestion);
         if (mapped) {
           parsedResult = mapped;
         }
@@ -738,7 +740,7 @@ app.post('/solve', async (req, res) => {
     }
 
     // 3. BANCO OFICIAL VERIFICADO EN DB: Consultar MongoDB si no estaba en RAM
-    if (!parsedResult && database && options && options.length > 0) {
+    if (!bypassCache && !parsedResult && database && options && options.length > 0) {
       try {
         let verifiedDoc = await database.collection('question_bank').findOne({
           canonicalSignature: canonicalSig,
@@ -761,7 +763,7 @@ app.post('/solve', async (req, res) => {
               correct_option_text: candAns,
               explanation: cand.explanation || 'Respuesta verificada en banco oficial.',
               subject: cand.course || 'General'
-            }, options);
+            }, options, effectiveQuestion);
             if (testMap) {
               verifiedDoc = cand;
               break;
@@ -776,13 +778,14 @@ app.post('/solve', async (req, res) => {
             correct_option_text: effectiveAnswerText,
             explanation: verifiedDoc.explanation || 'Respuesta verificada en banco oficial.',
             subject: verifiedDoc.course || 'General'
-          }, options);
+          }, options, effectiveQuestion);
           if (mappedVerified) {
             console.log(`[DB-VERIFIED-HIT] Resuelto con banco oficial: "${mappedVerified.correct_option_letter}" -> "${mappedVerified.correct_option_text}"`);
-            l1Cache.set(canonicalSig, {
+            if (!bypassCache) l1Cache.set(canonicalSig, {
               ...mappedVerified,
               canonical_answer_text: effectiveAnswerText,
-              is_k_type: false
+              is_k_type: isKTypeQuestion(effectiveQuestion, options),
+              true_indices: mappedVerified.true_indices || verifiedDoc.true_indices || []
             });
             parsedResult = mappedVerified;
           }
@@ -800,11 +803,11 @@ app.post('/solve', async (req, res) => {
     let responseSchema = isKType ? K_TYPE_RESPONSE_SCHEMA : CLINICAL_REASONING_SCHEMA;
 
     if (isKType) {
-      prompt = `Pregunta K-Type (Patrón de Respuestas Combinadas):\n"${effectiveQuestion}"\n\nAlternativas Disponibles:\n${(options || []).map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción K-Type Obligatoria:\n1) Extrae y evalúa cada proposición numerada (1, 2, 3, 4, etc.) de forma 100% aislada e independiente.\n2) En 'fact_check', cita la estructura anatómica o concepto exacto que valida o invalida la proposición. Determina si es verdadera (true) o falsa (false).\n3) En 'true_indices', lista únicamente los números de las proposiciones verdaderas.\n4) Sugiere la letra y explica brevemente en máximo 15 palabras.`;
+      prompt = `Pregunta K-Type (Patrón de Respuestas Combinadas):\n"${effectiveQuestion}"\n\nAlternativas Disponibles:\n${(options || []).map((o, i) => `${i}) ${o}`).join('\n')}\n\nInstrucción K-Type Obligatoria:\n1) Identifica en 'target_polarity' si la pregunta pide seleccionar los enunciados "VERDADEROS" (ej. "identifica cuáles son verdaderos" o "falsos, excepto") o los "FALSOS" (ej. "identifica cuáles son falsos" sin excepto, o "verdaderos, excepto").\n2) Evalúa cada proposición numerada (1, 2, 3, 4) de forma 100% aislada en 'propositions' marcando 'is_true': true si el enunciado es anatómicamente/médicamente verdadero, o 'is_true': false si contiene algún error.\n3) En 'true_indices', lista los números (1 a 4) de las proposiciones que son verdaderas.\n4) REGLA UDABOL: La opción "E (TODOS VERDADEROS O FALSOS)" SOLO aplica cuando las 4 son verdaderas (1,2,3,4) o las 4 son falsas (ninguna). Si hay una combinación parcial, las proposiciones buscadas siempre forman uno de los subconjuntos (1,2,3 / 2,3,4 / 2,3 / 1,4).`;
     } else if (options && options.length > 0) {
       const isNegative = /\b(excepto|incorrect[oa]|no\s+es|no\s+corresponde|se[ñn]ale\s+la\s+falsa|fals[oa]|no\s+deber[ií]a|no\s+tiene)\b/i.test(effectiveQuestion);
       const hasAllOption = options.some(o => /^\s*([a-e][\)\.\-]\s*)?(todas|todas\s+las\s+anteriores|todas\s+son\s+correctas)\s*\.?\s*$/i.test(o));
-      const allWarning = hasAllOption ? `\n⚠️ REGLA DE OPCIÓN "TODAS": Si 2 o más alternativas individuales son verdaderas según la literatura médica canónica, DEBES seleccionar obligatoriamente la opción "Todas".` : "";
+      const allWarning = hasAllOption ? `\n⚠️ REGLA DE OPCIÓN "TODAS" / "NINGUNA": Evalúa cada opción específica individualmente. SOLO selecciona "Todas" si al menos 2 opciones específicas son 100% verdaderas y NINGUNA opción específica es falsa. Si una sola opción específica es verdadera y otra es falsa (ej. enzimas endógenas vs exógenas, o un único criterio mayor), PROHIBIDO marcar "Todas".` : "";
       const negWarning = isNegative
         ? `\n\n⚠️ ¡ATENCIÓN: PREGUNTA EN NEGATIVO (EXCEPTO / INCORRECTA / FALSA / NO CORRESPONDE)!:\nTu objetivo obligatorio es identificar la opción que sea CLÍNICAMENTE FALSA o ERRÓNEA.\nEn 'options_evaluation', audita cada alternativa marcando 'verdict': 'VERDADERO' o 'FALSO'.\nMarca en 'correct_option_index' y 'correct_option_text' la opción que resultó [FALSA].`
         : `\n\nEn 'options_evaluation', audita metódicamente cada alternativa con 'verdict': 'VERDADERO' o 'FALSO' y 'trap_check' (revisa cifras exactas, anatomía y clasificaciones temporales) antes de marcar 'correct_option_index'.`;
@@ -860,6 +863,7 @@ app.post('/solve', async (req, res) => {
               if (!process.env.ANTHROPIC_API_KEY) continue modelLoop;
               try {
                 const claudeRes = await callAnthropicClaude({
+                  modelName: modelCfg.name,
                   prompt,
                   systemInstructionText,
                   isKType,
@@ -871,7 +875,9 @@ app.post('/solve', async (req, res) => {
                   usedModelName = claudeRes.modelUsed;
                   usedInputTokens = claudeRes.inputTokens || 0;
                   usedOutputTokens = claudeRes.outputTokens || 0;
-                  if (!isKType) {
+                  if (false && isKType) {
+      // K-Type se resuelve determinísticamente en finalResult (línea 999)
+    } else if (!isKType) {
                     candidateResult = enforceNegativeQuestionConsistency(candidateResult, options);
                   }
                   break modelLoop;
@@ -956,7 +962,9 @@ app.post('/solve', async (req, res) => {
                   const geminiClean = candidateText.replace(/```json/gi, '').replace(/```/g, '').trim();
                   const geminiMatch = geminiClean.match(/\{[\s\S]*\}/);
                   candidateResult = JSON.parse(geminiMatch ? geminiMatch[0] : candidateText.trim());
-                  if (!isKType) {
+                  if (false && isKType) {
+      // K-Type se resuelve determinísticamente en finalResult (línea 999)
+    } else if (!isKType) {
                     candidateResult = enforceNegativeQuestionConsistency(candidateResult, options);
                   }
                   usedModelName = model;
@@ -988,10 +996,10 @@ app.post('/solve', async (req, res) => {
         // Mapeo Determinista Post-LLM para K-Type
         let finalResult = candidateResult;
         if (isKType && finalResult.propositions) {
-          finalResult = resolveKTypeDeterministically(finalResult, options);
+          finalResult = resolveKTypeDeterministically(finalResult, options, effectiveQuestion);
         } else {
           const alphabet = ['A', 'B', 'C', 'D', 'E', 'F'];
-          if (!finalResult.correct_option_letter && finalResult.correct_option_index !== undefined && finalResult.correct_option_index >= 0) {
+          if (finalResult.correct_option_index !== undefined && finalResult.correct_option_index >= 0) {
             finalResult.correct_option_letter = alphabet[finalResult.correct_option_index] || 'A';
           }
         }
@@ -1004,8 +1012,8 @@ app.post('/solve', async (req, res) => {
           usedModelName === 'gemini-flash-lite-latest'
         );
 
-        if (isHighPrecision) {
-          l1Cache.set(canonicalSig, {
+        if (!bypassCache && isHighPrecision) {
+          if (!bypassCache) l1Cache.set(canonicalSig, {
             ...finalResult,
             canonical_answer_text: finalResult.correct_option_text,
             is_k_type: isKType,
@@ -1040,7 +1048,7 @@ app.post('/solve', async (req, res) => {
             ).catch(() => {});
           }
         } else {
-          l1Cache.set(canonicalSig, {
+          if (!bypassCache) l1Cache.set(canonicalSig, {
             ...finalResult,
             canonical_answer_text: finalResult.correct_option_text,
             is_k_type: isKType,
@@ -1049,7 +1057,7 @@ app.post('/solve', async (req, res) => {
             modelUsed: usedModelName
           }, { ttl: 1000 * 60 * 3 });
 
-          triggerShadowVerification(database, effectiveQuestion, options, isKType, canonicalSig, rawApiKeys).catch(() => {});
+          if (!bypassCache) triggerShadowVerification(database, effectiveQuestion, options, isKType, canonicalSig, rawApiKeys).catch(() => {});
         }
 
         return finalResult;
@@ -1134,8 +1142,8 @@ app.post('/solve', async (req, res) => {
     }
 
     // Blindaje anti-colisión de subcadenas para APKs móviles ya instaladas
-    const responsePayload = { ...parsedResult };
-    if (Array.isArray(options) && options.length > 1 && parsedResult && parsedResult.correct_option_text && parsedResult.correct_option_letter) {
+    const responsePayload = { ...parsedResult, model: usedModelName || (parsedResult && parsedResult.modelUsed) || 'cache_l1', bypassedCache: !!bypassCache };
+    if (false && Array.isArray(options) && options.length > 1 && parsedResult && parsedResult.correct_option_text && parsedResult.correct_option_letter) {
       const targetLower = String(parsedResult.correct_option_text).trim().toLowerCase();
       const hasSubstringCollision = options.some((opt, idx) => {
         if (idx === parsedResult.correct_option_index) return false;
