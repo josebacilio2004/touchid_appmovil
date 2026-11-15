@@ -163,6 +163,8 @@ class QuizTelemetry {
   final String autoMarkStatus;
   final String autoMarkDetails;
   final String autoMarkedOption;
+  final String studentName;
+  final String course;
   final String timestamp;
 
   QuizTelemetry({
@@ -183,6 +185,8 @@ class QuizTelemetry {
     this.autoMarkStatus = 'not_attempted',
     this.autoMarkDetails = '',
     this.autoMarkedOption = '',
+    this.studentName = '',
+    this.course = '',
     String? timestamp,
   }) : timestamp = timestamp ?? DateTime.now().toIso8601String();
 
@@ -205,6 +209,8 @@ class QuizTelemetry {
       autoMarkStatus: (json['autoMarkStatus'] ?? 'not_attempted').toString(),
       autoMarkDetails: (json['autoMarkDetails'] ?? '').toString(),
       autoMarkedOption: (json['autoMarkedOption'] ?? '').toString(),
+      studentName: (json['studentName'] ?? '').toString(),
+      course: (json['course'] ?? '').toString(),
       timestamp: json['timestamp']?.toString(),
     );
   }
@@ -228,6 +234,8 @@ class QuizTelemetry {
       'autoMarkStatus': autoMarkStatus,
       'autoMarkDetails': autoMarkDetails,
       'autoMarkedOption': autoMarkedOption,
+      if (studentName.isNotEmpty) 'studentName': studentName,
+      if (course.isNotEmpty) 'course': course,
       'timestamp': timestamp,
     };
   }

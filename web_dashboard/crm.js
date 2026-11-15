@@ -528,7 +528,7 @@ function renderClientsTable(clients) {
   if (filtered.length === 0) {
     crmClientsTableBody.innerHTML = `
       <tr>
-        <td colspan="7" class="table-placeholder">No hay alumnos registrados con ese criterio.</td>
+        <td colspan="8" class="table-placeholder">No hay alumnos registrados con ese criterio.</td>
       </tr>
     `;
     return;
@@ -550,6 +550,14 @@ function renderClientsTable(clients) {
       ? `<a href="https://wa.me/${c.phone.replace(/[^\d]/g, '')}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">📱 ${c.phone} ↗</a>`
       : `<span style="color: #64748b; font-size: 12px;">Sin registrar</span>`;
 
+    const activeExamBadge = c.activeExam
+      ? `<div style="font-size: 11px; color: #fbbf24; font-weight: 600;">⚡ En curso (${c.activeExam.questionCount || 0} preg.)</div>`
+      : '';
+    const lastGradeBadge = c.lastGrade
+      ? `<div style="font-size: 11.5px; color: #34d399; font-weight: 700;">🏆 ${c.lastGrade.grade}/${c.lastGrade.maxGrade || 60}</div>`
+      : (c.totalQuestionsSolved ? `<div style="font-size: 11px; color: #94a3b8;">${c.totalQuestionsSolved} preg.</div>` : `<span style="color:#64748b;font-size:11.5px;">—</span>`);
+    const examCellHtml = `${activeExamBadge}${lastGradeBadge}`;
+
     tr.innerHTML = `
       <td data-label="Estudiante" style="font-weight: 700; color: #f8fafc;">
         ${c.studentName || c.userId}
@@ -559,12 +567,14 @@ function renderClientsTable(clients) {
       <td data-label="WhatsApp">${phoneDisplay}</td>
       <td data-label="Universidad / Carrera" style="font-size: 12.5px; color: #cbd5e1;">${c.university || 'N/A'}</td>
       <td data-label="Saldo">${creditBadge}</td>
+      <td data-label="Último Examen / Nota">${examCellHtml}</td>
       <td data-label="Notas" style="font-size: 12px; color: #94a3b8; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${c.notes || ''}">${c.notes || '-'}</td>
       <td data-label="Acciones">
         <div style="display: flex; gap: 4px; flex-wrap: wrap;">
           <button class="btn btn-sm btn-recharge-quick" data-user="${c.userId}" data-amount="50" style="padding: 3px 7px; font-size: 10.5px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">+50</button>
           <button class="btn btn-sm btn-recharge-quick" data-user="${c.userId}" data-amount="100" style="padding: 3px 7px; font-size: 10.5px; background: rgba(16, 185, 129, 0.2); color: #34d399; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);">+100</button>
           <button class="btn btn-sm btn-schedule-for-user" data-user="${c.userId}" data-name="${c.studentName || c.userId}" style="padding: 3px 7px; font-size: 10.5px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.3);">+ Examen</button>
+          <button class="btn btn-sm btn-client-exams" data-user="${c.userId}" style="padding: 3px 7px; font-size: 10.5px; background: rgba(168, 85, 247, 0.2); color: #c084fc; border-radius: 4px; border: 1px solid rgba(168, 85, 247, 0.35);">📊 Exámenes</button>
           <button class="btn btn-sm btn-edit-client" data-user="${c.userId}" style="padding: 3px 7px; font-size: 10.5px; background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.15);">Editar</button>
         </div>
       </td>
@@ -577,6 +587,32 @@ function renderClientsTable(clients) {
 if (crmClientsSearch) {
   crmClientsSearch.addEventListener('input', () => {
     renderClientsTable(allClientsCache);
+  });
+}
+
+// Botón Sincronizar Nombres desde DOM en MongoDB
+const crmSyncNamesBtn = document.getElementById('crm-sync-names-btn');
+if (crmSyncNamesBtn) {
+  crmSyncNamesBtn.addEventListener('click', async () => {
+    const token = getAdminToken();
+    const origText = crmSyncNamesBtn.textContent;
+    crmSyncNamesBtn.textContent = '⏳ Extrayendo...';
+    crmSyncNamesBtn.disabled = true;
+    try {
+      const res = await fetch(`${getBackendUrl()}/admin/crm/sync-student-names`, {
+        method: 'POST',
+        headers: { 'x-admin-token': token }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      alert(`✅ Sincronización completada.\n• Inspecciones DOM escaneadas: ${data.scannedInspections}\n• Alumnos encontrados: ${data.usersMatched}\n• Nombres actualizados: ${data.updatedWithNames}`);
+      loadCrmClients();
+    } catch (err) {
+      alert('Error sincronizando nombres: ' + err.message);
+    } finally {
+      crmSyncNamesBtn.textContent = origText;
+      crmSyncNamesBtn.disabled = false;
+    }
   });
 }
 
@@ -679,6 +715,13 @@ if (crmClientsTableBody) {
         schDate.value = getLocalDateStr();
         modalSchedule.style.display = 'flex';
       }
+      return;
+    }
+
+    const clientExamsBtn = e.target.closest('.btn-client-exams');
+    if (clientExamsBtn) {
+      const userId = clientExamsBtn.getAttribute('data-user');
+      if (userId && window.openUserExamsModal) window.openUserExamsModal(userId);
       return;
     }
 

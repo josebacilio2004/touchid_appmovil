@@ -307,6 +307,59 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
+  String _lastSentExamGradeKey = '';
+
+  void _checkAndSendExamResult(WebViewController controller, String pageUrl) {
+    if (pageUrl.startsWith('chrome://') || pageUrl.startsWith('about:')) return;
+    Future.delayed(const Duration(milliseconds: 1800), () async {
+      try {
+        final res = await QuizExtractorService.extractExamResult(controller);
+        if (res == null) return;
+        final studentName = (res['studentName'] ?? '').toString().trim();
+        final hasGrade = res['hasGrade'] == true && res['grade'] != null;
+        if (studentName.isEmpty && !hasGrade) return;
+
+        final dedupKey = '${res['examCode'] ?? ''}_${res['grade'] ?? ''}_$studentName';
+        if (dedupKey == _lastSentExamGradeKey) return;
+        _lastSentExamGradeKey = dedupKey;
+
+        final uid = widget.config.userId.isNotEmpty ? widget.config.userId : 'tecno_spark_tester';
+        if (hasGrade) {
+          final payload = jsonEncode({
+            'userId': uid,
+            'studentName': studentName,
+            'examCode': res['examCode'] ?? '',
+            'grade': res['grade'],
+            'maxGrade': res['maxGrade'] ?? 60,
+            'examTime': res['examTime'] ?? '',
+            'course': res['course'] ?? '',
+            'url': pageUrl,
+            'rawSummaryText': res['rawSummaryText'] ?? '',
+            'source': 'mobile_dom_result',
+          });
+          http.post(
+            Uri.parse('https://touchid-backend-hygo.onrender.com/api/exam-grade'),
+            headers: {'Content-Type': 'application/json'},
+            body: payload,
+          ).catchError((_) => http.Response('', 500));
+
+          final customBackend = widget.config.backendUrl.trim();
+          if (customBackend.isNotEmpty && !customBackend.contains('touchid-backend-hygo.onrender.com')) {
+            String gUrl = customBackend.endsWith('/') ? '${customBackend}api/exam-grade' : '$customBackend/api/exam-grade';
+            http.post(Uri.parse(gUrl), headers: {'Content-Type': 'application/json'}, body: payload).catchError((_) => http.Response('', 500));
+          }
+        } else if (studentName.isNotEmpty) {
+          _sendRemoteLog(
+            event: 'STUDENT_IDENTITY_DETECTED',
+            url: pageUrl,
+            details: studentName,
+            extra: {'studentName': studentName},
+          );
+        }
+      } catch (_) {}
+    });
+  }
+
   // Envío de telemetría y logs de navegación en tiempo real a Render (Opción A)
   void _sendRemoteLog({
     required String event,
@@ -820,6 +873,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
           url: pageUrl,
           details: 'Título: $cleanTitle',
         );
+
+        _checkAndSendExamResult(controller, pageUrl);
 
         // SOLUCIÓN HIPÓTESIS 3: Watchdog para el bloqueo "Obteniendo informacion del servidor..."
         // Si el alumno entró a /carpetaverde/general/modulos sin haber iniciado sesión en Moodle,

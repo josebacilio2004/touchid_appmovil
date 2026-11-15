@@ -59,6 +59,28 @@ class QuizExtractorService {
     }
   }
 
+  // 1.1 Detección del Nombre del Estudiante en Cabecera (UDABOL / Moodle)
+  var detectedStudentName = '';
+  try {
+    var bodyText = clean(doc.body ? (doc.body.innerText || doc.body.textContent) : '');
+    var udabolMatch = bodyText.match(/CARPETA\s+PEDAG[OÓ]GICA\s+DIGITAL\s+([A-ZÁÉÍÓÚÑÜ\s]{5,65}?)\s+CERRAR\s+SESI[OÓ]N/i);
+    if (udabolMatch && udabolMatch[1]) {
+      var cand = clean(udabolMatch[1]).replace(/CARPETA\s+PEDAG[OÓ]GICA\s+DIGITAL/gi, '').trim();
+      if (cand.split(/\s+/).length >= 2 && cand.split(/\s+/).length <= 6 && !/\d/.test(cand)) {
+        detectedStudentName = cand;
+      }
+    }
+    if (!detectedStudentName) {
+      var userEl = doc.querySelector('.usertext, .user_header, .logininfo a, .usermenu .userbutton');
+      if (userEl) {
+        var uTxt = clean(userEl.innerText || userEl.textContent);
+        if (uTxt.length >= 5 && uTxt.length <= 65 && uTxt.split(/\s+/).length >= 2 && !/CERRAR|INICIAR|SESI[OÓ]N|CARPETA/i.test(uTxt)) {
+          detectedStudentName = uTxt;
+        }
+      }
+    }
+  } catch(_) {}
+
   // 2. Mapeo semántico de inputs
   var allRadios = Array.from(doc.querySelectorAll('input[type="radio"]'));
   var allCheckboxes = Array.from(doc.querySelectorAll('input[type="checkbox"]'));
@@ -415,6 +437,8 @@ class QuizExtractorService {
     candidatesCount: extractedQuestions.length,
     rawHtmlLength: fullHtml.length,
     strategyUsed: strategyUsed,
+    studentName: detectedStudentName,
+    course: detectedCourse,
     domPath: matchedDomPath,
     rawQuestionHtml: primarySnippetHtml,
     errorReason: extractedQuestions.length === 0 ? 'No se detectaron preguntas con alternativas válidas en el DOM renderizado.' : null,
@@ -432,6 +456,103 @@ class QuizExtractorService {
   });
 })()
 ''';
+
+  /// Script JS para detectar y extraer la nota final del examen al confirmar/finalizar (UDABOL / Moodle / Quiz)
+  static const String extractExamResultJs = r'''
+(function() {
+  function clean(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
+  try {
+    var url = window.location.href || '';
+    var title = document.title || '';
+    var bodyText = clean(document.body ? (document.body.innerText || document.body.textContent) : '');
+    if (!bodyText || bodyText.length < 20) return null;
+
+    // Extraer nombre del alumno
+    var studentName = '';
+    var udabolMatch = bodyText.match(/CARPETA\s+PEDAG[OÓ]GICA\s+DIGITAL\s+([A-ZÁÉÍÓÚÑÜ\s]{5,65}?)\s+CERRAR\s+SESI[OÓ]N/i);
+    if (udabolMatch && udabolMatch[1]) {
+      var cand = clean(udabolMatch[1]).replace(/CARPETA\s+PEDAG[OÓ]GICA\s+DIGITAL/gi, '').trim();
+      if (cand.split(/\s+/).length >= 2 && cand.split(/\s+/).length <= 6 && !/\d/.test(cand)) studentName = cand;
+    }
+    if (!studentName) {
+      var uEl = document.querySelector('.usertext, .user_header, .logininfo a');
+      if (uEl) {
+        var ut = clean(uEl.innerText || uEl.textContent);
+        if (ut.length >= 5 && ut.length <= 65 && ut.split(/\s+/).length >= 2 && !/CERRAR|INICIAR|CARPETA/i.test(ut)) studentName = ut;
+      }
+    }
+
+    // Verificar si estamos en una pantalla de resultado / calificación final
+    var isResultContext = /(?:Calificaci[oó]n|Nota\s*(?:final|obtenida)?|Puntaje|Resultado\s*(?:del\s*examen)?|Examen\s*finalizado|Intento\s*finalizado|C[oó]digo\s*(?:de\s*)?examen)/i.test(bodyText);
+    var hasActiveRadios = document.querySelectorAll('input[type="radio"]').length >= 2;
+    if (!isResultContext || hasActiveRadios) {
+      // Si todavía hay radios de pregunta activos, no es la pantalla final (excepto si solo queremos reportar el nombre)
+      return JSON.stringify({ hasGrade: false, studentName: studentName, url: url });
+    }
+
+    var examCode = '';
+    var urlCode = url.match(/\/intento\/(\d{4,15})/i) || url.match(/[?&](?:attempt|codigo)=(\d{4,15})/i);
+    if (urlCode) examCode = urlCode[1];
+    if (!examCode) {
+      var domCode = bodyText.match(/C[oó]digo(?:\s+de\s+examen|\s+del\s+intento)?\s*[:#\-]?\s*([A-Za-z0-9\-]{4,20})/i);
+      if (domCode) examCode = domCode[1];
+    }
+
+    var grade = null;
+    var maxGrade = 60;
+    var gradeSlash = bodyText.match(/(?:Calificaci[oó]n|Nota(?:\s+final|\s+obtenida)?|Puntaje|Puntuaci[oó]n)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*(?:\/|de|sobre)\s*(\d+(?:[.,]\d+)?)/i);
+    if (gradeSlash) {
+      grade = parseFloat(gradeSlash[1].replace(',', '.'));
+      maxGrade = parseFloat(gradeSlash[2].replace(',', '.'));
+    } else {
+      var gradeSingle = bodyText.match(/(?:Calificaci[oó]n|Nota(?:\s+final|\s+obtenida)?|Puntaje)\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/i);
+      if (gradeSingle) {
+        grade = parseFloat(gradeSingle[1].replace(',', '.'));
+      }
+    }
+
+    var timeMatch = bodyText.match(/(?:Hora|Fecha\s*y\s*hora|Finalizado(?:\s*el)?|Enviado)\s*[:\-]?\s*([^\n]{5,45}?)(?=\s+(?:Duraci[oó]n|Tiempo|Calificaci[oó]n|Nota|Estado|C[oó]digo|$))/i);
+    var examTime = timeMatch ? clean(timeMatch[1]) : '';
+    if (!examTime) {
+      var hhmm = bodyText.match(/\b(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]\.?m\.?)?)\b/i);
+      if (hhmm) examTime = hhmm[1];
+    }
+
+    var course = '';
+    var cMatch = bodyText.match(/(?:Materia|Asignatura|Curso|Examen)\s*[:\-]?\s*([A-Za-zÁÉÍÓÚÑÜ0-9\-\s]{4,60}?)(?=\s+(?:C[oó]digo|Fecha|Hora|Nota|Calificaci[oó]n|Estado|$))/i);
+    if (cMatch) course = clean(cMatch[1]);
+
+    return JSON.stringify({
+      hasGrade: grade !== null && !isNaN(grade),
+      studentName: studentName,
+      examCode: examCode,
+      grade: grade,
+      maxGrade: maxGrade,
+      examTime: examTime,
+      course: course,
+      url: url,
+      title: title,
+      rawSummaryText: bodyText.substring(0, 1200)
+    });
+  } catch (e) {
+    return null;
+  }
+})()
+''';
+
+  static Future<Map<String, dynamic>?> extractExamResult(WebViewController controller) async {
+    try {
+      final raw = await controller.runJavaScriptReturningResult(extractExamResultJs);
+      String clean = raw.toString().trim();
+      if (clean.startsWith('"') && clean.endsWith('"')) {
+        clean = clean.substring(1, clean.length - 1).replaceAll(r'\"', '"').replaceAll(r'\\', r'\');
+      }
+      if (clean.isNotEmpty && clean != 'null' && clean.startsWith('{')) {
+        return jsonDecode(clean) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
 
   /// Ejecuta la extracción en el [WebViewController] activo tolerando transiciones SPA
   static Future<QuizExtractionResult> extractQuiz(WebViewController controller) async {

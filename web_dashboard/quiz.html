@@ -1552,6 +1552,26 @@
         resStatus.className = 'results-status status-fail';
         resStatus.textContent = `Calificación Obtenida: ${correctCount}/${totalQ} (${percent}%)`;
         resMsg.textContent = `Has obtenido ${correctCount} aciertos de ${totalQ}. Te recomendamos repasar los fundamentos clínicos y volver a presentar el simulador.`;
+        try {
+          const defaultBackend = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000'
+            : 'https://touchid-backend-hygo.onrender.com';
+          const backendUrl = localStorage.getItem('touchid_backend_url') || defaultBackend;
+          fetch(`${backendUrl}/api/exam-grade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: 'unlimited_user_touchid',
+              course: currentCategory ? currentCategory.title : 'Simulador Médico',
+              examCode: `sim_${currentCategory ? currentCategory.id : 'quiz'}_${Date.now()}`,
+              grade: correctCount * 3,
+              maxGrade: totalQ * 3,
+              examTime: new Date().toLocaleTimeString(),
+              rawSummaryText: `Simulador: ${correctCount}/${totalQ} (${percent}%)`,
+              source: 'quiz_simulator'
+            })
+          }).catch(() => {});
+        } catch (_) {}
       }
 
       window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -281,21 +281,37 @@ function renderUsersTable(users) {
     }
 
     const dateStr = u.updatedAt ? new Date(u.updatedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
+    const activeExamHtml = u.activeExam
+      ? `<div style="font-size: 11px; color: #fbbf24; font-weight: 600;">⚡ En curso: ${escapeHtml(u.activeExam.course || u.activeExam.examCode || 'Examen')} (${u.activeExam.questionCount || 0} preg.)</div>`
+      : '';
+    const lastGradeHtml = u.lastGrade
+      ? `<div style="font-size: 11.5px; color: #34d399; font-weight: 700;">🏆 ${escapeHtml(String(u.lastGrade.grade))}/${escapeHtml(String(u.lastGrade.maxGrade || 60))} <span style="color:#94a3b8;font-weight:400;">(${escapeHtml(u.lastGrade.examCode || u.lastGrade.course || 'Oficial')})</span></div>`
+      : (u.totalQuestionsSolved ? `<div style="font-size: 11px; color: #94a3b8;">${u.totalQuestionsSolved} preg. resueltas</div>` : `<span style="color:#64748b;font-size:11.5px;">Sin exámenes</span>`);
+    const examSummaryHtml = `${activeExamHtml}${lastGradeHtml}`;
 
     tr.innerHTML = `
       <td>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-family: monospace; font-size: 13px; font-weight: 600; color: #f8fafc;">${escapeHtml(id)}</span>
+          <div>
+            ${u.studentName ? `<div style="font-weight: 700; font-size: 13px; color: #f8fafc; margin-bottom: 2px;">${escapeHtml(u.studentName)}</div>` : ''}
+            <span style="font-family: monospace; font-size: 12.5px; font-weight: 600; color: ${u.studentName ? '#93c5fd' : '#f8fafc'};">${escapeHtml(id)}</span>
+          </div>
           ${isSpecial ? '<span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; font-size: 10px; padding: 1px 6px;">ADMIN</span>' : ''}
         </div>
       </td>
       <td>${creditDisplay}</td>
       <td>${statusDisplay}</td>
       <td style="color: #94a3b8; font-size: 12.5px;">${dateStr}</td>
+      <td>${examSummaryHtml}</td>
       <td>
-        <button class="btn btn-quick-recharge" data-user="${escapeHtml(id)}" style="padding: 4px 10px; font-size: 11.5px; height: auto; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button class="btn btn-user-exams" data-user="${escapeHtml(id)}" style="padding: 4px 10px; font-size: 11.5px; height: auto; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 6px;">
+            📊 Exámenes
+          </button>
+          <button class="btn btn-quick-recharge" data-user="${escapeHtml(id)}" style="padding: 4px 10px; font-size: 11.5px; height: auto; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px;">
           + Recargar
         </button>
+        </div>
       </td>
     `;
 
@@ -305,6 +321,12 @@ function renderUsersTable(users) {
 
 if (usersCreditTableBody) {
   usersCreditTableBody.addEventListener('click', (e) => {
+    const examsBtn = e.target.closest('.btn-user-exams');
+    if (examsBtn) {
+      const uId = examsBtn.getAttribute('data-user');
+      if (uId && window.openUserExamsModal) window.openUserExamsModal(uId);
+      return;
+    }
     const btn = e.target.closest('.btn-quick-recharge');
     if (btn) {
       const uId = btn.getAttribute('data-user');
@@ -326,6 +348,184 @@ if (usersCreditSearch) {
     renderUsersTable(allUsersList);
   });
 }
+
+// Modal de Historial de Exámenes y Auditoría por Estudiante
+(function initUserExamsModal() {
+  const modal = document.getElementById('modal-user-exams');
+  const closeBtn = document.getElementById('modal-user-exams-close');
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+  }
+})();
+
+window.openUserExamsModal = async function openUserExamsModal(userId) {
+  const modal = document.getElementById('modal-user-exams');
+  const titleEl = document.getElementById('modal-user-exams-title');
+  const subEl = document.getElementById('modal-user-exams-subtitle');
+  const listEl = document.getElementById('user-exams-list');
+  if (!modal || !listEl) return;
+
+  modal.style.display = 'flex';
+  if (titleEl) titleEl.textContent = `📊 Exámenes de ${userId}`;
+  if (subEl) subEl.textContent = 'Consultando historial y auditoría en MongoDB...';
+  listEl.innerHTML = '<div class="empty-state">Cargando exámenes y auditando respuestas...</div>';
+
+  try {
+    const res = await fetch(`${backendUrl}/admin/users/${encodeURIComponent(userId)}/exams`, {
+      headers: { 'x-admin-token': adminToken }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    const user = data.user || {};
+    const displayName = user.studentName || userId;
+    if (titleEl) titleEl.textContent = `📊 Exámenes — ${displayName}`;
+    if (subEl) {
+      subEl.textContent = `ID: ${userId} • Universidad: ${user.university || 'N/A'} • Créditos: ${user.isUnlimited ? 'Ilimitado' : (user.credits ?? 0)} • Sesiones encontradas: ${data.totalExams || 0}`;
+    }
+
+    const exams = data.exams || [];
+    if (exams.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">Este estudiante aún no registra preguntas ni exámenes en el historial.</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    exams.forEach((ex, idx) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 12px; padding: 16px;';
+
+      const statusBadge = ex.status === 'in_progress'
+        ? '<span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700;">⚡ En curso</span>'
+        : '<span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700;">✅ Finalizado</span>';
+
+      const startStr = ex.startTime ? new Date(ex.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—';
+      const endStr = ex.endTime ? new Date(ex.endTime).toLocaleString([], { timeStyle: 'short' }) : '—';
+
+      const og = ex.officialGrade;
+      const officialHtml = og
+        ? `<div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 8px 12px;">
+             <div style="font-size: 11px; color: #94a3b8;">Nota Oficial Plataforma (${escapeHtml(og.source || 'DOM')})</div>
+             <div style="font-size: 18px; font-weight: 800; color: #34d399;">🏆 ${escapeHtml(String(og.grade))} / ${escapeHtml(String(og.maxGrade || 60))}</div>
+             ${og.examTime ? `<div style="font-size: 11px; color: #cbd5e1;">Hora: ${escapeHtml(og.examTime)}</div>` : ''}
+             ${og.rawSummaryText ? `<div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">${escapeHtml(og.rawSummaryText)}</div>` : ''}
+           </div>`
+        : `<div style="background: rgba(100, 116, 139, 0.12); border: 1px dashed rgba(148, 163, 184, 0.25); border-radius: 8px; padding: 8px 12px;">
+             <div style="font-size: 11px; color: #94a3b8;">Nota Oficial Plataforma</div>
+             <div style="font-size: 13px; color: #cbd5e1; font-weight: 600;">Pendiente de captura</div>
+           </div>`;
+
+      const auditHtml = `
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 8px 12px;">
+          <div style="font-size: 11px; color: #94a3b8;">Auditoría vs Banco (${ex.questionCount} preg.)</div>
+          <div style="font-size: 18px; font-weight: 800; color: #38bdf8;">📊 ${ex.calculatedScore60} / ${ex.maxCalculated60} pts</div>
+          <div style="font-size: 11.5px; color: #cbd5e1; margin-top: 2px;">
+            ✅ ${ex.correctCount} &nbsp;|&nbsp; ❌ ${ex.wrongCount} &nbsp;|&nbsp; ⬜ ${ex.unansweredCount} &nbsp;|&nbsp; ⚠️ ${ex.unverifiedCount}
+          </div>
+        </div>
+      `;
+
+      const rowsHtml = (ex.questions || []).map(q => {
+        const badgeMap = {
+          correct: '<span style="color:#34d399;font-weight:700;">✅ Correcta</span>',
+          wrong: '<span style="color:#f87171;font-weight:700;">❌ Incorrecta</span>',
+          unanswered: '<span style="color:#94a3b8;">⬜ Sin marcar</span>',
+          unverified: '<span style="color:#fbbf24;">⚠️ No auditada</span>'
+        };
+        return `
+          <tr style="border-top: 1px solid rgba(148,163,184,0.1);">
+            <td style="padding: 6px 8px; color: #94a3b8; font-size: 11.5px; vertical-align: top;">${q.num}</td>
+            <td style="padding: 6px 8px; color: #e2e8f0; font-size: 12px; max-width: 320px;">${escapeHtml((q.question || '').slice(0, 180))}${(q.question || '').length > 180 ? '...' : ''}</td>
+            <td style="padding: 6px 8px; color: #cbd5e1; font-size: 11.5px;">${escapeHtml(q.studentAnswer || '—')}</td>
+            <td style="padding: 6px 8px; color: #93c5fd; font-size: 11.5px;">${escapeHtml(q.bankAnswer || '—')}</td>
+            <td style="padding: 6px 8px; font-size: 11.5px; white-space: nowrap;">${badgeMap[q.status] || q.status}</td>
+          </tr>
+        `;
+      }).join('');
+
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <strong style="color: #f8fafc; font-size: 15px;">#${idx + 1} ${escapeHtml(ex.course || ex.examTitle || 'Examen')}</strong>
+              ${statusBadge}
+            </div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">
+              Código: <code style="color:#93c5fd;">${escapeHtml(ex.examCode || 'N/A')}</code> &nbsp;•&nbsp; Horario: ${startStr} → ${endStr}
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            ${officialHtml}
+            ${auditHtml}
+          </div>
+        </div>
+
+        <form class="manual-grade-form" data-user="${escapeHtml(userId)}" data-code="${escapeHtml(ex.examCode || '')}" data-course="${escapeHtml(ex.course || '')}" style="margin-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid rgba(148,163,184,0.12);">
+          <span style="font-size: 11.5px; color: #94a3b8;">Registrar/Ajustar nota oficial:</span>
+          <input type="number" step="0.1" name="grade" placeholder="Nota" value="${og && og.grade !== undefined ? escapeHtml(String(og.grade)) : ''}" style="width: 78px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(148,163,184,0.25); background: #0f172a; color: #f8fafc; font-size: 12px;" required>
+          <span style="color:#64748b;">/</span>
+          <input type="number" step="0.1" name="maxGrade" value="${og && og.maxGrade ? escapeHtml(String(og.maxGrade)) : '60'}" style="width: 68px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(148,163,184,0.25); background: #0f172a; color: #f8fafc; font-size: 12px;">
+          <button type="submit" class="btn btn-sm" style="padding: 4px 10px; font-size: 11.5px; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 6px;">💾 Guardar Nota</button>
+        </form>
+
+        <details style="margin-top: 10px;">
+          <summary style="cursor: pointer; font-size: 12px; color: #38bdf8; font-weight: 600;">Ver detalle de ${ex.questionCount} preguntas y respuestas</summary>
+          <div style="overflow-x: auto; margin-top: 8px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead>
+                <tr style="color: #94a3b8; font-size: 11px; border-bottom: 1px solid rgba(148,163,184,0.2);">
+                  <th style="padding: 6px 8px;">#</th>
+                  <th style="padding: 6px 8px;">Pregunta</th>
+                  <th style="padding: 6px 8px;">Marcada</th>
+                  <th style="padding: 6px 8px;">Clave Banco</th>
+                  <th style="padding: 6px 8px;">Estado</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        </details>
+      `;
+
+      listEl.appendChild(card);
+    });
+
+    listEl.querySelectorAll('.manual-grade-form').forEach(form => {
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const uId = form.getAttribute('data-user');
+        const examCode = form.getAttribute('data-code');
+        const course = form.getAttribute('data-course');
+        const gradeVal = form.querySelector('input[name="grade"]').value;
+        const maxGradeVal = form.querySelector('input[name="maxGrade"]').value;
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) btn.textContent = 'Guardando...';
+        try {
+          const saveRes = await fetch(`${backendUrl}/admin/exams/grade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+            body: JSON.stringify({
+              userId: uId,
+              examCode,
+              course,
+              grade: Number(gradeVal),
+              maxGrade: Number(maxGradeVal || 60)
+            })
+          });
+          if (!saveRes.ok) throw new Error('Error guardando nota');
+          await openUserExamsModal(uId);
+          if (typeof loadUsers === 'function') loadUsers();
+        } catch (err) {
+          alert('Error al guardar nota: ' + err.message);
+          if (btn) btn.textContent = '💾 Guardar Nota';
+        }
+      });
+    });
+  } catch (err) {
+    listEl.innerHTML = `<div class="empty-state" style="color: #f87171;">Error al cargar exámenes: ${escapeHtml(err.message)}</div>`;
+  }
+};
 
 async function loadLicenses() {
   try {

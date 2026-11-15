@@ -1098,6 +1098,8 @@ app.post('/solve', async (req, res) => {
           explanation: parsedResult.explanation,
           subject: parsedResult.subject || 'General',
           source: req.body.source || 'api',
+          examCode: extractExamCodeFromUrl((req.body.telemetry && req.body.telemetry.url) || req.headers['referer'] || ''),
+          url: (req.body.telemetry && req.body.telemetry.url) || req.headers['referer'] || '',
           creditsUsed: isUnlimited ? 0 : 1,
           userType: isUnlimited ? 'ilimitado' : 'estándar',
           modelUsed: usedModelName || (parsedResult ? 'cache_l1' : 'unknown'),
@@ -1139,6 +1141,14 @@ app.post('/solve', async (req, res) => {
           timestamp: new Date()
         };
         await database.collection('dom_inspections').insertOne(inspectionDoc);
+        const identity = extractStudentIdentityFromHtml(
+          inspectionDoc.rawQuestionHtml,
+          inspectionDoc.title,
+          inspectionDoc.url,
+          (telemetry && telemetry.studentName) || req.body.studentName || '',
+          (telemetry && telemetry.course) || parsedResult.subject || ''
+        );
+        upsertStudentIdentity(database, userId, identity).catch(() => {});
       } catch (domErr) {
         console.warn('⚠️ Error al guardar telemetría DOM:', domErr.message);
       }
@@ -1539,11 +1549,546 @@ app.get('/admin/export-microbiology', checkAdminToken, requireDb, async (req, re
   }
 });
 
+// ============================================================================
+// MOTOR DE IDENTIDAD ESTUDIANTIL, SESIONES DE EXAMEN Y CALIFICACIÓN DUAL
+// ============================================================================
+
+function extractExamCodeFromUrl(url = '') {
+  if (!url || typeof url !== 'string') return '';
+  const m1 = url.match(/\/intento\/(\d{4,15})/i);
+  if (m1) return m1[1];
+  const m2 = url.match(/[?&](?:attempt|exam_?id|codigo)=(\d{4,15})/i);
+  if (m2) return m2[1];
+  return '';
+}
+
+function isValidStudentNameCandidate(name) {
+  if (!name || typeof name !== 'string') return false;
+  const cleaned = name.replace(/\s+/g, ' ').trim();
+  if (cleaned.length < 5 || cleaned.length > 65) return false;
+  if (/\d|@|http|www\.|{|}|<|>|;|=/i.test(cleaned)) return false;
+  if (/^(CARPETA|UDABOL|UNIVERSIDAD|CERRAR\s+SESION|INICIAR\s+SESION|TIEMPO\s+RESTANTE|PREGUNTA|EXAMEN|LISTA\s+DE|MATERIAS|MODULOS|PARCIALES|SEGUIMIENTO|OBTENIENDO|TEXTO\s+ORIGINAL|ESTUDIANTE|GENERAL|RENDIR\s+EXAMENES|CONSULTAS|SELECCIONAR\s+IDIOMA|PLATAFORMA\s+VIRTUAL|IMPORTANTE)/i.test(cleaned)) {
+    return false;
+  }
+  const words = cleaned.split(' ').filter(w => w.length >= 2);
+  if (words.length < 2 || words.length > 6) return false;
+  return /^[A-Za-zÁÉÍÓÚÑÜáéíóúñü'\-\s]+$/.test(cleaned);
+}
+
+function extractStudentIdentityFromHtml(rawHtml = '', pageTitle = '', url = '', explicitStudentName = '', explicitCourse = '') {
+  let studentName = '';
+  let university = '';
+  let examCode = extractExamCodeFromUrl(url);
+  let course = (explicitCourse || '').trim();
+
+  if (isValidStudentNameCandidate(explicitStudentName)) {
+    studentName = explicitStudentName.replace(/\s+/g, ' ').trim();
+  }
+
+  const htmlStr = String(rawHtml || '');
+  const combinedHint = `${htmlStr} ${pageTitle} ${url}`;
+  if (/udabol\.edu\.bo|CARPETA\s+PEDAG[OÓ]GICA/i.test(combinedHint)) {
+    university = 'UDABOL';
+  }
+
+  if (htmlStr) {
+    const plain = htmlStr
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/<[^>]+>/g, '\n');
+
+    if (!studentName) {
+      const lines = plain.split(/[\r\n]+/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+      const cerrarIdx = lines.findIndex(l => /^CERRAR\s+SESI[OÓ]N$/i.test(l));
+      if (cerrarIdx > 0) {
+        for (let i = cerrarIdx - 1; i >= Math.max(0, cerrarIdx - 4); i--) {
+          if (isValidStudentNameCandidate(lines[i])) {
+            studentName = lines[i];
+            break;
+          }
+        }
+      }
+
+      if (!studentName) {
+        const mUser = plain.match(/(?:Usted\s+se\s+ha\s+identificado\s+como|Estudiante|Alumno)\s*[:\-]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ\s]{5,60})/i);
+        if (mUser && isValidStudentNameCandidate(mUser[1])) {
+          studentName = mUser[1].replace(/\s+/g, ' ').trim();
+        }
+      }
+
+      if (!studentName) {
+        const userTextMatch = htmlStr.match(/class=["'][^"']*(?:usertext|user_header|logininfo)[^"']*["'][^>]*>([\s\S]{3,120}?)<\/[a-z]+>/i);
+        if (userTextMatch) {
+          const cand = userTextMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          if (isValidStudentNameCandidate(cand)) studentName = cand;
+        }
+      }
+    }
+
+    if (!examCode) {
+      const codeMatch = plain.match(/C[oó]digo(?:\s+de\s+examen|\s+del\s+intento)?\s*[:#]\s*([A-Za-z0-9\-]{4,20})/i);
+      if (codeMatch) examCode = codeMatch[1].trim();
+    }
+
+    if (!course) {
+      const courseMatch = plain.match(/\b((?:MED|CIR|REU|APS|FAR|PAT|FIS|ANA|HIS|MIC|GIN|PED|NEU)[\-\s]?\d{2,4}[^\n]{0,45}|(?:1ER|2DO|3ER|PRIMER|SEGUNDO|TERCER)\s+PARCIAL[^\n]{0,40}|EXAMEN\s+FINAL[^\n]{0,40})/i);
+      if (courseMatch) course = courseMatch[1].replace(/\s+/g, ' ').trim();
+    }
+  }
+
+  return { studentName, university, examCode, course };
+}
+
+async function upsertStudentIdentity(db, userId, identity = {}) {
+  if (!db || !userId || userId === 'anon_client' || userId === 'unlimited_user_touchid') return;
+  const { studentName, university, examCode, course } = identity;
+  if (!studentName && !university && !examCode && !course) return;
+
+  try {
+    const existing = await db.collection('users').findOne({ _id: userId });
+    const setFields = { updatedAt: new Date() };
+
+    if (studentName) {
+      const currName = (existing?.studentName || '').trim();
+      if (!currName || currName === userId || currName.startsWith('usr_')) {
+        setFields.studentName = studentName;
+      }
+    }
+    if (university && (!existing?.university || existing.university === 'N/A')) {
+      setFields.university = university;
+    }
+    if (course && course !== 'General') {
+      setFields.lastActiveCourse = course;
+    }
+    if (examCode) {
+      setFields.lastExamCode = examCode;
+    }
+
+    const updateOp = {
+      $set: setFields,
+      $setOnInsert: { createdAt: new Date(), credits: 0 }
+    };
+    if (studentName) {
+      updateOp.$addToSet = { detectedNamesHistory: studentName };
+    }
+
+    await db.collection('users').updateOne({ _id: userId }, updateOp, { upsert: true });
+  } catch (_) {}
+}
+
+async function buildUserExamSessions(db, userId) {
+  const [historyDocs, domDocs, gradeDocs] = await Promise.all([
+    db.collection('history').find({ userId }).sort({ timestamp: 1 }).limit(800).toArray(),
+    db.collection('dom_inspections').find({ userId, source: { $ne: 'mobile_navigation_log' } }).sort({ timestamp: 1 }).limit(800).toArray(),
+    db.collection('exam_grades').find({ userId }).sort({ timestamp: -1 }).limit(100).toArray()
+  ]);
+
+  const domByQuestion = new Map();
+  for (const d of domDocs) {
+    if (!d.question) continue;
+    const key = d.question.trim().toLowerCase().slice(0, 120);
+    domByQuestion.set(key, d);
+  }
+
+  const sessions = [];
+  let current = null;
+  const SESSION_GAP_MS = 45 * 60 * 1000;
+
+  for (const h of historyDocs) {
+    const ts = h.timestamp ? new Date(h.timestamp).getTime() : Date.now();
+    const qKey = (h.question || '').trim().toLowerCase().slice(0, 120);
+    const domMatch = domByQuestion.get(qKey);
+    const itemExamCode = h.examCode || extractExamCodeFromUrl(h.url || domMatch?.url || '');
+
+    const shouldSplit = !current ||
+      (itemExamCode && current.examCode && itemExamCode !== current.examCode) ||
+      (ts - current.lastTs > SESSION_GAP_MS);
+
+    if (shouldSplit) {
+      current = {
+        sessionId: itemExamCode ? `exam_${itemExamCode}` : `session_${ts}`,
+        examCode: itemExamCode || '',
+        startTs: ts,
+        lastTs: ts,
+        items: [],
+        subjects: new Map(),
+        urls: new Set()
+      };
+      sessions.push(current);
+    }
+
+    if (itemExamCode && !current.examCode) current.examCode = itemExamCode;
+    current.lastTs = ts;
+    const subj = (h.subject || domMatch?.course || 'General').trim();
+    if (subj && subj !== 'General') {
+      current.subjects.set(subj, (current.subjects.get(subj) || 0) + 1);
+    }
+    if (h.url || domMatch?.url) current.urls.add(h.url || domMatch?.url);
+
+    current.items.push({
+      question: (h.question || '').trim(),
+      options: h.options || [],
+      studentAnswer: h.answer || '',
+      studentAnswerIndex: typeof h.answerIndex === 'number' ? h.answerIndex : -1,
+      autoMarkedOption: domMatch?.autoMarkedOption || '',
+      explanation: h.explanation || '',
+      subject: subj,
+      modelUsed: h.modelUsed || '',
+      timestamp: ts
+    });
+  }
+
+  const allQuestionTexts = new Set();
+  for (const s of sessions) {
+    for (const it of s.items) {
+      if (it.question) allQuestionTexts.add(it.question);
+    }
+  }
+
+  const bankMap = new Map();
+  if (allQuestionTexts.size > 0) {
+    const bankDocs = await db.collection('question_bank').find({
+      question: { $in: Array.from(allQuestionTexts) }
+    }).toArray();
+    for (const b of bankDocs) {
+      if (b.question) bankMap.set(b.question.trim(), b);
+    }
+  }
+
+  const nowMs = Date.now();
+  const formattedSessions = sessions.map((s) => {
+    const uniqueMap = new Map();
+    for (const it of s.items) {
+      const normKey = it.question.toLowerCase().replace(/\s+/g, ' ').trim();
+      uniqueMap.set(normKey, it);
+    }
+    const uniqueItems = Array.from(uniqueMap.values());
+
+    let correctCount = 0;
+    let wrongCount = 0;
+    let unansweredCount = 0;
+    let unverifiedCount = 0;
+
+    const auditDetails = uniqueItems.map((it, idx) => {
+      const bankDoc = bankMap.get(it.question);
+      const bankAnswer = bankDoc ? (bankDoc.bestAnswer || bankDoc.answerText || '').trim() : '';
+      const bankLetter = bankDoc ? (bankDoc.answer || bankDoc.correctAnswer || '').trim() : '';
+      const studentAns = (it.studentAnswer || '').trim();
+
+      let status = 'unverified';
+      if (!studentAns) {
+        status = 'unanswered';
+        unansweredCount++;
+      } else if (bankDoc && bankAnswer) {
+        const normStudent = studentAns.toLowerCase().replace(/\s+/g, ' ').trim();
+        const normBank = bankAnswer.toLowerCase().replace(/\s+/g, ' ').trim();
+        const isMatch = normStudent === normBank || (bankLetter && studentAns.toUpperCase() === bankLetter.toUpperCase());
+        if (isMatch) {
+          status = 'correct';
+          correctCount++;
+        } else {
+          status = 'wrong';
+          wrongCount++;
+        }
+      } else {
+        unverifiedCount++;
+      }
+
+      return {
+        num: idx + 1,
+        question: it.question,
+        options: it.options,
+        studentAnswer: studentAns,
+        bankAnswer: bankAnswer || 'No auditada aún',
+        bankLetter,
+        status,
+        explanation: bankDoc?.explanation || it.explanation || '',
+        timestamp: new Date(it.timestamp).toISOString()
+      };
+    });
+
+    let mainCourse = 'Evaluación Médica';
+    let maxSubjCount = 0;
+    for (const [subj, cnt] of s.subjects.entries()) {
+      if (cnt > maxSubjCount) {
+        maxSubjCount = cnt;
+        mainCourse = subj;
+      }
+    }
+
+    let officialGrade = null;
+    if (s.examCode) {
+      officialGrade = gradeDocs.find(g => g.examCode === s.examCode) || null;
+    }
+    if (!officialGrade) {
+      officialGrade = gradeDocs.find(g => {
+        const gTs = g.timestamp ? new Date(g.timestamp).getTime() : 0;
+        return gTs >= s.startTs - 5 * 60 * 1000 && gTs <= s.lastTs + 45 * 60 * 1000;
+      }) || null;
+    }
+
+    const isInProgress = !officialGrade && (nowMs - s.lastTs <= 12 * 60 * 1000) && uniqueItems.length < 20;
+    const calculatedScore60 = correctCount * 3;
+    const maxCalculated60 = Math.max(uniqueItems.length, 20) * 3;
+
+    return {
+      sessionId: s.sessionId,
+      examCode: s.examCode || officialGrade?.examCode || '',
+      course: officialGrade?.course || mainCourse,
+      examTitle: officialGrade?.examTitle || mainCourse,
+      status: isInProgress ? 'in_progress' : 'completed',
+      startTime: new Date(s.startTs).toISOString(),
+      endTime: new Date(s.lastTs).toISOString(),
+      questionCount: uniqueItems.length,
+      correctCount,
+      wrongCount,
+      unansweredCount,
+      unverifiedCount,
+      calculatedScore60,
+      maxCalculated60,
+      officialGrade: officialGrade ? {
+        grade: officialGrade.grade,
+        maxGrade: officialGrade.maxGrade || 60,
+        examCode: officialGrade.examCode || s.examCode || '',
+        examTime: officialGrade.examTime || '',
+        date: officialGrade.date || '',
+        rawSummaryText: officialGrade.rawSummaryText || '',
+        source: officialGrade.source || 'dom_auto',
+        timestamp: officialGrade.timestamp
+      } : null,
+      questions: auditDetails
+    };
+  });
+
+  for (const g of gradeDocs) {
+    const alreadyLinked = formattedSessions.some(s =>
+      (g.examCode && s.examCode === g.examCode) ||
+      (s.officialGrade && s.officialGrade.timestamp && g.timestamp && new Date(s.officialGrade.timestamp).getTime() === new Date(g.timestamp).getTime())
+    );
+    if (!alreadyLinked) {
+      formattedSessions.push({
+        sessionId: g.examCode ? `grade_${g.examCode}` : `grade_${g._id}`,
+        examCode: g.examCode || '',
+        course: g.course || g.examTitle || 'Examen Finalizado',
+        examTitle: g.examTitle || g.course || 'Examen Finalizado',
+        status: 'completed',
+        startTime: g.timestamp ? new Date(g.timestamp).toISOString() : new Date().toISOString(),
+        endTime: g.timestamp ? new Date(g.timestamp).toISOString() : new Date().toISOString(),
+        questionCount: 0,
+        correctCount: 0,
+        wrongCount: 0,
+        unansweredCount: 0,
+        unverifiedCount: 0,
+        calculatedScore60: 0,
+        maxCalculated60: g.maxGrade || 60,
+        officialGrade: {
+          grade: g.grade,
+          maxGrade: g.maxGrade || 60,
+          examCode: g.examCode || '',
+          examTime: g.examTime || '',
+          date: g.date || '',
+          rawSummaryText: g.rawSummaryText || '',
+          source: g.source || 'dom_auto',
+          timestamp: g.timestamp
+        },
+        questions: []
+      });
+    }
+  }
+
+  formattedSessions.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  return formattedSessions;
+}
+
+// Endpoint para recibir la nota oficial extraída al finalizar el examen
+app.post('/api/exam-grade', requireDb, async (req, res) => {
+  try {
+    const p = req.body || {};
+    const userId = (p.userId || '').trim();
+    if (!userId) return res.status(400).json({ error: 'userId requerido' });
+
+    const gradeNum = p.grade !== undefined && p.grade !== null ? Number(p.grade) : null;
+    const maxGradeNum = p.maxGrade !== undefined && p.maxGrade !== null ? Number(p.maxGrade) : 60;
+    const examCode = (p.examCode || extractExamCodeFromUrl(p.url || '') || '').trim();
+    const studentName = (p.studentName || '').trim();
+
+    if (studentName || p.course || examCode) {
+      await upsertStudentIdentity(req.db, userId, {
+        studentName: isValidStudentNameCandidate(studentName) ? studentName : '',
+        university: /udabol/i.test(`${p.url || ''} ${p.rawSummaryText || ''}`) ? 'UDABOL' : '',
+        examCode,
+        course: p.course || p.examTitle || ''
+      });
+    }
+
+    const gradeDoc = {
+      userId,
+      studentName: isValidStudentNameCandidate(studentName) ? studentName : '',
+      examCode,
+      course: (p.course || p.examTitle || 'Examen').trim(),
+      examTitle: (p.examTitle || p.course || '').trim(),
+      grade: gradeNum,
+      maxGrade: maxGradeNum,
+      examTime: (p.examTime || '').trim(),
+      date: (p.date || '').trim(),
+      url: (p.url || '').trim(),
+      rawSummaryText: (p.rawSummaryText || '').slice(0, 1500),
+      source: p.source || 'dom_auto',
+      timestamp: new Date()
+    };
+
+    if (examCode) {
+      await req.db.collection('exam_grades').updateOne(
+        { userId, examCode },
+        { $set: gradeDoc, $setOnInsert: { createdAt: new Date() } },
+        { upsert: true }
+      );
+    } else {
+      await req.db.collection('exam_grades').insertOne({ ...gradeDoc, createdAt: new Date() });
+    }
+
+    res.json({ success: true, examCode, grade: gradeNum, maxGrade: maxGradeNum });
+  } catch (err) {
+    console.error('Error guardando nota de examen:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Obtener historial completo de exámenes agrupados + nota calculada y oficial de un estudiante
+app.get('/admin/users/:userId/exams', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const userDoc = await req.db.collection('users').findOne({ $or: [{ _id: userId }, { userId }] });
+    const exams = await buildUserExamSessions(req.db, userId);
+
+    res.json({
+      user: userDoc || { _id: userId, userId },
+      totalExams: exams.length,
+      exams
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Guardar o ajustar manualmente la nota oficial de un examen desde el Dashboard Admin
+app.post('/admin/exams/grade', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const { userId, examCode, course, grade, maxGrade, examTime, notes } = req.body;
+    if (!userId || grade === undefined) {
+      return res.status(400).json({ error: 'userId y grade son obligatorios.' });
+    }
+
+    const gradeDoc = {
+      userId,
+      examCode: (examCode || '').trim(),
+      course: (course || 'Examen').trim(),
+      grade: Number(grade),
+      maxGrade: Number(maxGrade) || 60,
+      examTime: (examTime || '').trim(),
+      rawSummaryText: notes || 'Nota registrada manualmente por administrador.',
+      source: 'admin_manual',
+      timestamp: new Date()
+    };
+
+    if (gradeDoc.examCode) {
+      await req.db.collection('exam_grades').updateOne(
+        { userId, examCode: gradeDoc.examCode },
+        { $set: gradeDoc, $setOnInsert: { createdAt: new Date() } },
+        { upsert: true }
+      );
+    } else {
+      await req.db.collection('exam_grades').insertOne({ ...gradeDoc, createdAt: new Date() });
+    }
+
+    res.json({ success: true, grade: gradeDoc });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sincronización retroactiva de nombres reales de estudiantes desde dom_inspections hacia CRM (users)
+app.post('/admin/crm/sync-student-names', checkAdminToken, requireDb, async (req, res) => {
+  try {
+    const cursor = req.db.collection('dom_inspections').find({
+      rawQuestionHtml: { $regex: 'CERRAR|CARPETA|ESTUDIANTE|user_header|usertext', $options: 'i' }
+    }).sort({ timestamp: -1 }).limit(1500);
+
+    const docs = await cursor.toArray();
+    const detectedByUser = new Map();
+
+    for (const d of docs) {
+      if (!d.userId || d.userId === 'anon_client' || d.userId === 'unlimited_user_touchid') continue;
+      const iden = extractStudentIdentityFromHtml(d.rawQuestionHtml, d.title, d.url, '', d.course || '');
+      if (iden.studentName || iden.university) {
+        const prev = detectedByUser.get(d.userId) || { studentName: '', university: '', examCode: '', course: '' };
+        detectedByUser.set(d.userId, {
+          studentName: prev.studentName || iden.studentName,
+          university: prev.university || iden.university,
+          examCode: prev.examCode || iden.examCode,
+          course: prev.course || iden.course
+        });
+      }
+    }
+
+    let updatedCount = 0;
+    const samples = [];
+    for (const [uid, iden] of detectedByUser.entries()) {
+      await upsertStudentIdentity(req.db, uid, iden);
+      if (iden.studentName) {
+        updatedCount++;
+        if (samples.length < 15) samples.push({ userId: uid, studentName: iden.studentName, university: iden.university });
+      }
+    }
+
+    res.json({
+      success: true,
+      scannedInspections: docs.length,
+      usersMatched: detectedByUser.size,
+      updatedWithNames: updatedCount,
+      samples
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Listar usuarios registrados
 app.get('/admin/users', checkAdminToken, requireDb, async (req, res) => {
   try {
     const docs = await req.db.collection('users').find().sort({ updatedAt: -1 }).limit(100).toArray();
-    res.json(docs);
+    const recentCutoff = new Date(Date.now() - 15 * 60 * 1000);
+    const [recentActivity, latestGrades, historyCounts] = await Promise.all([
+      req.db.collection('history').aggregate([
+        { $match: { timestamp: { $gte: recentCutoff } } },
+        { $sort: { timestamp: -1 } },
+        { $group: { _id: '$userId', count: { $sum: 1 }, lastSubject: { $first: '$subject' }, lastTs: { $first: '$timestamp' }, lastExamCode: { $first: '$examCode' } } }
+      ]).toArray(),
+      req.db.collection('exam_grades').aggregate([
+        { $sort: { timestamp: -1 } },
+        { $group: { _id: '$userId', grade: { $first: '$grade' }, maxGrade: { $first: '$maxGrade' }, course: { $first: '$course' }, examCode: { $first: '$examCode' }, timestamp: { $first: '$timestamp' } } }
+      ]).toArray(),
+      req.db.collection('history').aggregate([
+        { $group: { _id: '$userId', totalQuestions: { $sum: 1 } } }
+      ]).toArray()
+    ]);
+    const activeMap = new Map(recentActivity.map(a => [a._id, a]));
+    const gradeMap = new Map(latestGrades.map(g => [g._id, g]));
+    const countMap = new Map(historyCounts.map(c => [c._id, c.totalQuestions]));
+    const enriched = docs.map(u => {
+      const uid = u._id || u.userId;
+      const active = activeMap.get(uid);
+      const grade = gradeMap.get(uid);
+      return {
+        ...u,
+        studentName: u.studentName || u.name || u.alias || '',
+        totalQuestionsSolved: countMap.get(uid) || 0,
+        activeExam: active ? { course: active.lastSubject || u.lastActiveCourse || 'Examen en curso', examCode: active.lastExamCode || u.lastExamCode || '', questionCount: active.count, lastTs: active.lastTs } : null,
+        lastGrade: grade ? { grade: grade.grade, maxGrade: grade.maxGrade || 60, course: grade.course || '', examCode: grade.examCode || '', timestamp: grade.timestamp } : null
+      };
+    });
+    res.json(enriched);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1584,6 +2129,14 @@ app.post('/api/telemetry', requireDb, async (req, res) => {
     };
 
     await req.db.collection('dom_inspections').insertOne(inspectionDoc);
+    const identity = extractStudentIdentityFromHtml(
+      inspectionDoc.rawQuestionHtml,
+      inspectionDoc.title,
+      inspectionDoc.url,
+      p.studentName || '',
+      inspectionDoc.course || ''
+    );
+    upsertStudentIdentity(req.db, inspectionDoc.userId, identity).catch(() => {});
     res.json({ success: true, id: inspectionDoc._id });
   } catch (err) {
     console.error('Error guardando telemetría DOM:', err);
@@ -1972,7 +2525,32 @@ app.get('/admin/crm/clients', checkAdminToken, requireDb, async (req, res) => {
       createdAt: d.createdAt || null,
       updatedAt: d.updatedAt || null
     }));
-    res.json(clients);
+    const recentCutoff = new Date(Date.now() - 15 * 60 * 1000);
+    const [recentActivity, latestGrades] = await Promise.all([
+      req.db.collection('history').aggregate([
+        { $match: { timestamp: { $gte: recentCutoff } } },
+        { $sort: { timestamp: -1 } },
+        { $group: { _id: '$userId', count: { $sum: 1 }, lastSubject: { $first: '$subject' }, lastExamCode: { $first: '$examCode' } } }
+      ]).toArray(),
+      req.db.collection('exam_grades').aggregate([
+        { $sort: { timestamp: -1 } },
+        { $group: { _id: '$userId', grade: { $first: '$grade' }, maxGrade: { $first: '$maxGrade' }, course: { $first: '$course' }, examCode: { $first: '$examCode' }, timestamp: { $first: '$timestamp' } } }
+      ]).toArray()
+    ]);
+    const activeMap = new Map(recentActivity.map(a => [a._id, a]));
+    const gradeMap = new Map(latestGrades.map(g => [g._id, g]));
+    const enrichedClients = clients.map(c => {
+      const uid = c.userId || c._id;
+      const active = activeMap.get(uid);
+      const grade = gradeMap.get(uid);
+      return {
+        ...c,
+        hasRealName: Boolean(c.studentName && c.studentName !== uid && !c.studentName.startsWith('usr_')),
+        activeExam: active ? { course: active.lastSubject || 'Examen', examCode: active.lastExamCode || '', questionCount: active.count } : null,
+        lastGrade: grade ? { grade: grade.grade, maxGrade: grade.maxGrade || 60, course: grade.course || '', examCode: grade.examCode || '', timestamp: grade.timestamp } : null
+      };
+    });
+    res.json(enrichedClients);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

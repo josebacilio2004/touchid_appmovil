@@ -260,6 +260,7 @@
                     <th>Saldo de Créditos</th>
                     <th>Estado de Cuenta</th>
                     <th>Última Actividad / Consumo</th>
+                    <th>Examen / Nota</th>
                     <th>Acción Rápida</th>
                   </tr>
                 </thead>
@@ -658,6 +659,7 @@
                 <div class="search-box">
                   <input type="text" id="crm-clients-search" placeholder="Buscar por alumno, teléfono o ID...">
                 </div>
+                <button type="button" class="btn btn-secondary" id="crm-sync-names-btn" style="padding: 8px 14px; font-size: 13px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);" title="Extraer nombres reales de alumnos desde el HTML guardado en MongoDB">🔄 Extraer Nombres DOM</button>
                 <button type="button" class="btn btn-primary" id="crm-client-new-btn" style="padding: 8px 14px; font-size: 13px;">+ Nuevo Alumno</button>
               </div>
             </div>
@@ -671,6 +673,7 @@
                     <th>Teléfono WhatsApp</th>
                     <th>Universidad / Carrera</th>
                     <th>Saldo de Créditos</th>
+                    <th>Último Examen / Nota</th>
                     <th>Notas</th>
                     <th>Acciones Rápidas</th>
                   </tr>
@@ -1233,6 +1236,22 @@
           <button type="button" class="btn" id="modal-client-cancel" style="flex: 1; height: 42px; background: rgba(255,255,255,0.1); color: #cbd5e1;">Cancelar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Historial de Exámenes y Auditoría de Notas por Alumno -->
+  <div class="modal-overlay" id="modal-user-exams" style="display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, 0.78); backdrop-filter: blur(6px); z-index: 1100; align-items: center; justify-content: center; padding: 20px;">
+    <div class="modal-card" style="background: #0f172a; border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 16px; width: 100%; max-width: 980px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);">
+      <div style="padding: 18px 24px; border-bottom: 1px solid rgba(148, 163, 184, 0.15); display: flex; justify-content: space-between; align-items: center; gap: 16px; background: rgba(15, 23, 42, 0.95);">
+        <div>
+          <h3 id="modal-user-exams-title" style="margin: 0; font-size: 18px; color: #f8fafc;">📊 Historial de Exámenes</h3>
+          <div id="modal-user-exams-subtitle" style="font-size: 12.5px; color: #94a3b8; margin-top: 4px;">Cargando información del estudiante...</div>
+        </div>
+        <button type="button" id="modal-user-exams-close" class="btn btn-secondary" style="padding: 6px 14px; font-size: 13px;">✕ Cerrar</button>
+      </div>
+      <div id="user-exams-list" style="padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;">
+        <div class="empty-state">Cargando exámenes...</div>
+      </div>
     </div>
   </div>
 
