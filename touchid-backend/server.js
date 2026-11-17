@@ -244,18 +244,67 @@ async function triggerShadowVerification(db, question, options, isKType, canonic
 // ============================================================================
 // INTEGRACIÓN HÍBRIDA ANTHROPIC CLAUDE (ALTA VELOCIDAD Y PRECISIÓN CLÍNICA)
 // ============================================================================
-async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', prompt, systemInstructionText, isKType, options, timeoutMs = 4500 }) {
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (!anthropicKey) return null;
+async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', prompt, systemInstructionText, isKType, options, timeoutMs = 10000 }) {
+  const anthropicKeys = (process.env.ANTHROPIC_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
+  if (anthropicKeys.length === 0) return null;
+  const anthropicKey = anthropicKeys[Math.floor(Math.random() * anthropicKeys.length)];
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const startTime = Date.now();
 
   try {
-    const jsonInstruction = isKType
-      ? 'Responde ÚNICAMENTE un objeto JSON válido con este formato: {"subject": "...", "target_polarity": "VERDADEROS/FALSOS", "propositions": [{"index": 1, "is_true": true, "fact_check": "..."}], "true_indices": [1, 2, 3], "suggested_letter": "A", "explanation": "max 15 words"}.'
-      : 'Responde ÚNICAMENTE un objeto JSON válido con este formato: {"subject": "...", "options_evaluation": [{"index": 0, "verdict": "VERDADERO/FALSO", "trap_check": "..."}], "correct_option_index": 0, "correct_option_letter": "A", "correct_option_text": "...", "explanation": "max 15 words"}.';
+    const toolSchema = isKType
+      ? {
+          type: 'object',
+          properties: {
+            subject: { type: 'string' },
+            target_polarity: { type: 'string', enum: ['VERDADEROS', 'FALSOS'] },
+            propositions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  index: { type: 'integer' },
+                  is_true: { type: 'boolean' },
+                  fact_check: { type: 'string' }
+                },
+                required: ['index', 'is_true', 'fact_check']
+              }
+            },
+            true_indices: { type: 'array', items: { type: 'integer' } },
+            suggested_letter: { type: 'string' },
+            explanation: { type: 'string' }
+          },
+          required: ['subject', 'target_polarity', 'propositions', 'true_indices', 'suggested_letter', 'explanation']
+        }
+      : {
+          type: 'object',
+          properties: {
+            subject: { type: 'string' },
+            is_negative_question: { type: 'boolean' },
+            clinical_key_pearl: { type: 'string' },
+            options_evaluation: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  index: { type: 'integer' },
+                  verdict: { type: 'string', enum: ['VERDADERO', 'FALSO'] },
+                  trap_check: { type: 'string' }
+                },
+                required: ['index', 'verdict', 'trap_check']
+              }
+            },
+            correct_option_index: { type: 'integer' },
+            correct_option_letter: { type: 'string' },
+            correct_option_text: { type: 'string' },
+            explanation: { type: 'string' }
+          },
+          required: ['subject', 'is_negative_question', 'clinical_key_pearl', 'options_evaluation', 'correct_option_index', 'correct_option_text', 'explanation']
+        };
+
+    const sysText = (systemInstructionText || '').trim() || 'Eres un evaluador médico clínico de élite.';
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -266,9 +315,23 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
       },
       body: JSON.stringify({
         model: modelName,
-        max_tokens: 650,
+        max_tokens: 1500,
         temperature: 0.0,
-        system: (systemInstructionText || '') + '\n\n' + jsonInstruction,
+        system: [
+          {
+            type: 'text',
+            text: sysText,
+            cache_control: { type: 'ephemeral' }
+          }
+        ],
+        tools: [
+          {
+            name: 'submit_medical_answer',
+            description: 'Envía la evaluación clínica estructurada y la respuesta final validada.',
+            input_schema: toolSchema
+          }
+        ],
+        tool_choice: { type: 'tool', name: 'submit_medical_answer' },
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: controller.signal
@@ -277,27 +340,37 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
     clearTimeout(timeoutId);
     if (!res.ok) {
       const errTxt = await res.text();
-      console.warn(`[CLAUDE-ERROR] HTTP ${res.status} en ${modelName}: ${errTxt.slice(0, 100)}`);
+      console.warn(`[CLAUDE-ERROR] HTTP ${res.status} en ${modelName}: ${errTxt.slice(0, 140)}`);
       const cooldownMs = (res.status === 401 || res.status === 403 || res.status === 404 || res.status === 400) ? 600000 : 45000;
       penalizeModel(modelName, cooldownMs);
       return null;
     }
 
     const data = await res.json();
-    const rawContent = data.content?.[0]?.text || '';
-    const cleanJson = rawContent.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim();
-    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleanJson);
-    const elapsed = Date.now() - startTime;
-    const inTokens = data.usage?.input_tokens || Math.round((prompt.length + (systemInstructionText || '').length) / 3.8);
-    const outTokens = data.usage?.output_tokens || Math.round(cleanJson.length / 3.8);
+    const toolUseBlock = Array.isArray(data.content) ? data.content.find(c => c.type === 'tool_use' && c.input) : null;
+    let parsed = null;
 
-    console.log(`[RESOLVED-SPEED] ${modelName} resolvió en ${elapsed}ms (${inTokens} in / ${outTokens} out)`);
+    if (toolUseBlock && typeof toolUseBlock.input === 'object') {
+      parsed = toolUseBlock.input;
+    } else {
+      const rawContent = data.content?.find(c => c.type === 'text')?.text || '';
+      const cleanJson = rawContent.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim();
+      const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleanJson);
+    }
+
+    const elapsed = Date.now() - startTime;
+    const inTokens = data.usage?.input_tokens || Math.round((prompt.length + sysText.length) / 3.8);
+    const cacheRead = data.usage?.cache_read_input_tokens || 0;
+    const outTokens = data.usage?.output_tokens || 0;
+
+    console.log(`[RESOLVED-SPEED] ${modelName} resolvió en ${elapsed}ms (${inTokens} in${cacheRead ? ` / ${cacheRead} cached` : ''} / ${outTokens} out)`);
     return { result: parsed, modelUsed: modelName, elapsed, inputTokens: inTokens, outputTokens: outTokens };
   } catch (err) {
     clearTimeout(timeoutId);
     console.warn(`[CLAUDE-EXCEPTION] ${modelName} (${Date.now() - startTime}ms): ${err.message}`);
-    penalizeModel(modelName, 45000);
+    const isAbortOrNetwork = err.name === 'AbortError' || /abort|timeout|network|fetch/i.test(err.message);
+    penalizeModel(modelName, isAbortOrNetwork ? 45000 : 15000);
     return null;
   }
 }
@@ -822,19 +895,19 @@ app.post('/solve', async (req, res) => {
     // Matriz Multi-Tier Calibrada: Anthropic Claude (Prioridad #1) + Google Gemini Fallback
     const baseModels = isKType
       ? [
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
-          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 8500, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6500, thinkingBudget: 384 },
-          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 }
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 10000, thinkingBudget: 0 },
+          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 14000, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 8500, thinkingBudget: 384 },
+          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 6500, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 6500, thinkingBudget: 0 }
         ]
       : [
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
-          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 8000, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 4500, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5000, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 6000, thinkingBudget: 256 },
-          { name: 'gemini-robotics-er-2-preview', provider: 'google', timeoutMs: 4500, thinkingBudget: 0 }
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 10000, thinkingBudget: 0 },
+          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 14000, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 6000, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 6500, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 8000, thinkingBudget: 256 },
+          { name: 'gemini-robotics-er-2-preview', provider: 'google', timeoutMs: 6000, thinkingBudget: 0 }
         ];
 
     let usedModelName = null;
