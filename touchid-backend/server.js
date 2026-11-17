@@ -244,7 +244,7 @@ async function triggerShadowVerification(db, question, options, isKType, canonic
 // ============================================================================
 // INTEGRACIÓN HÍBRIDA ANTHROPIC CLAUDE (ALTA VELOCIDAD Y PRECISIÓN CLÍNICA)
 // ============================================================================
-async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', prompt, systemInstructionText, isKType, options, timeoutMs = 10000 }) {
+async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', prompt, systemInstructionText, isKType, options, timeoutMs = 7000 }) {
   const anthropicKeys = (process.env.ANTHROPIC_API_KEY || '').split(',').map(k => k.trim()).filter(Boolean);
   if (anthropicKeys.length === 0) return null;
   const anthropicKey = anthropicKeys[Math.floor(Math.random() * anthropicKeys.length)];
@@ -258,7 +258,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
       ? {
           type: 'object',
           properties: {
-            subject: { type: 'string' },
+            subject: { type: 'string', description: '1-2 palabras' },
             target_polarity: { type: 'string', enum: ['VERDADEROS', 'FALSOS'] },
             propositions: {
               type: 'array',
@@ -267,23 +267,23 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
                 properties: {
                   index: { type: 'integer' },
                   is_true: { type: 'boolean' },
-                  fact_check: { type: 'string' }
+                  fact_check: { type: 'string', description: 'Máximo 8 palabras' }
                 },
                 required: ['index', 'is_true', 'fact_check']
               }
             },
             true_indices: { type: 'array', items: { type: 'integer' } },
             suggested_letter: { type: 'string' },
-            explanation: { type: 'string' }
+            explanation: { type: 'string', description: 'Máximo 12 palabras' }
           },
           required: ['subject', 'target_polarity', 'propositions', 'true_indices', 'suggested_letter', 'explanation']
         }
       : {
           type: 'object',
           properties: {
-            subject: { type: 'string' },
+            subject: { type: 'string', description: '1-2 palabras' },
             is_negative_question: { type: 'boolean' },
-            clinical_key_pearl: { type: 'string' },
+            clinical_key_pearl: { type: 'string', description: 'Máximo 12 palabras' },
             options_evaluation: {
               type: 'array',
               items: {
@@ -291,7 +291,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
                 properties: {
                   index: { type: 'integer' },
                   verdict: { type: 'string', enum: ['VERDADERO', 'FALSO'] },
-                  trap_check: { type: 'string' }
+                  trap_check: { type: 'string', description: 'Máximo 8 palabras' }
                 },
                 required: ['index', 'verdict', 'trap_check']
               }
@@ -299,7 +299,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
             correct_option_index: { type: 'integer' },
             correct_option_letter: { type: 'string' },
             correct_option_text: { type: 'string' },
-            explanation: { type: 'string' }
+            explanation: { type: 'string', description: 'Máximo 12 palabras' }
           },
           required: ['subject', 'is_negative_question', 'clinical_key_pearl', 'options_evaluation', 'correct_option_index', 'correct_option_text', 'explanation']
         };
@@ -315,7 +315,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
       },
       body: JSON.stringify({
         model: modelName,
-        max_tokens: 1500,
+        max_tokens: 800,
         temperature: 0.0,
         system: [
           {
@@ -327,7 +327,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
         tools: [
           {
             name: 'submit_medical_answer',
-            description: 'Envía la evaluación clínica estructurada y la respuesta final validada.',
+            description: 'Envía la evaluación clínica concisa (máximo 12 palabras por campo de texto).',
             input_schema: toolSchema
           }
         ],
@@ -895,19 +895,19 @@ app.post('/solve', async (req, res) => {
     // Matriz Multi-Tier Calibrada: Anthropic Claude (Prioridad #1) + Google Gemini Fallback
     const baseModels = isKType
       ? [
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 10000, thinkingBudget: 0 },
-          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 14000, thinkingBudget: 0 },
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 7000, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 8500, thinkingBudget: 384 },
-          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 6500, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 6500, thinkingBudget: 0 }
+          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 6000, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 6000, thinkingBudget: 0 },
+          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 14000, thinkingBudget: 0 }
         ]
       : [
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 10000, thinkingBudget: 0 },
-          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 14000, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 6000, thinkingBudget: 0 },
-          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 6500, thinkingBudget: 0 },
-          { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 8000, thinkingBudget: 256 },
-          { name: 'gemini-robotics-er-2-preview', provider: 'google', timeoutMs: 6000, thinkingBudget: 0 }
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 7000, thinkingBudget: 0 },
+          { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 5500, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 5500, thinkingBudget: 0 },
+          { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 7500, thinkingBudget: 256 },
+          { name: 'gemini-robotics-er-2-preview', provider: 'google', timeoutMs: 6000, thinkingBudget: 0 },
+          { name: 'claude-sonnet-4-5-20250929', provider: 'anthropic', timeoutMs: 14000, thinkingBudget: 0 }
         ];
 
     let usedModelName = null;
