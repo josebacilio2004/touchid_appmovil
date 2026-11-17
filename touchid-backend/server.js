@@ -267,7 +267,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
                 properties: {
                   index: { type: 'integer' },
                   is_true: { type: 'boolean' },
-                  fact_check: { type: 'string', description: 'Máximo 8 palabras' }
+                  fact_check: { type: 'string', description: 'Máximo 16 palabras: valida cifras exactas, relaciones anatómicas y afirmaciones' }
                 },
                 required: ['index', 'is_true', 'fact_check']
               }
@@ -315,7 +315,7 @@ async function callAnthropicClaude({ modelName = 'claude-haiku-4-5-20251001', pr
       },
       body: JSON.stringify({
         model: modelName,
-        max_tokens: 800,
+        max_tokens: isKType ? 950 : 800,
         temperature: 0.0,
         system: [
           {
@@ -895,7 +895,7 @@ app.post('/solve', async (req, res) => {
     // Matriz Multi-Tier Calibrada: Anthropic Claude (Prioridad #1) + Google Gemini Fallback
     const baseModels = isKType
       ? [
-          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 7000, thinkingBudget: 0 },
+          { name: 'claude-haiku-4-5-20251001', provider: 'anthropic', timeoutMs: 8500, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash',         provider: 'google',    timeoutMs: 8500, thinkingBudget: 384 },
           { name: 'gemini-flash-lite-latest', provider: 'google',    timeoutMs: 6000, thinkingBudget: 0 },
           { name: 'gemini-3.5-flash-lite',    provider: 'google',    timeoutMs: 6000, thinkingBudget: 0 },
